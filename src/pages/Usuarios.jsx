@@ -7,16 +7,16 @@ const vazio = { nome:'', email:'', senha:'', papel:'guiche' };
 const PAPEIS = ['admin','guiche','acertador','dgp','financeiro'];
 const PILL_CORES = { admin:'#7c3aed', guiche:'#0891b2', acertador:'#d97706', dgp:'#dc2626', financeiro:'#16a34a' };
 
-const PERMISSOES = {
-  usuarios:    { label:'Usuários',            abas: ['leitura','escrita'] },
-  motoristas:  { label:'Motoristas',          abas: ['leitura','escrita'] },
-  solicitacoes:{ label:'Solicitações',        abas: ['leitura','escrita'] },
-  exclusoes:   { label:'Exclusão de Vales',   abas: ['leitura','escrita'] },
-  folgas:      { label:'Folgas',              abas: ['leitura','escrita'] },
-  ferias:      { label:'Férias',              abas: ['leitura','escrita'] },
-  agendamentos:{ label:'Agendamento',         abas: ['leitura','escrita'] },
-  financeiro:  { label:'Controle Financeiro', abas: ['leitura','escrita'] },
-};
+const ABAS = [
+  { key:'usuarios',     label:'Usuários' },
+  { key:'motoristas',   label:'Motoristas' },
+  { key:'solicitacoes', label:'Solicitações' },
+  { key:'exclusoes',    label:'Exclusão de Vales' },
+  { key:'folgas',       label:'Folgas' },
+  { key:'ferias',       label:'Férias' },
+  { key:'agendamentos', label:'Agendamento' },
+  { key:'financeiro',   label:'Controle Financeiro' },
+];
 
 const PERMISSOES_PADRAO = {
   admin:      { leitura: ['usuarios','motoristas','solicitacoes','exclusoes','folgas','ferias','agendamentos','financeiro'], escrita: ['usuarios','motoristas','solicitacoes','exclusoes','folgas','ferias','agendamentos','financeiro'] },
@@ -38,6 +38,8 @@ export default function Usuarios() {
   const [novaSenha, setNovaSenha] = useState('');
   const [verSenha, setVerSenha] = useState(false);
   const [permEdit, setPermEdit] = useState(null);
+  const [permissoes, setPermissoes] = useState({ leitura:[], escrita:[] });
+  const [salvandoPerm, setSalvandoPerm] = useState(false);
 
   useEffect(() => { carregar(); }, []);
 
@@ -72,6 +74,42 @@ export default function Usuarios() {
     } catch {}
   }
 
+  function abrirPermissoes(u) {
+    const padrao = PERMISSOES_PADRAO[u.papel] || { leitura:[], escrita:[] };
+    const atual = u.permissoes || padrao;
+    setPermissoes({ leitura: atual.leitura || [], escrita: atual.escrita || [] });
+    setPermEdit(u);
+  }
+
+  function togglePerm(tipo, key) {
+    setPermissoes(p => {
+      const lista = p[tipo].includes(key) ? p[tipo].filter(x=>x!==key) : [...p[tipo], key];
+      // Se tirar leitura, tira escrita também
+      if (tipo === 'leitura' && !lista.includes(key)) {
+        return { leitura: lista, escrita: p.escrita.filter(x=>x!==key) };
+      }
+      // Se adicionar escrita, adiciona leitura também
+      if (tipo === 'escrita' && lista.includes(key)) {
+        return { escrita: lista, leitura: p.leitura.includes(key) ? p.leitura : [...p.leitura, key] };
+      }
+      return { ...p, [tipo]: lista };
+    });
+  }
+
+  async function salvarPermissoes() {
+    setSalvandoPerm(true);
+    try {
+      await api.patch(`/usuarios/${permEdit.id}/permissoes`, { permissoes });
+      toast.success('Permissões salvas!');
+      setPermEdit(null);
+      carregar();
+    } catch {
+      toast.error('Erro ao salvar permissões');
+    } finally {
+      setSalvandoPerm(false);
+    }
+  }
+
   const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
   const btn = (bg, color='#fff') => ({ padding:'8px 20px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
@@ -95,13 +133,13 @@ export default function Usuarios() {
               <div>
                 <label style={lbl}>Senha atual</label>
                 <div style={{ position:'relative' }}>
-                  <input type={verSenha?'text':'password'} value={senhaAtual} onChange={e=>setSenhaAtual(e.target.value)} required style={inp} />
+                  <input type={verSenha?'text':'password'} value={senhaAtual} onChange={e=>setSenhaAtual(e.target.value)} required style={inp}/>
                   <button type="button" onClick={()=>setVerSenha(v=>!v)} style={{ position:'absolute', right:8, top:8, background:'none', border:'none', cursor:'pointer', fontSize:16 }}>{verSenha?'🙈':'👁️'}</button>
                 </div>
               </div>
               <div>
                 <label style={lbl}>Nova senha</label>
-                <input type="password" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} required style={inp} />
+                <input type="password" value={novaSenha} onChange={e=>setNovaSenha(e.target.value)} required style={inp}/>
               </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:12 }}>
@@ -146,39 +184,42 @@ export default function Usuarios() {
       {permEdit && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-            <h3 style={{ fontSize:14, fontWeight:600 }}>Permissões — {permEdit.nome} <span style={{ fontSize:12, color:'#7c3aed' }}>({permEdit.papel})</span></h3>
+            <h3 style={{ fontSize:14, fontWeight:600 }}>
+              Permissões — {permEdit.nome}
+              <span style={{ fontSize:12, color:'#7c3aed', marginLeft:8 }}>({permEdit.papel})</span>
+            </h3>
             <button onClick={()=>setPermEdit(null)} style={btn('#e5e7eb','#374151')}>Fechar</button>
           </div>
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-              <thead>
-                <tr style={{ background:'#f9fafb' }}>
-                  <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, color:'#6b7280', borderBottom:'1px solid #e5e7eb' }}>Aba</th>
-                  <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, color:'#6b7280', borderBottom:'1px solid #e5e7eb' }}>Visualizar</th>
-                  <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, color:'#6b7280', borderBottom:'1px solid #e5e7eb' }}>Editar</th>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+            <thead>
+              <tr style={{ background:'#f9fafb' }}>
+                <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, color:'#6b7280', borderBottom:'1px solid #e5e7eb' }}>Aba</th>
+                <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, color:'#6b7280', borderBottom:'1px solid #e5e7eb' }}>Visualizar</th>
+                <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, color:'#6b7280', borderBottom:'1px solid #e5e7eb' }}>Editar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ABAS.map(({ key, label }) => (
+                <tr key={key} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                  <td style={{ padding:'10px 12px', fontWeight:500 }}>{label}</td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}>
+                    <input type="checkbox" checked={permissoes.leitura.includes(key)} onChange={()=>togglePerm('leitura', key)}
+                      style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
+                  </td>
+                  <td style={{ padding:'10px 12px', textAlign:'center' }}>
+                    <input type="checkbox" checked={permissoes.escrita.includes(key)} onChange={()=>togglePerm('escrita', key)}
+                      style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {Object.entries(PERMISSOES).map(([key, val]) => {
-                  const padrao = PERMISSOES_PADRAO[permEdit.papel] || { leitura:[], escrita:[] };
-                  const temLeitura = padrao.leitura.includes(key);
-                  const temEscrita = padrao.escrita.includes(key);
-                  return (
-                    <tr key={key} style={{ borderBottom:'1px solid #f3f4f6' }}>
-                      <td style={{ padding:'10px 12px', fontWeight:500 }}>{val.label}</td>
-                      <td style={{ padding:'10px 12px', textAlign:'center' }}>
-                        <span style={{ fontSize:16 }}>{temLeitura ? '✅' : '❌'}</span>
-                      </td>
-                      <td style={{ padding:'10px 12px', textAlign:'center' }}>
-                        <span style={{ fontSize:16 }}>{temEscrita ? '✅' : '❌'}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:16, gap:8 }}>
+            <button onClick={()=>setPermEdit(null)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
+            <button onClick={salvarPermissoes} disabled={salvandoPerm} style={btn('#7c3aed')}>
+              {salvandoPerm ? 'Salvando...' : '✓ Salvar permissões'}
+            </button>
           </div>
-          <p style={{ fontSize:12, color:'#9ca3af', marginTop:12 }}>As permissões são definidas pelo papel do usuário. Para alterar, mude o papel do usuário.</p>
         </div>
       )}
 
@@ -201,13 +242,17 @@ export default function Usuarios() {
                   <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:PILL_CORES[u.papel]+'22', color:PILL_CORES[u.papel] }}>{u.papel}</span>
                 </td>
                 <td style={{ padding:'10px 14px' }}>
-                  <button onClick={()=>setPermEdit(u)} style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#f5f3ff', color:'#7c3aed' }}>Ver permissões</button>
+                  <button onClick={()=>abrirPermissoes(u)} style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#f5f3ff', color:'#7c3aed' }}>
+                    ⚙️ Editar permissões
+                  </button>
                 </td>
-                <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
-                  <button onClick={()=>{ setForm({...u,senha:''}); setEditId(u.id); setShowForm(true); }} style={{ padding:'4px 12px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff' }}>Editar</button>
-                  {u.id !== eu?.id && (
-                    <button onClick={()=>excluir(u.id, u.nome)} style={{ padding:'4px 12px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
-                  )}
+                <td style={{ padding:'10px 14px' }}>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <button onClick={()=>{ setForm({...u,senha:''}); setEditId(u.id); setShowForm(true); }} style={{ padding:'4px 12px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff' }}>Editar</button>
+                    {u.id !== eu?.id && (
+                      <button onClick={()=>excluir(u.id, u.nome)} style={{ padding:'4px 12px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                    )}
+                  </div>
                 </td>
                 {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{u.auditoriasFeitas?.[0]?`${u.auditoriasFeitas[0].usuario.nome} — ${new Date(u.auditoriasFeitas[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
               </tr>
