@@ -42,6 +42,8 @@ export default function Usuarios() {
   const [salvandoPerm, setSalvandoPerm] = useState(false);
   const [perfilEdit, setPerfilEdit] = useState(null);
   const [perfilSelecionado, setPerfilSelecionado] = useState('');
+  const [perfilFinEdit, setPerfilFinEdit] = useState(null);
+  const [perfilFinSelecionado, setPerfilFinSelecionado] = useState('');
 
   useEffect(() => { carregar(); }, []);
 
@@ -101,8 +103,7 @@ export default function Usuarios() {
     try {
       await api.patch(`/usuarios/${permEdit.id}/permissoes`, { permissoes });
       toast.success('Permissões salvas!');
-      setPermEdit(null);
-      carregar();
+      setPermEdit(null); carregar();
     } catch {
       toast.error('Erro ao salvar permissões');
     } finally {
@@ -121,11 +122,23 @@ export default function Usuarios() {
         perfilAgendamento: perfilSelecionado ? parseInt(perfilSelecionado) : null
       });
       toast.success('Perfil de agendamento salvo!');
-      setPerfilEdit(null);
-      carregar();
-    } catch {
-      toast.error('Erro ao salvar perfil');
-    }
+      setPerfilEdit(null); carregar();
+    } catch { toast.error('Erro ao salvar perfil'); }
+  }
+
+  function abrirPerfilFinanceiro(u) {
+    setPerfilFinEdit(u);
+    setPerfilFinSelecionado(u.perfilFinanceiro ? String(u.perfilFinanceiro) : '');
+  }
+
+  async function salvarPerfilFinanceiro() {
+    try {
+      await api.patch(`/usuarios/${perfilFinEdit.id}/perfil-financeiro`, {
+        perfilFinanceiro: perfilFinSelecionado ? parseInt(perfilFinSelecionado) : null
+      });
+      toast.success('Perfil financeiro salvo!');
+      setPerfilFinEdit(null); carregar();
+    } catch { toast.error('Erro ao salvar perfil financeiro'); }
   }
 
   const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
@@ -221,12 +234,10 @@ export default function Usuarios() {
                 <tr key={key} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 12px', fontWeight:500 }}>{label}</td>
                   <td style={{ padding:'10px 12px', textAlign:'center' }}>
-                    <input type="checkbox" checked={permissoes.leitura.includes(key)} onChange={()=>togglePerm('leitura', key)}
-                      style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
+                    <input type="checkbox" checked={permissoes.leitura.includes(key)} onChange={()=>togglePerm('leitura', key)} style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
                   </td>
                   <td style={{ padding:'10px 12px', textAlign:'center' }}>
-                    <input type="checkbox" checked={permissoes.escrita.includes(key)} onChange={()=>togglePerm('escrita', key)}
-                      style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
+                    <input type="checkbox" checked={permissoes.escrita.includes(key)} onChange={()=>togglePerm('escrita', key)} style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
                   </td>
                 </tr>
               ))}
@@ -262,12 +273,35 @@ export default function Usuarios() {
         </div>
       )}
 
+      {/* Modal perfil financeiro */}
+      {perfilFinEdit && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Perfil financeiro — {perfilFinEdit.nome}</h3>
+            <div style={{ marginBottom:20 }}>
+              <label style={lbl}>Perfil</label>
+              <select value={perfilFinSelecionado} onChange={e=>setPerfilFinSelecionado(e.target.value)} style={inp}>
+                <option value="">Nenhum</option>
+                <option value="1">Perfil 1</option>
+                <option value="2">Perfil 2</option>
+                <option value="3">Perfil 3</option>
+                <option value="4">Perfil 4</option>
+              </select>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={()=>setPerfilFinEdit(null)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
+              <button onClick={salvarPerfilFinanceiro} style={btn('#7c3aed')}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabela */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
           <thead>
             <tr style={{ background:'#f9fafb' }}>
-              {['Nome','E-mail','Papel','Perfil Agend.','Permissões','Ações',...(isAdmin?['Última alteração']:[])].map(h=>(
+              {['Nome','E-mail','Papel','Perfil Agend.','Perfil Financ.','Permissões','Ações',...(isAdmin?['Última alteração']:[])].map(h=>(
                 <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
               ))}
             </tr>
@@ -285,6 +319,14 @@ export default function Usuarios() {
                     <button onClick={()=>abrirPerfilAgendamento(u)}
                       style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilAgendamento ? '#f5f3ff' : '#fff', color: u.perfilAgendamento ? '#7c3aed' : '#6b7280' }}>
                       {u.perfilAgendamento ? `Perfil ${u.perfilAgendamento}` : 'Vincular'}
+                    </button>
+                  ) : <span style={{ color:'#d1d5db', fontSize:12 }}>—</span>}
+                </td>
+                <td style={{ padding:'10px 14px' }}>
+                  {u.papel === 'acertador' ? (
+                    <button onClick={()=>abrirPerfilFinanceiro(u)}
+                      style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilFinanceiro ? '#f0fdf4' : '#fff', color: u.perfilFinanceiro ? '#16a34a' : '#6b7280' }}>
+                      {u.perfilFinanceiro ? `Perfil ${u.perfilFinanceiro}` : 'Vincular'}
                     </button>
                   ) : <span style={{ color:'#d1d5db', fontSize:12 }}>—</span>}
                 </td>
