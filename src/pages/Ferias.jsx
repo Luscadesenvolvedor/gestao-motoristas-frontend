@@ -20,6 +20,12 @@ export default function Ferias() {
   const [form, setForm] = useState({ motoristaId:'', tipo:'ferias', inicio:'', fim:'', observacao:'' });
   const [formAfast, setFormAfast] = useState({ motoristaId:'', dataInicio:'', dataRetorno:'', indeterminado:false, observacao:'' });
   const [formAband, setFormAband] = useState({ motoristaId:'', data:'', observacao:'' });
+
+  // Filtros
+  const [filtroMotorista, setFiltroMotorista] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+
   const canEdit = pode('ferias', 'escrita');
 
   useEffect(() => { carregarTudo(); }, []);
@@ -77,18 +83,50 @@ export default function Ferias() {
     carregarTudo();
   }
 
+  async function excluir(tipo, id) {
+    const msgs = { ferias:'este registro', afastamento:'este afastamento', abandono:'este abandono' };
+    if (!confirm(`Excluir ${msgs[tipo]}?`)) return;
+    try {
+      if (tipo === 'ferias') await api.delete(`/ferias/${id}`);
+      if (tipo === 'afastamento') await api.delete(`/ferias/afastamentos/${id}`);
+      if (tipo === 'abandono') await api.delete(`/ferias/abandonos/${id}`);
+      toast.success('Excluído!');
+      carregarTudo();
+    } catch { toast.error('Erro ao excluir'); }
+  }
+
   const hoje = new Date();
   const emFerias = f => new Date(f.inicio) <= hoje && (!f.fim || new Date(f.fim) >= hoje);
-
-  const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
-  const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
-  const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
 
   const calcDias = (inicio, fim) => {
     if (!inicio || !fim) return '—';
     const d = Math.ceil((new Date(fim) - new Date(inicio)) / (1000*60*60*24)) + 1;
     return `${d} dia${d!==1?'s':''}`;
   };
+
+  // Filtros aplicados
+  const listaFiltrada = lista.filter(f => {
+    if (filtroMotorista && f.motoristaId !== filtroMotorista) return false;
+    if (filtroTipo && f.tipo !== filtroTipo) return false;
+    return true;
+  });
+
+  const afastFiltrados = afastamentos.filter(a => {
+    if (filtroMotorista && a.motoristaId !== filtroMotorista) return false;
+    if (filtroStatus === 'afastado' && a.retornou) return false;
+    if (filtroStatus === 'retornou' && !a.retornou) return false;
+    return true;
+  });
+
+  const abandFiltrados = abandonos.filter(a => {
+    if (filtroMotorista && a.motoristaId !== filtroMotorista) return false;
+    return true;
+  });
+
+  const inp = { padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, background:'#fff' };
+  const inpFull = { ...inp, width:'100%', boxSizing:'border-box' };
+  const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
+  const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
 
   return (
     <div>
@@ -102,11 +140,43 @@ export default function Ferias() {
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, marginBottom:16, background:'#f3f4f6', borderRadius:10, padding:4 }}>
         {TABS.map(t => (
-          <button key={t.key} onClick={()=>{ setTab(t.key); setShowForm(false); }}
+          <button key={t.key} onClick={()=>{ setTab(t.key); setShowForm(false); setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }}
             style={{ flex:1, padding:'8px 12px', border:'none', borderRadius:8, fontSize:13, fontWeight:tab===t.key?500:400, cursor:'pointer', background:tab===t.key?'#fff':'transparent', color:tab===t.key?'#7c3aed':'#6b7280', boxShadow:tab===t.key?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
             {t.label}
           </button>
         ))}
+      </div>
+
+      {/* Filtros */}
+      <div style={{ background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:12, border:'1px solid #e5e7eb', display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
+        <div>
+          <label style={lbl}>Motorista</label>
+          <select value={filtroMotorista} onChange={e=>setFiltroMotorista(e.target.value)} style={inp}>
+            <option value="">Todos</option>
+            {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+        </div>
+        {tab === 'ferias' && (
+          <div>
+            <label style={lbl}>Tipo</label>
+            <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={inp}>
+              <option value="">Todos</option>
+              <option value="ferias">Férias</option>
+              <option value="atestado">Atestado</option>
+            </select>
+          </div>
+        )}
+        {tab === 'afastamentos' && (
+          <div>
+            <label style={lbl}>Status</label>
+            <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={inp}>
+              <option value="">Todos</option>
+              <option value="afastado">Afastado</option>
+              <option value="retornou">Retornou</option>
+            </select>
+          </div>
+        )}
+        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }} style={{ ...btn('#f3f4f6','#374151'), fontSize:12 }}>Limpar filtros</button>
       </div>
 
       {/* Form Férias/Atestado */}
@@ -117,25 +187,25 @@ export default function Ferias() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
                 <label style={lbl}>Motorista</label>
-                <select value={form.motoristaId} onChange={e=>setForm(f=>({...f,motoristaId:e.target.value}))} required style={inp}>
+                <select value={form.motoristaId} onChange={e=>setForm(f=>({...f,motoristaId:e.target.value}))} required style={inpFull}>
                   <option value="">Selecionar...</option>
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
               <div>
                 <label style={lbl}>Tipo</label>
-                <select value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))} style={inp}>
+                <select value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))} style={inpFull}>
                   <option value="ferias">Férias</option>
                   <option value="atestado">Atestado</option>
                 </select>
               </div>
               <div>
                 <label style={lbl}>Data início</label>
-                <input type="date" value={form.inicio} onChange={e=>setForm(f=>({...f,inicio:e.target.value}))} required style={inp}/>
+                <input type="date" value={form.inicio} onChange={e=>setForm(f=>({...f,inicio:e.target.value}))} required style={inpFull}/>
               </div>
               <div>
                 <label style={lbl}>Data fim (opcional)</label>
-                <input type="date" value={form.fim} onChange={e=>setForm(f=>({...f,fim:e.target.value}))} style={inp}/>
+                <input type="date" value={form.fim} onChange={e=>setForm(f=>({...f,fim:e.target.value}))} style={inpFull}/>
               </div>
               {form.inicio && form.fim && (
                 <div style={{ gridColumn:'1/-1', background:'#f5f3ff', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#7c3aed', fontWeight:500 }}>
@@ -144,7 +214,7 @@ export default function Ferias() {
               )}
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={lbl}>Observação</label>
-                <textarea value={form.observacao} onChange={e=>setForm(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inp, resize:'vertical' }}/>
+                <textarea value={form.observacao} onChange={e=>setForm(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inpFull, resize:'vertical' }}/>
               </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
@@ -163,18 +233,18 @@ export default function Ferias() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
                 <label style={lbl}>Motorista</label>
-                <select value={formAfast.motoristaId} onChange={e=>setFormAfast(f=>({...f,motoristaId:e.target.value}))} required style={inp}>
+                <select value={formAfast.motoristaId} onChange={e=>setFormAfast(f=>({...f,motoristaId:e.target.value}))} required style={inpFull}>
                   <option value="">Selecionar...</option>
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
               <div>
                 <label style={lbl}>Data início</label>
-                <input type="date" value={formAfast.dataInicio} onChange={e=>setFormAfast(f=>({...f,dataInicio:e.target.value}))} required style={inp}/>
+                <input type="date" value={formAfast.dataInicio} onChange={e=>setFormAfast(f=>({...f,dataInicio:e.target.value}))} required style={inpFull}/>
               </div>
               <div>
                 <label style={lbl}>Data retorno</label>
-                <input type="date" value={formAfast.dataRetorno} onChange={e=>setFormAfast(f=>({...f,dataRetorno:e.target.value}))} disabled={formAfast.indeterminado} style={{ ...inp, opacity:formAfast.indeterminado?0.5:1 }}/>
+                <input type="date" value={formAfast.dataRetorno} onChange={e=>setFormAfast(f=>({...f,dataRetorno:e.target.value}))} disabled={formAfast.indeterminado} style={{ ...inpFull, opacity:formAfast.indeterminado?0.5:1 }}/>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:20 }}>
                 <input type="checkbox" id="indet" checked={formAfast.indeterminado} onChange={e=>setFormAfast(f=>({...f,indeterminado:e.target.checked,dataRetorno:''}))} style={{ width:18, height:18, accentColor:'#7c3aed' }}/>
@@ -182,7 +252,7 @@ export default function Ferias() {
               </div>
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={lbl}>Observação</label>
-                <textarea value={formAfast.observacao} onChange={e=>setFormAfast(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inp, resize:'vertical' }}/>
+                <textarea value={formAfast.observacao} onChange={e=>setFormAfast(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inpFull, resize:'vertical' }}/>
               </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
@@ -201,18 +271,18 @@ export default function Ferias() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
                 <label style={lbl}>Motorista</label>
-                <select value={formAband.motoristaId} onChange={e=>setFormAband(f=>({...f,motoristaId:e.target.value}))} required style={inp}>
+                <select value={formAband.motoristaId} onChange={e=>setFormAband(f=>({...f,motoristaId:e.target.value}))} required style={inpFull}>
                   <option value="">Selecionar...</option>
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
               <div>
                 <label style={lbl}>Data</label>
-                <input type="date" value={formAband.data} onChange={e=>setFormAband(f=>({...f,data:e.target.value}))} required style={inp}/>
+                <input type="date" value={formAband.data} onChange={e=>setFormAband(f=>({...f,data:e.target.value}))} required style={inpFull}/>
               </div>
               <div style={{ gridColumn:'1/-1' }}>
                 <label style={lbl}>Observação</label>
-                <textarea value={formAband.observacao} onChange={e=>setFormAband(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inp, resize:'vertical' }}/>
+                <textarea value={formAband.observacao} onChange={e=>setFormAband(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inpFull, resize:'vertical' }}/>
               </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
@@ -226,16 +296,19 @@ export default function Ferias() {
       {/* Tabela Férias/Atestado */}
       {tab === 'ferias' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
+          <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
+            {listaFiltrada.length} registro{listaFiltrada.length!==1?'s':''}
+          </div>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Motorista','Tipo','Início','Fim','Dias','Status','Observação',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {lista.map(f=>(
+              {listaFiltrada.map(f=>(
                 <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
                   <td style={{ padding:'10px 14px' }}>
@@ -252,10 +325,15 @@ export default function Ferias() {
                     </span>
                   </td>
                   <td style={{ padding:'10px 14px', color:'#6b7280', fontSize:12 }}>{f.observacao || '—'}</td>
+                  <td style={{ padding:'10px 14px' }}>
+                    {canEdit && (
+                      <button onClick={()=>excluir('ferias', f.id)} style={{ padding:'4px 10px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                    )}
+                  </td>
                   {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{f.auditorias?.[0]?`${f.auditorias[0].usuario?.nome} — ${new Date(f.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
                 </tr>
               ))}
-              {lista.length===0 && <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum registro</td></tr>}
+              {listaFiltrada.length===0 && <tr><td colSpan={9} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum registro encontrado</td></tr>}
             </tbody>
           </table>
         </div>
@@ -264,6 +342,9 @@ export default function Ferias() {
       {/* Tabela Afastamentos */}
       {tab === 'afastamentos' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
+          <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
+            {afastFiltrados.length} registro{afastFiltrados.length!==1?'s':''}
+          </div>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
@@ -273,7 +354,7 @@ export default function Ferias() {
               </tr>
             </thead>
             <tbody>
-              {afastamentos.map(a=>(
+              {afastFiltrados.map(a=>(
                 <tr key={a.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{a.motorista?.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{new Date(a.dataInicio).toLocaleDateString('pt-BR')}</td>
@@ -282,20 +363,23 @@ export default function Ferias() {
                   </td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:a.retornou?'#dcfce7':'#fee2e2', color:a.retornou?'#166534':'#991b1b' }}>
-                      {a.retornou ? 'Retornou' : 'Afastado'}
+                      {a.retornou ? '✓ Retornou' : '⚠️ Afastado'}
                     </span>
                   </td>
                   <td style={{ padding:'10px 14px', color:'#6b7280', fontSize:12 }}>{a.observacao || '—'}</td>
                   <td style={{ padding:'10px 14px' }}>
-                    {!a.retornou && canEdit && (
-                      <button onClick={()=>marcarRetornou(a.id)} style={{ padding:'4px 12px', border:'1px solid #86efac', borderRadius:6, fontSize:12, cursor:'pointer', background:'#dcfce7', color:'#166534' }}>
-                        ✓ Retornou
-                      </button>
-                    )}
+                    <div style={{ display:'flex', gap:6 }}>
+                      {!a.retornou && canEdit && (
+                        <button onClick={()=>marcarRetornou(a.id)} style={{ padding:'4px 10px', border:'1px solid #86efac', borderRadius:6, fontSize:12, cursor:'pointer', background:'#dcfce7', color:'#166534' }}>✓ Retornou</button>
+                      )}
+                      {canEdit && (
+                        <button onClick={()=>excluir('afastamento', a.id)} style={{ padding:'4px 10px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
-              {afastamentos.length===0 && <tr><td colSpan={6} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum afastamento</td></tr>}
+              {afastFiltrados.length===0 && <tr><td colSpan={6} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum afastamento encontrado</td></tr>}
             </tbody>
           </table>
         </div>
@@ -304,23 +388,31 @@ export default function Ferias() {
       {/* Tabela Abandonos */}
       {tab === 'abandonos' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
+          <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
+            {abandFiltrados.length} registro{abandFiltrados.length!==1?'s':''}
+          </div>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Motorista','Data','Observação'].map(h=>(
+                {['Motorista','Data','Observação','Ações'].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {abandonos.map(a=>(
+              {abandFiltrados.map(a=>(
                 <tr key={a.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{a.motorista?.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{new Date(a.data).toLocaleDateString('pt-BR')}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{a.observacao || '—'}</td>
+                  <td style={{ padding:'10px 14px' }}>
+                    {canEdit && (
+                      <button onClick={()=>excluir('abandono', a.id)} style={{ padding:'4px 10px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {abandonos.length===0 && <tr><td colSpan={3} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum abandono registrado</td></tr>}
+              {abandFiltrados.length===0 && <tr><td colSpan={4} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum abandono encontrado</td></tr>}
             </tbody>
           </table>
         </div>
