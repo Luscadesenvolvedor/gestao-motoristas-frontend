@@ -40,6 +40,8 @@ export default function Usuarios() {
   const [permEdit, setPermEdit] = useState(null);
   const [permissoes, setPermissoes] = useState({ leitura:[], escrita:[] });
   const [salvandoPerm, setSalvandoPerm] = useState(false);
+  const [perfilEdit, setPerfilEdit] = useState(null);
+  const [perfilSelecionado, setPerfilSelecionado] = useState('');
 
   useEffect(() => { carregar(); }, []);
 
@@ -84,11 +86,9 @@ export default function Usuarios() {
   function togglePerm(tipo, key) {
     setPermissoes(p => {
       const lista = p[tipo].includes(key) ? p[tipo].filter(x=>x!==key) : [...p[tipo], key];
-      // Se tirar leitura, tira escrita também
       if (tipo === 'leitura' && !lista.includes(key)) {
         return { leitura: lista, escrita: p.escrita.filter(x=>x!==key) };
       }
-      // Se adicionar escrita, adiciona leitura também
       if (tipo === 'escrita' && lista.includes(key)) {
         return { escrita: lista, leitura: p.leitura.includes(key) ? p.leitura : [...p.leitura, key] };
       }
@@ -107,6 +107,24 @@ export default function Usuarios() {
       toast.error('Erro ao salvar permissões');
     } finally {
       setSalvandoPerm(false);
+    }
+  }
+
+  function abrirPerfilAgendamento(u) {
+    setPerfilEdit(u);
+    setPerfilSelecionado(u.perfilAgendamento ? String(u.perfilAgendamento) : '');
+  }
+
+  async function salvarPerfil() {
+    try {
+      await api.patch(`/usuarios/${perfilEdit.id}/perfil-agendamento`, {
+        perfilAgendamento: perfilSelecionado ? parseInt(perfilSelecionado) : null
+      });
+      toast.success('Perfil de agendamento salvo!');
+      setPerfilEdit(null);
+      carregar();
+    } catch {
+      toast.error('Erro ao salvar perfil');
     }
   }
 
@@ -223,12 +241,33 @@ export default function Usuarios() {
         </div>
       )}
 
+      {/* Modal perfil agendamento */}
+      {perfilEdit && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>Perfil de agendamento — {perfilEdit.nome}</h3>
+            <div style={{ marginBottom:20 }}>
+              <label style={lbl}>Perfil</label>
+              <select value={perfilSelecionado} onChange={e=>setPerfilSelecionado(e.target.value)} style={inp}>
+                <option value="">Nenhum</option>
+                <option value="1">Perfil 1</option>
+                <option value="2">Perfil 2</option>
+              </select>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={()=>setPerfilEdit(null)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
+              <button onClick={salvarPerfil} style={btn('#7c3aed')}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabela */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
           <thead>
             <tr style={{ background:'#f9fafb' }}>
-              {['Nome','E-mail','Papel','Permissões','Ações',...(isAdmin?['Última alteração']:[])].map(h=>(
+              {['Nome','E-mail','Papel','Perfil Agend.','Permissões','Ações',...(isAdmin?['Última alteração']:[])].map(h=>(
                 <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
               ))}
             </tr>
@@ -240,6 +279,14 @@ export default function Usuarios() {
                 <td style={{ padding:'10px 14px', color:'#6b7280' }}>{u.email}</td>
                 <td style={{ padding:'10px 14px' }}>
                   <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:PILL_CORES[u.papel]+'22', color:PILL_CORES[u.papel] }}>{u.papel}</span>
+                </td>
+                <td style={{ padding:'10px 14px' }}>
+                  {u.papel === 'guiche' ? (
+                    <button onClick={()=>abrirPerfilAgendamento(u)}
+                      style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilAgendamento ? '#f5f3ff' : '#fff', color: u.perfilAgendamento ? '#7c3aed' : '#6b7280' }}>
+                      {u.perfilAgendamento ? `Perfil ${u.perfilAgendamento}` : 'Vincular'}
+                    </button>
+                  ) : <span style={{ color:'#d1d5db', fontSize:12 }}>—</span>}
                 </td>
                 <td style={{ padding:'10px 14px' }}>
                   <button onClick={()=>abrirPermissoes(u)} style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#f5f3ff', color:'#7c3aed' }}>
