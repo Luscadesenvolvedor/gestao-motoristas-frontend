@@ -12,6 +12,7 @@ export default function Agendamentos() {
   const [lista, setLista] = useState([]);
   const [listaP2, setListaP2] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
+  const [guiches, setGuiches] = useState({ 1: 'Perfil 1', 2: 'Perfil 2' });
   const [mesAtual, setMesAtual] = useState(() => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`; });
   const [diaSelecionado, setDiaSelecionado] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -19,7 +20,18 @@ export default function Agendamentos() {
 
   useEffect(() => {
     api.get('/motoristas').then(r => setMotoristas(r.data));
-  }, []);
+    if (isAdmin) {
+      api.get('/usuarios').then(r => {
+        const mapa = { 1: 'Perfil 1', 2: 'Perfil 2' };
+        r.data.forEach(u => {
+          if (u.papel === 'guiche' && u.perfilAgendamento) {
+            mapa[u.perfilAgendamento] = u.nome;
+          }
+        });
+        setGuiches(mapa);
+      });
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     carregar();
@@ -94,7 +106,6 @@ export default function Agendamentos() {
 
   const { total, primeiroDia } = diasDoMes();
   const [anoAtual, mesAtualNum] = mesAtual.split('-').map(Number);
-
   const listaExibida = isAdmin ? (perfilVisto === 1 ? lista : listaP2) : lista;
 
   return (
@@ -104,10 +115,9 @@ export default function Agendamentos() {
         <div>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Agendamentos</h2>
           <p style={{ fontSize:13, color:'#6b7280', marginTop:2 }}>
-            {isAdmin ? `Perfil ${perfilVisto}` : `Perfil ${usuario?.perfilAgendamento ?? '—'}`}
+            {isAdmin ? guiches[perfilVisto] : (usuario?.nome ?? '—')}
           </p>
         </div>
-        {/* Navegação de mês */}
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <button onClick={() => {
             const d = new Date(anoAtual, mesAtualNum - 2, 1);
@@ -127,7 +137,7 @@ export default function Agendamentos() {
           {[1,2].map(p => (
             <button key={p} onClick={() => setPerfilVisto(p)}
               style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===p?'#7c3aed':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===p?'#7c3aed':'#fff', color:perfilVisto===p?'#fff':'#374151', fontWeight:perfilVisto===p?600:400 }}>
-              Perfil {p}
+              {guiches[p]}
             </button>
           ))}
         </div>
@@ -168,9 +178,9 @@ export default function Agendamentos() {
       {/* Resumo admin — dois perfis lado a lado */}
       {isAdmin && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-          {[{label:'Perfil 1', dados: lista},{label:'Perfil 2', dados: listaP2}].map(({label, dados}) => (
-            <div key={label} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:16 }}>
-              <h3 style={{ fontSize:13, fontWeight:600, color:'#7c3aed', marginBottom:10 }}>{label} — {dados.length} agendamento(s)</h3>
+          {[{perfil:1, dados: lista},{perfil:2, dados: listaP2}].map(({perfil, dados}) => (
+            <div key={perfil} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:16 }}>
+              <h3 style={{ fontSize:13, fontWeight:600, color:'#7c3aed', marginBottom:10 }}>{guiches[perfil]} — {dados.length} agendamento(s)</h3>
               {dados.length === 0 && <p style={{ fontSize:12, color:'#9ca3af' }}>Nenhum agendamento neste mês</p>}
               {dados.map(a => (
                 <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid #f3f4f6', fontSize:12 }}>
@@ -191,7 +201,6 @@ export default function Agendamentos() {
               Novo agendamento — dia {diaSelecionado}/{mesAtualNum}/{anoAtual}
             </h3>
             <form onSubmit={salvar}>
-              {/* Motorista */}
               <div style={{ marginBottom:12 }}>
                 <label style={lbl}>Motorista</label>
                 <select value={form.motoristaId} onChange={e=>setForm(f=>({...f,motoristaId:e.target.value}))} required style={inp}>
@@ -199,12 +208,10 @@ export default function Agendamentos() {
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
-              {/* Hora */}
               <div style={{ marginBottom:12 }}>
                 <label style={lbl}>Hora</label>
                 <input type="time" value={form.hora} onChange={e=>setForm(f=>({...f,hora:e.target.value}))} required style={inp} />
               </div>
-              {/* Meses */}
               <div style={{ marginBottom:16 }}>
                 <label style={lbl}>Meses de acerto</label>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, marginTop:4 }}>
