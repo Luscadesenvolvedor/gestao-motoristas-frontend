@@ -62,7 +62,8 @@ export default function Notificacoes() {
 
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <button onClick={()=>setAberto(v=>!v)} style={{ position:'relative', background:'none', border:'none', cursor:'pointer', padding:'4px 8px', borderRadius:8, fontSize:20 }}>
+      <button onClick={()=>setAberto(v=>!v)}
+        style={{ position:'relative', background:'none', border:'none', cursor:'pointer', padding:'4px 8px', borderRadius:8, fontSize:20 }}>
         🔔
         {naoLidas > 0 && (
           <span style={{ position:'absolute', top:0, right:0, background:'#dc2626', color:'#fff', borderRadius:'50%', width:18, height:18, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -72,17 +73,24 @@ export default function Notificacoes() {
       </button>
 
       {aberto && (
-        <div style={{ position:'absolute', right:0, top:40, width:360, background:'#fff', borderRadius:12, boxShadow:'0 8px 30px rgba(0,0,0,0.15)', border:'1px solid #e5e7eb', zIndex:1000 }}>
+        <div style={{ position:'fixed', left:230, bottom:80, width:380, background:'#fff', borderRadius:12, boxShadow:'0 8px 30px rgba(0,0,0,0.15)', border:'1px solid #e5e7eb', zIndex:9999 }}>
           <div style={{ padding:'12px 16px', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ fontWeight:600, fontSize:14 }}>🔔 Notificações {naoLidas > 0 && <span style={{ background:'#dc2626', color:'#fff', borderRadius:20, padding:'1px 7px', fontSize:11, marginLeft:4 }}>{naoLidas}</span>}</span>
+            <span style={{ fontWeight:600, fontSize:14 }}>
+              🔔 Notificações
+              {naoLidas > 0 && <span style={{ background:'#dc2626', color:'#fff', borderRadius:20, padding:'1px 7px', fontSize:11, marginLeft:6 }}>{naoLidas}</span>}
+            </span>
             {naoLidas > 0 && (
-              <button onClick={marcarTodasLidas} style={{ fontSize:11, color:'#7c3aed', background:'none', border:'none', cursor:'pointer', fontWeight:500 }}>Marcar todas como lidas</button>
+              <button onClick={marcarTodasLidas} style={{ fontSize:11, color:'#7c3aed', background:'none', border:'none', cursor:'pointer', fontWeight:500 }}>
+                Marcar todas como lidas
+              </button>
             )}
           </div>
 
           <div style={{ maxHeight:400, overflowY:'auto' }}>
             {lista.length === 0 && (
-              <div style={{ padding:40, textAlign:'center', color:'#9ca3af', fontSize:13 }}>Nenhuma notificação</div>
+              <div style={{ padding:40, textAlign:'center', color:'#9ca3af', fontSize:13 }}>
+                Nenhuma notificação
+              </div>
             )}
             {lista.map(n => (
               <div key={n.id} style={{ padding:'12px 16px', borderBottom:'1px solid #f3f4f6', background:n.lida?'#fff':'#f5f3ff', display:'flex', gap:10, alignItems:'flex-start' }}>
