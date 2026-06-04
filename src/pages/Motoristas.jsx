@@ -1,5 +1,5 @@
 // frontend/src/pages/Motoristas.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -8,7 +8,26 @@ const CATEGORIAS = ['frota', 'dedicado_usiminas', 'dedicado_arcelormittal', 'pat
 const CATEGORIAS_LABEL = { frota: 'Frota', dedicado_usiminas: 'Ded. Usiminas', dedicado_arcelormittal: 'Ded. ArcelorMittal', patio: 'Pátio', tirador_ferias: 'Tirador Férias' };
 const FROTAS = ['buzin', 'lbm', 'meli'];
 
-const vazio = { nome:'', cpf:'', contato:'', banco:'', agencia:'', pix:'', destinatario:'', frota:'buzin', status:'ativo', categoria:'frota' };
+const vazio = { nome:'', cpf:'', contato:'', banco:'', agencia:'', conta:'', pix:'', destinatario:'', frota:'buzin', status:'ativo', categoria:'frota' };
+
+// Formata CPF: 000.000.000-00
+function formatarCPF(valor) {
+  return valor
+    .replace(/\D/g, '')
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+// Formata contato: (00) 0 0000-0000
+function formatarContato(valor) {
+  const nums = valor.replace(/\D/g, '').slice(0, 11);
+  if (nums.length <= 2) return nums.replace(/(\d{0,2})/, '($1');
+  if (nums.length <= 3) return `(${nums.slice(0,2)}) ${nums.slice(2)}`;
+  if (nums.length <= 7) return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3)}`;
+  return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3,7)}-${nums.slice(7)}`;
+}
 
 export default function Motoristas() {
   const { pode, isAdmin } = useAuth();
@@ -17,13 +36,20 @@ export default function Motoristas() {
   const [editId, setEditId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [busca, setBusca] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const carregar = useCallback(async (termo = busca) => {
+    const { data } = await api.get('/motoristas', { params: { busca: termo } });
+    setMotoristas(data);
+  }, [busca]);
 
   useEffect(() => { carregar(); }, []);
 
-  async function carregar() {
-    const { data } = await api.get('/motoristas', { params: { busca } });
-    setMotoristas(data);
-  }
+  // Busca automática ao digitar
+  useEffect(() => {
+    const timer = setTimeout(() => { carregar(busca); }, 300);
+    return () => clearTimeout(timer);
+  }, [busca]);
 
   function editar(m) {
     setForm(m);
@@ -47,10 +73,43 @@ export default function Motoristas() {
     } catch {}
   }
 
+  async function excluir(id) {
+    try {
+      await api.delete(`/motoristas/${id}`);
+      toast.success('Motorista excluído');
+      setConfirmDelete(null);
+      carregar();
+    } catch {}
+  }
+
+  function handleCPF(e) {
+    setForm(f => ({ ...f, cpf: formatarCPF(e.target.value) }));
+  }
+
+  function handleContato(e) {
+    setForm(f => ({ ...f, contato: formatarContato(e.target.value) }));
+  }
+
   const canEdit = pode('motoristas', 'escrita');
 
   return (
     <div>
+      {/* Modal confirmação de exclusão */}
+      {confirmDelete && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ fontSize:16, fontWeight:600, marginBottom:8 }}>Confirmar exclusão</h3>
+            <p style={{ fontSize:13, color:'#6b7280', marginBottom:20 }}>
+              Tem certeza que deseja excluir <strong>{confirmDelete.nome}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ padding:'8px 16px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Cancelar</button>
+              <button onClick={() => excluir(confirmDelete.id)} style={{ padding:'8px 16px', background:'#dc2626', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Motoristas</h2>
@@ -69,29 +128,65 @@ export default function Motoristas() {
           <h3 style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>{editId ? 'Editar' : 'Novo'} motorista</h3>
           <form onSubmit={salvar}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
-              {[['nome','Nome *','text'],['cpf','CPF *','text'],['contato','Contato *','text'],['banco','Banco','text'],['agencia','Agência','text'],['pix','PIX','text'],['destinatario','Destinatário (opcional)','text']].map(([k,l,t]) => (
-                <div key={k}>
-                  <label style={{ display:'block',fontSize:11,fontWeight:500,color:'#6b7280',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.5px' }}>{l}</label>
-                  <input type={t} value={form[k]||''} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} required={['nome','cpf','contato'].includes(k)}
-                    style={{ width:'100%',padding:'8px 10px',border:'1px solid #d1d5db',borderRadius:8,fontSize:13,boxSizing:'border-box' }} />
-                </div>
-              ))}
+              {/* Nome */}
               <div>
-                <label style={{ display:'block',fontSize:11,fontWeight:500,color:'#6b7280',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.5px' }}>Frota</label>
-                <select value={form.frota} onChange={e=>setForm(f=>({...f,frota:e.target.value}))} style={{ width:'100%',padding:'8px 10px',border:'1px solid #d1d5db',borderRadius:8,fontSize:13 }}>
+                <label style={labelStyle}>Nome *</label>
+                <input type="text" value={form.nome||''} onChange={e=>setForm(f=>({...f,nome:e.target.value}))} required style={inputStyle} />
+              </div>
+              {/* CPF formatado */}
+              <div>
+                <label style={labelStyle}>CPF *</label>
+                <input type="text" value={form.cpf||''} onChange={handleCPF} required placeholder="000.000.000-00" style={inputStyle} />
+              </div>
+              {/* Contato formatado */}
+              <div>
+                <label style={labelStyle}>Contato *</label>
+                <input type="text" value={form.contato||''} onChange={handleContato} required placeholder="(00) 0 0000-0000" style={inputStyle} />
+              </div>
+              {/* Banco */}
+              <div>
+                <label style={labelStyle}>Banco</label>
+                <input type="text" value={form.banco||''} onChange={e=>setForm(f=>({...f,banco:e.target.value}))} style={inputStyle} />
+              </div>
+              {/* Agência */}
+              <div>
+                <label style={labelStyle}>Agência</label>
+                <input type="text" value={form.agencia||''} onChange={e=>setForm(f=>({...f,agencia:e.target.value}))} style={inputStyle} />
+              </div>
+              {/* Conta — campo novo */}
+              <div>
+                <label style={labelStyle}>Conta</label>
+                <input type="text" value={form.conta||''} onChange={e=>setForm(f=>({...f,conta:e.target.value}))} style={inputStyle} />
+              </div>
+              {/* PIX */}
+              <div>
+                <label style={labelStyle}>PIX</label>
+                <input type="text" value={form.pix||''} onChange={e=>setForm(f=>({...f,pix:e.target.value}))} style={inputStyle} />
+              </div>
+              {/* Destinatário */}
+              <div>
+                <label style={labelStyle}>Destinatário (opcional)</label>
+                <input type="text" value={form.destinatario||''} onChange={e=>setForm(f=>({...f,destinatario:e.target.value}))} style={inputStyle} />
+              </div>
+              {/* Frota */}
+              <div>
+                <label style={labelStyle}>Frota</label>
+                <select value={form.frota} onChange={e=>setForm(f=>({...f,frota:e.target.value}))} style={inputStyle}>
                   {FROTAS.map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}
                 </select>
               </div>
+              {/* Status */}
               <div>
-                <label style={{ display:'block',fontSize:11,fontWeight:500,color:'#6b7280',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.5px' }}>Status</label>
-                <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={{ width:'100%',padding:'8px 10px',border:'1px solid #d1d5db',borderRadius:8,fontSize:13 }}>
+                <label style={labelStyle}>Status</label>
+                <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inputStyle}>
                   <option value="ativo">Ativo</option>
                   <option value="desligado">Desligado</option>
                 </select>
               </div>
+              {/* Categoria */}
               <div>
-                <label style={{ display:'block',fontSize:11,fontWeight:500,color:'#6b7280',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.5px' }}>Categoria</label>
-                <select value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))} style={{ width:'100%',padding:'8px 10px',border:'1px solid #d1d5db',borderRadius:8,fontSize:13 }}>
+                <label style={labelStyle}>Categoria</label>
+                <select value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))} style={inputStyle}>
                   {CATEGORIAS.map(x=><option key={x} value={x}>{CATEGORIAS_LABEL[x]}</option>)}
                 </select>
               </div>
@@ -106,14 +201,18 @@ export default function Motoristas() {
 
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
         <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb' }}>
-          <input placeholder="Buscar motorista..." value={busca} onChange={e=>setBusca(e.target.value)} onKeyDown={e=>e.key==='Enter'&&carregar()}
-            style={{ padding:'8px 12px',border:'1px solid #d1d5db',borderRadius:8,fontSize:13,width:260 }} />
+          <input
+            placeholder="Buscar motorista..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, width:260 }}
+          />
         </div>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Nome','CPF','Frota','Categoria','Status','Ações', ...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Nome','CPF','Contato','Frota','Categoria','Status','Ações', ...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:600,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.5px',borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
@@ -123,6 +222,7 @@ export default function Motoristas() {
                 <tr key={m.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px',fontWeight:500 }}>{m.nome}</td>
                   <td style={{ padding:'10px 14px',color:'#6b7280' }}>{m.cpf}</td>
+                  <td style={{ padding:'10px 14px',color:'#6b7280' }}>{m.contato}</td>
                   <td style={{ padding:'10px 14px',textTransform:'uppercase',fontSize:12 }}>{m.frota}</td>
                   <td style={{ padding:'10px 14px' }}>{CATEGORIAS_LABEL[m.categoria]}</td>
                   <td style={{ padding:'10px 14px' }}>
@@ -130,8 +230,13 @@ export default function Motoristas() {
                       {m.status}
                     </span>
                   </td>
-                  <td style={{ padding:'10px 14px' }}>
-                    {canEdit && <button onClick={()=>editar(m)} style={{ padding:'4px 12px',border:'1px solid #d1d5db',borderRadius:6,fontSize:12,cursor:'pointer',background:'#fff' }}>Editar</button>}
+                  <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
+                    {canEdit && (
+                      <button onClick={()=>editar(m)} style={{ padding:'4px 12px',border:'1px solid #d1d5db',borderRadius:6,fontSize:12,cursor:'pointer',background:'#fff' }}>Editar</button>
+                    )}
+                    {isAdmin && (
+                      <button onClick={()=>setConfirmDelete(m)} style={{ padding:'4px 12px',border:'1px solid #fca5a5',borderRadius:6,fontSize:12,cursor:'pointer',background:'#fff',color:'#dc2626' }}>Excluir</button>
+                    )}
                   </td>
                   {isAdmin && (
                     <td style={{ padding:'10px 14px',fontSize:11,color:'#9ca3af' }}>
@@ -141,7 +246,7 @@ export default function Motoristas() {
                 </tr>
               ))}
               {motoristas.length === 0 && (
-                <tr><td colSpan={7} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum motorista encontrado</td></tr>
+                <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum motorista encontrado</td></tr>
               )}
             </tbody>
           </table>
@@ -150,3 +255,6 @@ export default function Motoristas() {
     </div>
   );
 }
+
+const labelStyle = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.5px' };
+const inputStyle = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
