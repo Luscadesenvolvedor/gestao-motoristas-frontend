@@ -1,5 +1,5 @@
 // frontend/src/pages/Financeiro.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -45,14 +45,12 @@ export default function Financeiro() {
     setLista(data);
   }
 
-  // Filtra por busca
   const listaFiltrada = lista.filter(item =>
     item.motorista?.nome.toLowerCase().includes(busca.toLowerCase()) ||
     item.tipoDesconto?.nome.toLowerCase().includes(busca.toLowerCase()) ||
     item.numeroAcerto?.toLowerCase().includes(busca.toLowerCase())
   );
 
-  // Agrupa por motorista
   const agrupado = listaFiltrada.reduce((acc, item) => {
     const id = item.motoristaId;
     if (!acc[id]) acc[id] = { nome: item.motorista?.nome, itens: [] };
@@ -86,11 +84,19 @@ export default function Financeiro() {
     carregar();
   }
 
+  async function excluirItem(id) {
+    if (!confirm('Excluir este registro?')) return;
+    try {
+      await api.delete(`/financeiro/${id}`);
+      toast.success('Registro excluído');
+      carregar();
+    } catch {}
+  }
+
   const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.5px' };
   const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
 
-  // Totais gerais
   const totalValor = listaFiltrada.reduce((s, i) => s + Number(i.valor), 0);
   const totalDescontado = listaFiltrada.reduce((s, i) => s + Number(i.valorDescontado), 0);
   const totalSaldo = totalValor - totalDescontado;
@@ -99,7 +105,6 @@ export default function Financeiro() {
 
   return (
     <div>
-      {/* Cabeçalho */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Controle Financeiro</h2>
@@ -197,7 +202,7 @@ export default function Financeiro() {
           style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, width:320 }}/>
       </div>
 
-      {/* Lista agrupada por motorista */}
+      {/* Lista agrupada */}
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
         {Object.entries(agrupado).map(([motoristaId, grupo]) => {
           const totalV = grupo.itens.reduce((s,i) => s + Number(i.valor), 0);
@@ -207,7 +212,6 @@ export default function Financeiro() {
 
           return (
             <div key={motoristaId} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
-              {/* Linha resumo — clica para expandir */}
               <div onClick={() => toggleExpandir(motoristaId)}
                 style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', cursor:'pointer', background: expandido ? '#f5f3ff' : '#fff' }}
                 onMouseEnter={e => e.currentTarget.style.background='#f9fafb'}
@@ -233,13 +237,12 @@ export default function Financeiro() {
                 </div>
               </div>
 
-              {/* Detalhes expandidos */}
               {expandido && (
                 <div style={{ borderTop:'1px solid #e5e7eb', overflowX:'auto' }}>
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                     <thead>
                       <tr style={{ background:'#f9fafb' }}>
-                        {['Tipo','Valor','Descontado','Nº Acerto','Mês','Obs',...(isAdmin?['Alteração']:[])].map(h=>(
+                        {['Tipo','Valor','Descontado','Nº Acerto','Mês','Obs',...(isAdmin?['Alteração','']:[])].map(h=>(
                           <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                         ))}
                       </tr>
@@ -260,6 +263,14 @@ export default function Financeiro() {
                           {isAdmin && (
                             <td style={{ padding:'8px 14px', fontSize:11, color:'#9ca3af' }}>
                               {item.auditorias?.[0] ? `${item.auditorias[0].usuario.nome} — ${new Date(item.auditorias[0].criadoEm).toLocaleString('pt-BR')}` : '—'}
+                            </td>
+                          )}
+                          {isAdmin && (
+                            <td style={{ padding:'8px 14px' }}>
+                              <button onClick={() => excluirItem(item.id)}
+                                style={{ padding:'4px 12px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>
+                                Excluir
+                              </button>
                             </td>
                           )}
                         </tr>
