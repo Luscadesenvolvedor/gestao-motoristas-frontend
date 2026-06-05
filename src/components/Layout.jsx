@@ -31,7 +31,7 @@ export default function Layout() {
         <div style={{ padding:'20px 16px 16px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <i className="ti ti-truck" style={{ fontSize:22, color:'#a78bfa' }}></i>
-            <span style={{ color:'#fff', fontWeight:600, fontSize:14 }}>Gestão Motoristas</span>
+            <span style={{ color:'#fff', fontWeight:600, fontSize:14 }}>Acerto de contas</span>
           </div>
         </div>
 
