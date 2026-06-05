@@ -31,11 +31,10 @@ export default function Login() {
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#1a1a2e', fontFamily:'Inter, sans-serif' }}>
       <div style={{ background:'#fff', borderRadius:16, padding:'40px 36px', width:360, boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
         <div style={{ textAlign:'center', marginBottom:32 }}>
-          <div style={{ fontSize:36 }}>🚛</div>
-          <h1 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e', marginTop:8 }}>Acerto de contas</h1>
-          <p style={{ fontSize:13, color:'#6b7280', marginTop:4 }}>Acesse sua conta</p>
-        </div>
-
+  <img src="/logo.png" alt="Buzin" style={{ height:80, objectFit:'contain', marginBottom:8 }} />
+  <h1 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e', marginTop:8 }}>Acerto de Contas</h1>
+  <p style={{ fontSize:13, color:'#6b7280', marginTop:4 }}>Acesse sua conta</p>
+</div>
         <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
           <div>
             <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#374151', marginBottom:6 }}>E-mail</label>
