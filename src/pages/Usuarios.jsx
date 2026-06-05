@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 const vazio = { nome:'', email:'', senha:'', papel:'guiche' };
 const PAPEIS = ['admin','guiche','acertador','dgp','financeiro'];
-const PILL_CORES = { admin:'#7c3aed', guiche:'#0891b2', acertador:'#d97706', dgp:'#dc2626', financeiro:'#16a34a' };
+const PILL_CORES = { admin:'#EB3238', guiche:'#0891b2', acertador:'#d97706', dgp:'#dc2626', financeiro:'#16a34a' };
 
 const ABAS = [
   { key:'usuarios',     label:'Usuários' },
@@ -151,11 +151,10 @@ export default function Usuarios() {
         <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Usuários</h2>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={()=>setShowTrocarSenha(v=>!v)} style={{ ...btn('#e5e7eb','#374151'), fontSize:12 }}>🔑 Trocar minha senha</button>
-          <button onClick={()=>{ setForm(vazio); setEditId(null); setShowForm(v=>!v); }} style={btn('#7c3aed')}>+ Incluir usuário</button>
+          <button onClick={()=>{ setForm(vazio); setEditId(null); setShowForm(v=>!v); }} style={btn('#EB3238')}>+ Incluir usuário</button>
         </div>
       </div>
 
-      {/* Trocar senha */}
       {showTrocarSenha && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>Trocar minha senha</h3>
@@ -175,13 +174,12 @@ export default function Usuarios() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:12 }}>
               <button type="button" onClick={()=>setShowTrocarSenha(false)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#7c3aed')}>Salvar nova senha</button>
+              <button type="submit" style={btn('#EB3238')}>Salvar nova senha</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Form incluir/editar */}
       {showForm && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>{editId?'Editar':'Novo'} usuário</h3>
@@ -205,19 +203,18 @@ export default function Usuarios() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>setShowForm(false)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#7c3aed')}>Salvar</button>
+              <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Painel de permissões */}
       {permEdit && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
             <h3 style={{ fontSize:14, fontWeight:600 }}>
               Permissões — {permEdit.nome}
-              <span style={{ fontSize:12, color:'#7c3aed', marginLeft:8 }}>({permEdit.papel})</span>
+              <span style={{ fontSize:12, color:'#EB3238', marginLeft:8 }}>({permEdit.papel})</span>
             </h3>
             <button onClick={()=>setPermEdit(null)} style={btn('#e5e7eb','#374151')}>Fechar</button>
           </div>
@@ -234,10 +231,10 @@ export default function Usuarios() {
                 <tr key={key} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 12px', fontWeight:500 }}>{label}</td>
                   <td style={{ padding:'10px 12px', textAlign:'center' }}>
-                    <input type="checkbox" checked={permissoes.leitura.includes(key)} onChange={()=>togglePerm('leitura', key)} style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
+                    <input type="checkbox" checked={permissoes.leitura.includes(key)} onChange={()=>togglePerm('leitura', key)} style={{ width:18, height:18, accentColor:'#EB3238', cursor:'pointer' }}/>
                   </td>
                   <td style={{ padding:'10px 12px', textAlign:'center' }}>
-                    <input type="checkbox" checked={permissoes.escrita.includes(key)} onChange={()=>togglePerm('escrita', key)} style={{ width:18, height:18, accentColor:'#7c3aed', cursor:'pointer' }}/>
+                    <input type="checkbox" checked={permissoes.escrita.includes(key)} onChange={()=>togglePerm('escrita', key)} style={{ width:18, height:18, accentColor:'#EB3238', cursor:'pointer' }}/>
                   </td>
                 </tr>
               ))}
@@ -245,14 +242,13 @@ export default function Usuarios() {
           </table>
           <div style={{ display:'flex', justifyContent:'flex-end', marginTop:16, gap:8 }}>
             <button onClick={()=>setPermEdit(null)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-            <button onClick={salvarPermissoes} disabled={salvandoPerm} style={btn('#7c3aed')}>
+            <button onClick={salvarPermissoes} disabled={salvandoPerm} style={btn('#EB3238')}>
               {salvandoPerm ? 'Salvando...' : '✓ Salvar permissões'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal perfil agendamento */}
       {perfilEdit && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
@@ -267,13 +263,12 @@ export default function Usuarios() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <button onClick={()=>setPerfilEdit(null)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button onClick={salvarPerfil} style={btn('#7c3aed')}>Salvar</button>
+              <button onClick={salvarPerfil} style={btn('#EB3238')}>Salvar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal perfil financeiro */}
       {perfilFinEdit && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
@@ -290,13 +285,12 @@ export default function Usuarios() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <button onClick={()=>setPerfilFinEdit(null)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button onClick={salvarPerfilFinanceiro} style={btn('#7c3aed')}>Salvar</button>
+              <button onClick={salvarPerfilFinanceiro} style={btn('#EB3238')}>Salvar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tabela */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
           <thead>
@@ -317,7 +311,7 @@ export default function Usuarios() {
                 <td style={{ padding:'10px 14px' }}>
                   {u.papel === 'guiche' ? (
                     <button onClick={()=>abrirPerfilAgendamento(u)}
-                      style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilAgendamento ? '#f5f3ff' : '#fff', color: u.perfilAgendamento ? '#7c3aed' : '#6b7280' }}>
+                      style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilAgendamento ? '#EB3238' : '#fff', color: u.perfilAgendamento ? '#fff' : '#EB3238' }}>
                       {u.perfilAgendamento ? `Perfil ${u.perfilAgendamento}` : 'Vincular'}
                     </button>
                   ) : <span style={{ color:'#d1d5db', fontSize:12 }}>—</span>}
@@ -325,13 +319,13 @@ export default function Usuarios() {
                 <td style={{ padding:'10px 14px' }}>
                   {u.papel === 'acertador' ? (
                     <button onClick={()=>abrirPerfilFinanceiro(u)}
-                      style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilFinanceiro ? '#f0fdf4' : '#fff', color: u.perfilFinanceiro ? '#16a34a' : '#6b7280' }}>
+                      style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background: u.perfilFinanceiro ? '#EB3238' : '#fff', color: u.perfilFinanceiro ? '#fff' : '#EB3238' }}>
                       {u.perfilFinanceiro ? `Perfil ${u.perfilFinanceiro}` : 'Vincular'}
                     </button>
                   ) : <span style={{ color:'#d1d5db', fontSize:12 }}>—</span>}
                 </td>
                 <td style={{ padding:'10px 14px' }}>
-                  <button onClick={()=>abrirPermissoes(u)} style={{ padding:'4px 10px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#f5f3ff', color:'#7c3aed' }}>
+                  <button onClick={()=>abrirPermissoes(u)} style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
                     ⚙️ Editar permissões
                   </button>
                 </td>
@@ -339,7 +333,7 @@ export default function Usuarios() {
                   <div style={{ display:'flex', gap:6 }}>
                     <button onClick={()=>{ setForm({...u,senha:''}); setEditId(u.id); setShowForm(true); }} style={{ padding:'4px 12px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff' }}>Editar</button>
                     {u.id !== eu?.id && (
-                      <button onClick={()=>excluir(u.id, u.nome)} style={{ padding:'4px 12px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                      <button onClick={()=>excluir(u.id, u.nome)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>Excluir</button>
                     )}
                   </div>
                 </td>

@@ -51,7 +51,7 @@ export default function Login() {
             </div>
           </div>
           <button type="submit" disabled={loading}
-            style={{ padding:'11px', background:loading?'#9ca3af':'#7c3aed', color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:500, cursor:loading?'not-allowed':'pointer', marginTop:4 }}>
+            style={{ padding:'11px', background:loading?'#b3b4b7':'#797C7F', color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:500, cursor:loading?'not-allowed':'pointer', marginTop:4 }}>
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>

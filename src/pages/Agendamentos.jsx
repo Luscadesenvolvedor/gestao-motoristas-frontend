@@ -33,9 +33,7 @@ export default function Agendamentos() {
     }
   }, [isAdmin]);
 
-  useEffect(() => {
-    carregar();
-  }, [mesAtual, perfilVisto]);
+  useEffect(() => { carregar(); }, [mesAtual, perfilVisto]);
 
   async function carregar() {
     if (isAdmin) {
@@ -110,7 +108,6 @@ export default function Agendamentos() {
 
   return (
     <div>
-      {/* Cabeçalho */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Agendamentos</h2>
@@ -136,7 +133,7 @@ export default function Agendamentos() {
         <div style={{ display:'flex', gap:8, marginBottom:16 }}>
           {[1,2].map(p => (
             <button key={p} onClick={() => setPerfilVisto(p)}
-              style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===p?'#7c3aed':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===p?'#7c3aed':'#fff', color:perfilVisto===p?'#fff':'#374151', fontWeight:perfilVisto===p?600:400 }}>
+              style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===p?'#EB3238':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===p?'#EB3238':'#fff', color:perfilVisto===p?'#fff':'#374151', fontWeight:perfilVisto===p?600:400 }}>
               {guiches[p]}
             </button>
           ))}
@@ -159,12 +156,12 @@ export default function Agendamentos() {
             const ehHoje = dia === hoje.getDate() && mesAtualNum === hoje.getMonth()+1 && anoAtual === hoje.getFullYear();
             return (
               <div key={dia} onClick={() => clicarDia(dia)}
-                style={{ minHeight:70, padding:4, border:'1px solid '+(ehHoje?'#7c3aed':'#e5e7eb'), borderRadius:8, cursor:'pointer', background:ehHoje?'#f5f3ff':'#fafafa', transition:'background 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.background='#ede9fe'}
-                onMouseLeave={e => e.currentTarget.style.background=ehHoje?'#f5f3ff':'#fafafa'}>
-                <div style={{ fontSize:12, fontWeight:ehHoje?700:400, color:ehHoje?'#7c3aed':'#374151', marginBottom:2 }}>{dia}</div>
+                style={{ minHeight:70, padding:4, border:'1px solid '+(ehHoje?'#EB3238':'#e5e7eb'), borderRadius:8, cursor:'pointer', background:ehHoje?'#fff0f0':'#fafafa', transition:'background 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.background='#ffe4e4'}
+                onMouseLeave={e => e.currentTarget.style.background=ehHoje?'#fff0f0':'#fafafa'}>
+                <div style={{ fontSize:12, fontWeight:ehHoje?700:400, color:ehHoje?'#EB3238':'#374151', marginBottom:2 }}>{dia}</div>
                 {ags.map(a => (
-                  <div key={a.id} style={{ fontSize:10, background:'#7c3aed', color:'#fff', borderRadius:4, padding:'2px 4px', marginBottom:2, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div key={a.id} style={{ fontSize:10, background:'#EB3238', color:'#fff', borderRadius:4, padding:'2px 4px', marginBottom:2, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:60 }}>{new Date(a.dataHora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} {a.motorista?.nome}</span>
                     <span onClick={ev => { ev.stopPropagation(); excluir(a.id); }} style={{ cursor:'pointer', marginLeft:4, color:'#fca5a5', fontWeight:700 }}>×</span>
                   </div>
@@ -180,7 +177,7 @@ export default function Agendamentos() {
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
           {[{perfil:1, dados: lista},{perfil:2, dados: listaP2}].map(({perfil, dados}) => (
             <div key={perfil} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:16 }}>
-              <h3 style={{ fontSize:13, fontWeight:600, color:'#7c3aed', marginBottom:10 }}>{guiches[perfil]} — {dados.length} agendamento(s)</h3>
+              <h3 style={{ fontSize:13, fontWeight:600, color:'#EB3238', marginBottom:10 }}>{guiches[perfil]} — {dados.length} agendamento(s)</h3>
               {dados.length === 0 && <p style={{ fontSize:12, color:'#9ca3af' }}>Nenhum agendamento neste mês</p>}
               {dados.map(a => (
                 <div key={a.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid #f3f4f6', fontSize:12 }}>
@@ -217,16 +214,16 @@ export default function Agendamentos() {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, marginTop:4 }}>
                   {MESES.map(m => (
                     <button type="button" key={m} onClick={()=>toggleMes(m)}
-                      style={{ padding:'6px 4px', border:'1px solid '+(form.meses.includes(m)?'#7c3aed':'#d1d5db'), borderRadius:6, fontSize:11, cursor:'pointer', background:form.meses.includes(m)?'#7c3aed':'#fff', color:form.meses.includes(m)?'#fff':'#374151', fontWeight:form.meses.includes(m)?600:400 }}>
+                      style={{ padding:'6px 4px', border:'1px solid '+(form.meses.includes(m)?'#EB3238':'#d1d5db'), borderRadius:6, fontSize:11, cursor:'pointer', background:form.meses.includes(m)?'#EB3238':'#fff', color:form.meses.includes(m)?'#fff':'#374151', fontWeight:form.meses.includes(m)?600:400 }}>
                       {m}
                     </button>
                   ))}
                 </div>
-                {form.meses.length > 0 && <p style={{ fontSize:11, color:'#7c3aed', marginTop:6 }}>Selecionados: {form.meses.join(', ')}</p>}
+                {form.meses.length > 0 && <p style={{ fontSize:11, color:'#EB3238', marginTop:6 }}>Selecionados: {form.meses.join(', ')}</p>}
               </div>
               <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
                 <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'8px 16px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Cancelar</button>
-                <button type="submit" style={{ padding:'8px 20px', background:'#7c3aed', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
+                <button type="submit" style={{ padding:'8px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
               </div>
             </form>
           </div>

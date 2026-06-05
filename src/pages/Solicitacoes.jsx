@@ -74,7 +74,7 @@ export default function Solicitacoes() {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Solicitações</h2>
-        <button onClick={()=>setShowForm(v=>!v)} style={btn('#7c3aed')}>+ Incluir solicitação</button>
+        <button onClick={()=>setShowForm(v=>!v)} style={btn('#EB3238')}>+ Incluir solicitação</button>
       </div>
 
       {/* Totais */}
@@ -111,7 +111,7 @@ export default function Solicitacoes() {
                 {showNovoTipo && (
                   <div style={{ display:'flex', gap:8, marginTop:8 }}>
                     <input value={novoTipo} onChange={e=>setNovoTipo(e.target.value)} placeholder="Nome do novo tipo" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-                    <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#7c3aed', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                    <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
                   </div>
                 )}
               </div>
@@ -123,7 +123,6 @@ export default function Solicitacoes() {
                 </select>
               </div>
 
-              {/* Alertas */}
               {alertas.emFerias && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#ede9fe', borderRadius:8, fontSize:13, color:'#6d28d9', fontWeight:500 }}>🏖️ Este motorista está de FÉRIAS!</div>}
               {alertas.emAtestado && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#fef3c7', borderRadius:8, fontSize:13, color:'#92400e', fontWeight:500 }}>🏥 Este motorista está de ATESTADO!</div>}
               {alertas.emAfastamento && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#fee2e2', borderRadius:8, fontSize:13, color:'#991b1b', fontWeight:500 }}>⚠️ Este motorista está AFASTADO!</div>}
@@ -144,7 +143,7 @@ export default function Solicitacoes() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>{ setShowForm(false); setAlertas({}); }} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#7c3aed')}>Salvar</button>
+              <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
         </div>
@@ -177,7 +176,7 @@ export default function Solicitacoes() {
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
                   </td>
                   <td style={{ padding:'10px 14px' }}>
-                    {s.anexoUrl ? <a href={s.anexoUrl} target="_blank" rel="noreferrer" style={{ color:'#7c3aed', fontSize:12 }}>Ver</a> : '—'}
+                    {s.anexoUrl ? <a href={s.anexoUrl} target="_blank" rel="noreferrer" style={{ color:'#EB3238', fontSize:12 }}>Ver</a> : '—'}
                   </td>
                   {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
                 </tr>

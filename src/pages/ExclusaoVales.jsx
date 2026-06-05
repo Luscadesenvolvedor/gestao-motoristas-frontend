@@ -41,7 +41,7 @@ export default function ExclusaoVales() {
   const ItemCard = ({ item }) => (
     <div style={{ background: item.feito ? '#f9fafb' : '#fff', borderRadius:12, padding:16, border:'1px solid #e5e7eb', display:'flex', alignItems:'flex-start', gap:14 }}>
       <input type="checkbox" checked={item.feito} onChange={e=>marcarFeito(item.id, e.target.checked)}
-        style={{ width:18, height:18, marginTop:2, accentColor:'#7c3aed', flexShrink:0, cursor:'pointer' }}/>
+        style={{ width:18, height:18, marginTop:2, accentColor:'#EB3238', flexShrink:0, cursor:'pointer' }}/>
       <div style={{ flex:1 }}>
         <div style={{ fontWeight:500, fontSize:14, textDecoration:item.feito?'line-through':'none', color:item.feito?'#9ca3af':'#1a1a2e' }}>
           Vale #{item.numeroVale} — {item.motorista?.nome}
@@ -63,7 +63,7 @@ export default function ExclusaoVales() {
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Exclusão de Vales</h2>
-        <button onClick={()=>setShowForm(v=>!v)} style={btn('#7c3aed')}>+ Incluir</button>
+        <button onClick={()=>setShowForm(v=>!v)} style={btn('#EB3238')}>+ Incluir</button>
       </div>
 
       {showForm && (
@@ -73,17 +73,21 @@ export default function ExclusaoVales() {
               <div><label style={lbl}>Solicitante</label><input value={usuario?.nome} readOnly style={{ ...inp, background:'#f9fafb' }}/></div>
               <div><label style={lbl}>Número do vale</label><input value={form.numeroVale} onChange={e=>setForm(f=>({...f,numeroVale:e.target.value}))} required style={inp}/></div>
               <div><label style={lbl}>Data do vale</label><input type="date" value={form.dataVale} onChange={e=>setForm(f=>({...f,dataVale:e.target.value}))} required style={inp}/></div>
-              <div><label style={lbl}>Motorista</label>
+              <div>
+                <label style={lbl}>Motorista</label>
                 <select value={form.motoristaId} onChange={e=>setForm(f=>({...f,motoristaId:e.target.value}))} required style={inp}>
                   <option value="">Selecionar...</option>
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
               </div>
-              <div style={{ gridColumn:'1/-1' }}><label style={lbl}>Motivo</label><textarea value={form.motivo} onChange={e=>setForm(f=>({...f,motivo:e.target.value}))} required rows={3} style={{ ...inp, resize:'vertical' }}/></div>
+              <div style={{ gridColumn:'1/-1' }}>
+                <label style={lbl}>Motivo</label>
+                <textarea value={form.motivo} onChange={e=>setForm(f=>({...f,motivo:e.target.value}))} required rows={3} style={{ ...inp, resize:'vertical' }}/>
+              </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>setShowForm(false)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#7c3aed')}>Salvar</button>
+              <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
         </div>
@@ -106,7 +110,7 @@ export default function ExclusaoVales() {
         )}
       </div>
 
-      {/* Feitos — recolhido por padrão */}
+      {/* Feitos */}
       <div>
         <button onClick={()=>setShowFeitos(v=>!v)}
           style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', padding:'8px 0', marginBottom: showFeitos ? 12 : 0 }}>

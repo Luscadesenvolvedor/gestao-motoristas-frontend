@@ -20,12 +20,9 @@ export default function Ferias() {
   const [form, setForm] = useState({ motoristaId:'', tipo:'ferias', inicio:'', fim:'', observacao:'' });
   const [formAfast, setFormAfast] = useState({ motoristaId:'', dataInicio:'', dataRetorno:'', indeterminado:false, observacao:'' });
   const [formAband, setFormAband] = useState({ motoristaId:'', data:'', observacao:'' });
-
-  // Filtros
   const [filtroMotorista, setFiltroMotorista] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
-
   const canEdit = pode('ferias', 'escrita');
 
   useEffect(() => { carregarTudo(); }, []);
@@ -97,14 +94,12 @@ export default function Ferias() {
 
   const hoje = new Date();
   const emFerias = f => new Date(f.inicio) <= hoje && (!f.fim || new Date(f.fim) >= hoje);
-
   const calcDias = (inicio, fim) => {
     if (!inicio || !fim) return '—';
     const d = Math.ceil((new Date(fim) - new Date(inicio)) / (1000*60*60*24)) + 1;
     return `${d} dia${d!==1?'s':''}`;
   };
 
-  // Filtros aplicados
   const listaFiltrada = lista.filter(f => {
     if (filtroMotorista && f.motoristaId !== filtroMotorista) return false;
     if (filtroTipo && f.tipo !== filtroTipo) return false;
@@ -133,7 +128,7 @@ export default function Ferias() {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Férias e Ocorrências</h2>
         {canEdit && (
-          <button onClick={()=>setShowForm(v=>!v)} style={btn('#7c3aed')}>+ Incluir</button>
+          <button onClick={()=>setShowForm(v=>!v)} style={btn('#EB3238')}>+ Incluir</button>
         )}
       </div>
 
@@ -141,7 +136,7 @@ export default function Ferias() {
       <div style={{ display:'flex', gap:4, marginBottom:16, background:'#f3f4f6', borderRadius:10, padding:4 }}>
         {TABS.map(t => (
           <button key={t.key} onClick={()=>{ setTab(t.key); setShowForm(false); setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }}
-            style={{ flex:1, padding:'8px 12px', border:'none', borderRadius:8, fontSize:13, fontWeight:tab===t.key?500:400, cursor:'pointer', background:tab===t.key?'#fff':'transparent', color:tab===t.key?'#7c3aed':'#6b7280', boxShadow:tab===t.key?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
+            style={{ flex:1, padding:'8px 12px', border:'none', borderRadius:8, fontSize:13, fontWeight:tab===t.key?500:400, cursor:'pointer', background:tab===t.key?'#fff':'transparent', color:tab===t.key?'#EB3238':'#6b7280', boxShadow:tab===t.key?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
             {t.label}
           </button>
         ))}
@@ -208,7 +203,7 @@ export default function Ferias() {
                 <input type="date" value={form.fim} onChange={e=>setForm(f=>({...f,fim:e.target.value}))} style={inpFull}/>
               </div>
               {form.inicio && form.fim && (
-                <div style={{ gridColumn:'1/-1', background:'#f5f3ff', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#7c3aed', fontWeight:500 }}>
+                <div style={{ gridColumn:'1/-1', background:'#fff0f0', borderRadius:8, padding:'10px 14px', fontSize:13, color:'#EB3238', fontWeight:500 }}>
                   📅 Total: {calcDias(form.inicio, form.fim)}
                 </div>
               )}
@@ -219,7 +214,7 @@ export default function Ferias() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>setShowForm(false)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#7c3aed')}>Salvar</button>
+              <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
         </div>
@@ -247,7 +242,7 @@ export default function Ferias() {
                 <input type="date" value={formAfast.dataRetorno} onChange={e=>setFormAfast(f=>({...f,dataRetorno:e.target.value}))} disabled={formAfast.indeterminado} style={{ ...inpFull, opacity:formAfast.indeterminado?0.5:1 }}/>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8, paddingTop:20 }}>
-                <input type="checkbox" id="indet" checked={formAfast.indeterminado} onChange={e=>setFormAfast(f=>({...f,indeterminado:e.target.checked,dataRetorno:''}))} style={{ width:18, height:18, accentColor:'#7c3aed' }}/>
+                <input type="checkbox" id="indet" checked={formAfast.indeterminado} onChange={e=>setFormAfast(f=>({...f,indeterminado:e.target.checked,dataRetorno:''}))} style={{ width:18, height:18, accentColor:'#EB3238' }}/>
                 <label htmlFor="indet" style={{ fontSize:13, cursor:'pointer' }}>Prazo indeterminado</label>
               </div>
               <div style={{ gridColumn:'1/-1' }}>
@@ -257,7 +252,7 @@ export default function Ferias() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>setShowForm(false)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#7c3aed')}>Salvar</button>
+              <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
         </div>
@@ -287,7 +282,7 @@ export default function Ferias() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>setShowForm(false)} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#dc2626')}>Registrar abandono</button>
+              <button type="submit" style={btn('#EB3238')}>Registrar abandono</button>
             </div>
           </form>
         </div>
@@ -312,7 +307,7 @@ export default function Ferias() {
                 <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
                   <td style={{ padding:'10px 14px' }}>
-                    <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:f.tipo==='ferias'?'#ede9fe':'#fef3c7', color:f.tipo==='ferias'?'#6d28d9':'#92400e' }}>
+                    <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:f.tipo==='ferias'?'#fff0f0':'#fef3c7', color:f.tipo==='ferias'?'#EB3238':'#92400e' }}>
                       {f.tipo === 'ferias' ? '🏖️ Férias' : '🏥 Atestado'}
                     </span>
                   </td>
@@ -327,7 +322,7 @@ export default function Ferias() {
                   <td style={{ padding:'10px 14px', color:'#6b7280', fontSize:12 }}>{f.observacao || '—'}</td>
                   <td style={{ padding:'10px 14px' }}>
                     {canEdit && (
-                      <button onClick={()=>excluir('ferias', f.id)} style={{ padding:'4px 10px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                      <button onClick={()=>excluir('ferias', f.id)} style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>Excluir</button>
                     )}
                   </td>
                   {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{f.auditorias?.[0]?`${f.auditorias[0].usuario?.nome} — ${new Date(f.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
@@ -373,7 +368,7 @@ export default function Ferias() {
                         <button onClick={()=>marcarRetornou(a.id)} style={{ padding:'4px 10px', border:'1px solid #86efac', borderRadius:6, fontSize:12, cursor:'pointer', background:'#dcfce7', color:'#166534' }}>✓ Retornou</button>
                       )}
                       {canEdit && (
-                        <button onClick={()=>excluir('afastamento', a.id)} style={{ padding:'4px 10px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                        <button onClick={()=>excluir('afastamento', a.id)} style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>Excluir</button>
                       )}
                     </div>
                   </td>
@@ -407,7 +402,7 @@ export default function Ferias() {
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{a.observacao || '—'}</td>
                   <td style={{ padding:'10px 14px' }}>
                     {canEdit && (
-                      <button onClick={()=>excluir('abandono', a.id)} style={{ padding:'4px 10px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>Excluir</button>
+                      <button onClick={()=>excluir('abandono', a.id)} style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>Excluir</button>
                     )}
                   </td>
                 </tr>

@@ -111,7 +111,7 @@ export default function Financeiro() {
           <p style={{ fontSize:13, color:'#6b7280', marginTop:2 }}>{nomeAtual}</p>
         </div>
         <button onClick={() => { setForm(vazio); setEditId(null); setShowForm(v => !v); }}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'#7c3aed', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
+          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
           <i className="ti ti-plus"></i> Incluir
         </button>
       </div>
@@ -121,7 +121,7 @@ export default function Financeiro() {
         <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
           {Object.entries(acertadores).map(([perfil, nome]) => (
             <button key={perfil} onClick={() => setPerfilVisto(parseInt(perfil))}
-              style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===parseInt(perfil)?'#16a34a':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===parseInt(perfil)?'#16a34a':'#fff', color:perfilVisto===parseInt(perfil)?'#fff':'#374151', fontWeight:perfilVisto===parseInt(perfil)?600:400 }}>
+              style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===parseInt(perfil)?'#EB3238':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===parseInt(perfil)?'#EB3238':'#fff', color:perfilVisto===parseInt(perfil)?'#fff':'#374151', fontWeight:perfilVisto===parseInt(perfil)?600:400 }}>
               {nome}
             </button>
           ))}
@@ -162,7 +162,7 @@ export default function Financeiro() {
                 {showNovoTipo && (
                   <div style={{ display:'flex', gap:8, marginTop:8 }}>
                     <input value={novoTipo} onChange={e=>setNovoTipo(e.target.value)} placeholder="Nome do tipo" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-                    <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#7c3aed', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                    <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
                   </div>
                 )}
               </div>
@@ -189,7 +189,7 @@ export default function Financeiro() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>setShowForm(false)} style={{ padding:'8px 16px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Cancelar</button>
-              <button type="submit" style={{ padding:'8px 20px', background:'#7c3aed', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
+              <button type="submit" style={{ padding:'8px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
             </div>
           </form>
         </div>
@@ -213,9 +213,9 @@ export default function Financeiro() {
           return (
             <div key={motoristaId} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
               <div onClick={() => toggleExpandir(motoristaId)}
-                style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', cursor:'pointer', background: expandido ? '#f5f3ff' : '#fff' }}
+                style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', cursor:'pointer', background: expandido ? '#fff0f0' : '#fff' }}
                 onMouseEnter={e => e.currentTarget.style.background='#f9fafb'}
-                onMouseLeave={e => e.currentTarget.style.background=expandido?'#f5f3ff':'#fff'}>
+                onMouseLeave={e => e.currentTarget.style.background=expandido?'#fff0f0':'#fff'}>
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                   <span style={{ fontSize:14, fontWeight:600, color:'#1a1a2e' }}>{grupo.nome}</span>
                   <span style={{ fontSize:11, color:'#6b7280', background:'#f3f4f6', padding:'2px 8px', borderRadius:20 }}>{grupo.itens.length} registro(s)</span>
@@ -233,7 +233,7 @@ export default function Financeiro() {
                     <div style={{ fontSize:10, color:'#6b7280', textTransform:'uppercase' }}>Saldo</div>
                     <div style={{ fontSize:13, fontWeight:600, color: saldo > 0 ? '#d97706' : '#16a34a' }}>{fmt(saldo)}</div>
                   </div>
-                  <span style={{ fontSize:18, color:'#7c3aed', transform: expandido ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.2s' }}>▾</span>
+                  <span style={{ fontSize:18, color:'#EB3238', transform: expandido ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.2s' }}>▾</span>
                 </div>
               </div>
 
@@ -268,7 +268,7 @@ export default function Financeiro() {
                           {isAdmin && (
                             <td style={{ padding:'8px 14px' }}>
                               <button onClick={() => excluirItem(item.id)}
-                                style={{ padding:'4px 12px', border:'1px solid #fca5a5', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#dc2626' }}>
+                                style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
                                 Excluir
                               </button>
                             </td>
