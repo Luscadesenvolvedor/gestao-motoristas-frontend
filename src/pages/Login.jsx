@@ -28,7 +28,7 @@ export default function Login() {
   const inp = { width:'100%', padding:'10px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:14, outline:'none', boxSizing:'border-box' };
 
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#1a1a2e', fontFamily:'Inter, sans-serif' }}>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#EB3238', fontFamily:'Inter, sans-serif' }}>
       <div style={{ background:'#fff', borderRadius:16, padding:'40px 36px', width:360, boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
         <div style={{ textAlign:'center', marginBottom:32 }}>
   <img src="/logo.png" alt="Buzin" style={{ height:80, objectFit:'contain', marginBottom:8 }} />
