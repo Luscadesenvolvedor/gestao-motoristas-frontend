@@ -24,8 +24,6 @@ export default function Solicitacoes() {
   const [showNovoRef, setShowNovoRef] = useState(false);
   const [alertas, setAlertas] = useState({});
   const [pixMotorista, setPixMotorista] = useState('');
-
-  // Filtros
   const [filtroMotorista, setFiltroMotorista] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroVale, setFiltroVale] = useState('');
@@ -90,6 +88,15 @@ export default function Solicitacoes() {
     } catch {}
   }
 
+  async function excluir(id) {
+    if (!confirm('Excluir esta solicitação?')) return;
+    try {
+      await api.delete(`/solicitacoes/${id}`);
+      toast.success('Solicitação excluída');
+      carregar();
+    } catch {}
+  }
+
   async function salvarNovoTipo() {
     if (!novoTipo.trim()) return;
     await api.post('/tipos/solicitacao', { nome: novoTipo });
@@ -117,7 +124,6 @@ export default function Solicitacoes() {
     carregar();
   }
 
-  // Filtragem
   const listaFiltrada = lista.filter(s => {
     if (filtroMotorista && s.motoristaId !== filtroMotorista) return false;
     if (filtroTipo && s.tipoId !== filtroTipo) return false;
@@ -132,7 +138,6 @@ export default function Solicitacoes() {
     return true;
   });
 
-  // Totais filtrados
   const totalFiltrado = listaFiltrada.reduce((s, x) => s + Number(x.valor), 0);
   const liberadoFiltrado = listaFiltrada.reduce((s, x) => s + Number(x.liberado || 0), 0);
   const pendenteFiltrado = totalFiltrado - liberadoFiltrado;
@@ -163,6 +168,8 @@ export default function Solicitacoes() {
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
   const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
   const previewObs = montarObservacao(form);
+
+  const podeExcluir = usuario?.papel === 'admin' || usuario?.papel === 'financeiro';
 
   return (
     <div>
@@ -339,7 +346,7 @@ export default function Solicitacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Motorista','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -365,10 +372,17 @@ export default function Solicitacoes() {
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
                   </td>
+                  <td style={{ padding:'10px 14px' }}>
+                    {podeExcluir && (
+                      <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+                        Excluir
+                      </button>
+                    )}
+                  </td>
                   {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
                 </tr>
               ))}
-              {listaFiltrada.length===0 && <tr><td colSpan={10} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
+              {listaFiltrada.length===0 && <tr><td colSpan={11} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
             </tbody>
           </table>
         </div>
