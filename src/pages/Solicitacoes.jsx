@@ -30,6 +30,7 @@ export default function Solicitacoes() {
   const [filtroRef, setFiltroRef] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
+  const [filtroRapido, setFiltroRapido] = useState('');
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
 
@@ -76,7 +77,6 @@ export default function Solicitacoes() {
     return partes.join(' - ');
   }
 
-
   async function salvar(e) {
     e.preventDefault();
     try {
@@ -97,6 +97,15 @@ export default function Solicitacoes() {
       await api.delete(`/solicitacoes/${id}`);
       toast.success('Solicitação excluída');
       carregar();
+    } catch {}
+  }
+
+  async function excluirTipo(categoria, id) {
+    if (!confirm('Excluir este tipo?')) return;
+    try {
+      await api.delete(`/tipos/${categoria}/${id}`);
+      toast.success('Tipo excluído');
+      carregarSelects();
     } catch {}
   }
 
@@ -127,7 +136,24 @@ export default function Solicitacoes() {
     carregar();
   }
 
+  // Filtros rápidos — filtra pelo nome do tipo
+  const FILTROS_RAPIDOS = [
+    { key:'fluxos', label:'Fluxos Diários', nomes:['reembolso','vale pessoal','diarias','diária','diárias'] },
+    { key:'saldos', label:'Saldos', nomes:['saldo'] },
+    { key:'folgas', label:'Folgas', nomes:['folga'] },
+  ];
+
   const listaFiltrada = lista.filter(s => {
+    if (filtroRapido) {
+      const fr = FILTROS_RAPIDOS.find(f => f.key === filtroRapido);
+      if (fr) {
+        const nomesTipo = fr.nomes;
+        const nomeAtual = (s.tipo?.nome || '').toLowerCase();
+        const nomeVale = (s.tipoVale?.nome || '').toLowerCase();
+        const nomeRef = (s.tipoRef?.nome || '').toLowerCase();
+        if (!nomesTipo.some(n => nomeAtual.includes(n) || nomeVale.includes(n) || nomeRef.includes(n))) return false;
+      }
+    }
     if (filtroMotorista && s.motoristaId !== filtroMotorista) return false;
     if (filtroTipo && s.tipoId !== filtroTipo) return false;
     if (filtroVale && s.tipoValeId !== filtroVale) return false;
@@ -171,13 +197,24 @@ export default function Solicitacoes() {
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
   const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
   const previewObs = montarObservacao(form);
-
   const podeExcluir = usuario?.papel === 'admin' || usuario?.papel === 'financeiro';
 
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Solicitações</h2>
+      {/* Cabeçalho */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e', margin:0 }}>Solicitações</h2>
+          {/* Filtros rápidos */}
+          <div style={{ display:'flex', gap:6 }}>
+            {FILTROS_RAPIDOS.map(f => (
+              <button key={f.key} onClick={() => setFiltroRapido(filtroRapido === f.key ? '' : f.key)}
+                style={{ padding:'4px 12px', border:'1px solid '+(filtroRapido===f.key?'#EB3238':'#d1d5db'), borderRadius:20, fontSize:12, cursor:'pointer', background:filtroRapido===f.key?'#EB3238':'#fff', color:filtroRapido===f.key?'#fff':'#374151', fontWeight:filtroRapido===f.key?500:400 }}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={exportarExcel} style={btn('#16a34a')}>⬇ Exportar Excel</button>
           <button onClick={()=>setShowForm(v=>!v)} style={btn('#EB3238')}>+ Incluir solicitação</button>
@@ -212,15 +249,27 @@ export default function Solicitacoes() {
                 <div style={{ display:'flex', gap:8 }}>
                   <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
-                    {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+                    {tipos.map(t=>(
+                      <option key={t.id} value={t.id}>{t.nome}</option>
+                    ))}
                   </select>
                   <button type="button" onClick={()=>setShowNovoTipo(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
                 </div>
                 {showNovoTipo && (
-                  <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                    <input value={novoTipo} onChange={e=>setNovoTipo(e.target.value)} placeholder="Nome do novo tipo" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-                    <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
-                  </div>
+                  <>
+                    <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                      <input value={novoTipo} onChange={e=>setNovoTipo(e.target.value)} placeholder="Nome do novo tipo" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+                      <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                    </div>
+                    <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {tipos.map(t => (
+                        <span key={t.id} style={{ display:'flex', alignItems:'center', gap:4, background:'#f3f4f6', borderRadius:20, padding:'3px 10px', fontSize:12 }}>
+                          {t.nome}
+                          <button type="button" onClick={()=>excluirTipo('solicitacao', t.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EB3238', fontSize:14, lineHeight:1, padding:0 }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
               <div>
@@ -247,10 +296,20 @@ export default function Solicitacoes() {
                   <button type="button" onClick={()=>setShowNovoVale(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
                 </div>
                 {showNovoVale && (
-                  <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                    <input value={novoVale} onChange={e=>setNovoVale(e.target.value)} placeholder="Nome do vale" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-                    <button type="button" onClick={salvarNovoVale} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
-                  </div>
+                  <>
+                    <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                      <input value={novoVale} onChange={e=>setNovoVale(e.target.value)} placeholder="Nome do vale" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+                      <button type="button" onClick={salvarNovoVale} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                    </div>
+                    <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {tiposVale.map(t => (
+                        <span key={t.id} style={{ display:'flex', alignItems:'center', gap:4, background:'#f3f4f6', borderRadius:20, padding:'3px 10px', fontSize:12 }}>
+                          {t.nome}
+                          <button type="button" onClick={()=>excluirTipo('vale', t.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EB3238', fontSize:14, lineHeight:1, padding:0 }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -264,10 +323,20 @@ export default function Solicitacoes() {
                   <button type="button" onClick={()=>setShowNovoRef(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
                 </div>
                 {showNovoRef && (
-                  <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                    <input value={novoRef} onChange={e=>setNovoRef(e.target.value)} placeholder="Nome da ref" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-                    <button type="button" onClick={salvarNovoRef} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
-                  </div>
+                  <>
+                    <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                      <input value={novoRef} onChange={e=>setNovoRef(e.target.value)} placeholder="Nome da ref" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+                      <button type="button" onClick={salvarNovoRef} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                    </div>
+                    <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {tiposRef.map(t => (
+                        <span key={t.id} style={{ display:'flex', alignItems:'center', gap:4, background:'#f3f4f6', borderRadius:20, padding:'3px 10px', fontSize:12 }}>
+                          {t.nome}
+                          <button type="button" onClick={()=>excluirTipo('ref', t.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EB3238', fontSize:14, lineHeight:1, padding:0 }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -336,7 +405,7 @@ export default function Solicitacoes() {
           <label style={lbl}>Mês</label>
           <input type="month" value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
         </div>
-        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); }}
+        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); setFiltroRapido(''); }}
           style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff', color:'#6b7280' }}>
           Limpar
         </button>
