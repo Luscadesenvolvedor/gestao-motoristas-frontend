@@ -63,16 +63,19 @@ export default function Solicitacoes() {
 
   function montarObservacao(formAtual) {
     const vale = tiposVale.find(t => t.id === formAtual.tipoValeId)?.nome || '';
+    const tipo = tipos.find(t => t.id === formAtual.tipoId)?.nome || '';
     const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
     const pix = pixMotorista || '';
     const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
     const partes = [];
+    if (tipo) partes.push(tipo);
     if (vale) partes.push(vale);
     if (ref) partes.push(`Ref: ${ref}`);
     if (pix) partes.push(`Dep via PIX: ${pix}`);
     if (data) partes.push(data);
     return partes.join(' - ');
   }
+
 
   async function salvar(e) {
     e.preventDefault();
