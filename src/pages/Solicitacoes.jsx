@@ -68,8 +68,8 @@ export default function Solicitacoes() {
     const pix = pixMotorista || '';
     const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
     const partes = [];
-    if (tipo) partes.push(tipo);
     if (vale) partes.push(vale);
+    if (tipo) partes.push(tipo);
     if (ref) partes.push(`Ref: ${ref}`);
     if (pix) partes.push(`Dep via PIX: ${pix}`);
     if (data) partes.push(data);
