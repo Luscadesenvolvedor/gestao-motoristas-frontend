@@ -6,10 +6,15 @@ import * as XLSX from 'xlsx';
 
 const vazio = { motoristaId:'', tipoId:'', tipoValeId:'', tipoRefId:'', data: new Date().toISOString().split('T')[0], placa:'', valor:'' };
 
+const FROTAS = [
+  { key:'buzin', label:'BUZIN', cor:'#EB3238', bg:'#fff0f0' },
+  { key:'lbm',   label:'LBM',   cor:'#1a1a2e', bg:'#f0f0ff' },
+  { key:'meli',  label:'MELI',  cor:'#d97706', bg:'#fffbeb' },
+];
+
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
   const [lista, setLista] = useState([]);
-  const [totais, setTotais] = useState({});
   const [motoristas, setMotoristas] = useState([]);
   const [tipos, setTipos] = useState([]);
   const [tiposVale, setTiposVale] = useState([]);
@@ -31,12 +36,13 @@ export default function Solicitacoes() {
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRapido, setFiltroRapido] = useState('');
+  const [filtroFrota, setFiltroFrota] = useState('');
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
 
   async function carregar() {
     const { data } = await api.get('/solicitacoes');
-    setLista(data.solicitacoes); setTotais(data.totais);
+    setLista(data.solicitacoes);
   }
 
   async function carregarSelects() {
@@ -136,7 +142,6 @@ export default function Solicitacoes() {
     carregar();
   }
 
-  // Filtros rápidos — filtra pelo nome do tipo
   const FILTROS_RAPIDOS = [
     { key:'fluxos', label:'Fluxos Diários', nomes:['reembolso','vale pessoal','diarias','diária','diárias'] },
     { key:'saldos', label:'Saldos', nomes:['saldo'] },
@@ -144,14 +149,14 @@ export default function Solicitacoes() {
   ];
 
   const listaFiltrada = lista.filter(s => {
+    if (filtroFrota && s.motorista?.frota !== filtroFrota) return false;
     if (filtroRapido) {
       const fr = FILTROS_RAPIDOS.find(f => f.key === filtroRapido);
       if (fr) {
-        const nomesTipo = fr.nomes;
         const nomeAtual = (s.tipo?.nome || '').toLowerCase();
         const nomeVale = (s.tipoVale?.nome || '').toLowerCase();
         const nomeRef = (s.tipoRef?.nome || '').toLowerCase();
-        if (!nomesTipo.some(n => nomeAtual.includes(n) || nomeVale.includes(n) || nomeRef.includes(n))) return false;
+        if (!fr.nomes.some(n => nomeAtual.includes(n) || nomeVale.includes(n) || nomeRef.includes(n))) return false;
       }
     }
     if (filtroMotorista && s.motoristaId !== filtroMotorista) return false;
@@ -174,6 +179,7 @@ export default function Solicitacoes() {
   function exportarExcel() {
     const dados = listaFiltrada.map(s => ({
       'Motorista': s.motorista?.nome || '',
+      'Frota': s.motorista?.frota || '',
       'Tipo': s.tipo?.nome || '',
       'Vale': s.tipoVale?.nome || '',
       'Ref': s.tipoRef?.nome || '',
@@ -201,11 +207,25 @@ export default function Solicitacoes() {
 
   return (
     <div>
+      {/* Filtros de frota em destaque */}
+      <div style={{ display:'flex', gap:10, marginBottom:16 }}>
+        {FROTAS.map(f => {
+          const total = lista.filter(s => s.motorista?.frota === f.key).length;
+          const ativo = filtroFrota === f.key;
+          return (
+            <button key={f.key} onClick={() => setFiltroFrota(ativo ? '' : f.key)}
+              style={{ flex:1, padding:'14px 10px', border:`2px solid ${ativo ? f.cor : '#e5e7eb'}`, borderRadius:12, cursor:'pointer', background: ativo ? f.cor : '#fff', color: ativo ? '#fff' : f.cor, fontWeight:700, fontSize:16, letterSpacing:1, transition:'all 0.15s', display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+              {f.label}
+              <span style={{ fontSize:11, fontWeight:400, opacity:0.8 }}>{total} solicitação(ões)</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Cabeçalho */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e', margin:0 }}>Solicitações</h2>
-          {/* Filtros rápidos */}
           <div style={{ display:'flex', gap:6 }}>
             {FILTROS_RAPIDOS.map(f => (
               <button key={f.key} onClick={() => setFiltroRapido(filtroRapido === f.key ? '' : f.key)}
@@ -249,9 +269,7 @@ export default function Solicitacoes() {
                 <div style={{ display:'flex', gap:8 }}>
                   <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
-                    {tipos.map(t=>(
-                      <option key={t.id} value={t.id}>{t.nome}</option>
-                    ))}
+                    {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
                   <button type="button" onClick={()=>setShowNovoTipo(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
                 </div>
@@ -405,7 +423,7 @@ export default function Solicitacoes() {
           <label style={lbl}>Mês</label>
           <input type="month" value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
         </div>
-        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); setFiltroRapido(''); }}
+        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); setFiltroRapido(''); setFiltroFrota(''); }}
           style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff', color:'#6b7280' }}>
           Limpar
         </button>
@@ -418,43 +436,49 @@ export default function Solicitacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Motorista','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {listaFiltrada.map(s=>(
-                <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
-                  <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
-                  <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
-                  <td style={{ padding:'10px 14px' }}>
-                    {isAdmin ? (
-                      <input type="number" defaultValue={s.liberado||''} onBlur={e=>atualizarLiberado(s.id,e.target.value)}
-                        style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
-                    ) : fmt(s.liberado||0)}
-                  </td>
-                  <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
-                    {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
-                  </td>
-                  <td style={{ padding:'10px 14px' }}>
-                    <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
-                  </td>
-                  <td style={{ padding:'10px 14px' }}>
-                    {podeExcluir && (
-                      <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
-                        Excluir
-                      </button>
-                    )}
-                  </td>
-                  {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
-                </tr>
-              ))}
-              {listaFiltrada.length===0 && <tr><td colSpan={11} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
+              {listaFiltrada.map(s=>{
+                const frota = FROTAS.find(f => f.key === s.motorista?.frota);
+                return (
+                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                    <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
+                    </td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
+                    <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {isAdmin ? (
+                        <input type="number" defaultValue={s.liberado||''} onBlur={e=>atualizarLiberado(s.id,e.target.value)}
+                          style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
+                      ) : fmt(s.liberado||0)}
+                    </td>
+                    <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
+                      {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {podeExcluir && (
+                        <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+                          Excluir
+                        </button>
+                      )}
+                    </td>
+                    {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+                  </tr>
+                );
+              })}
+              {listaFiltrada.length===0 && <tr><td colSpan={12} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
             </tbody>
           </table>
         </div>
