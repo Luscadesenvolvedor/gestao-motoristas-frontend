@@ -78,14 +78,13 @@ export default function Solicitacoes() {
     const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
     const nomesTipo = tipo.toLowerCase();
     const usaConta = nomesTipo.includes('saldo') || nomesTipo.includes('folga');
-    const pagamento = usaConta ? contaMotorista : pixMotorista;
-    const labelPagamento = usaConta ? 'Dep via Conta:' : 'Dep via PIX:';
+    const pagamento = usaConta ? 'Dep em Conta' : (pixMotorista ? `Dep via PIX: ${pixMotorista}` : '');
     const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
     const partes = [];
     if (vale) partes.push(vale);
     if (tipo) partes.push(tipo);
     if (ref) partes.push(`Ref: ${ref}`);
-    if (pagamento) partes.push(`${labelPagamento} ${pagamento}`);
+    if (pagamento) partes.push(pagamento);
     if (data) partes.push(data);
     return partes.join(' - ');
   }
@@ -200,20 +199,25 @@ export default function Solicitacoes() {
   const pendenteBase = totalBase - liberadoBase;
 
   function exportarExcel() {
-    const dados = listaFiltrada.map(s => ({
-      'Motorista': s.motorista?.nome || '',
-      'Frota': s.motorista?.frota || '',
-      'Tipo': s.tipo?.nome || '',
-      'Vale': s.tipoVale?.nome || '',
-      'Ref': s.tipoRef?.nome || '',
-      'Placa': s.placa || '',
-      'Valor': Number(s.valor),
-      'Liberado': Number(s.liberado || 0),
-      'Pendente': Math.max(0, Number(s.valor) - Number(s.liberado || 0)),
-      'Status': s.status,
-      'Data': new Date(s.data).toLocaleDateString('pt-BR'),
-      'Observação': s.observacao || '',
-    }));
+    const dados = listaFiltrada.map(s => {
+      const m = motoristas.find(x => x.id === s.motoristaId);
+      const bancoConta = [m?.banco, m?.agencia, m?.conta].filter(Boolean).join(' - ');
+      return {
+        'Motorista': s.motorista?.nome || '',
+        'Frota': s.motorista?.frota || '',
+        'Tipo': s.tipo?.nome || '',
+        'Vale': s.tipoVale?.nome || '',
+        'Ref': s.tipoRef?.nome || '',
+        'Banco - Agência - Conta': bancoConta,
+        'Placa': s.placa || '',
+        'Valor': Number(s.valor),
+        'Liberado': Number(s.liberado || 0),
+        'Pendente': Math.max(0, Number(s.valor) - Number(s.liberado || 0)),
+        'Status': s.status,
+        'Data': new Date(s.data).toLocaleDateString('pt-BR'),
+        'Observação': s.observacao || '',
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(dados);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
