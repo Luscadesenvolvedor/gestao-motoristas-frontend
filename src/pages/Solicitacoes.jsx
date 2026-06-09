@@ -22,6 +22,7 @@ export default function Solicitacoes() {
   const [novoRef, setNovoRef] = useState('');
   const [showNovoRef, setShowNovoRef] = useState(false);
   const [alertas, setAlertas] = useState({});
+  const [pixMotorista, setPixMotorista] = useState('');
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
 
@@ -44,23 +45,42 @@ export default function Solicitacoes() {
   }
 
   async function verificarStatus(motoristaId) {
-    if (!motoristaId) { setAlertas({}); return; }
+    if (!motoristaId) { setAlertas({}); setPixMotorista(''); return; }
     try {
       const { data } = await api.get(`/ferias/ativo/${motoristaId}`);
       setAlertas(data);
     } catch { setAlertas({}); }
+    // Pega o PIX do motorista
+    const m = motoristas.find(x => x.id === motoristaId);
+    setPixMotorista(m?.pix || '');
+  }
+
+  function montarObservacao(formAtual) {
+    const vale = tiposVale.find(t => t.id === formAtual.tipoValeId)?.nome || '';
+    const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
+    const pix = pixMotorista || '';
+    const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
+
+    const partes = [];
+    if (vale) partes.push(vale);
+    if (ref) partes.push(`Ref: ${ref}`);
+    if (pix) partes.push(`Dep via PIX: ${pix}`);
+    if (data) partes.push(data);
+
+    return partes.join(' - ');
   }
 
   async function salvar(e) {
     e.preventDefault();
     try {
-      const { data } = await api.post('/solicitacoes', form);
+      const observacao = montarObservacao(form);
+      const { data } = await api.post('/solicitacoes', { ...form, observacao });
       if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
       if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
       if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
       if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
       toast.success('Solicitação criada');
-      setForm(vazio); setShowForm(false); setAlertas({}); carregar();
+      setForm(vazio); setShowForm(false); setAlertas({}); setPixMotorista(''); carregar();
     } catch {}
   }
 
@@ -95,6 +115,9 @@ export default function Solicitacoes() {
   const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
   const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
+
+  // Preview da observação
+  const previewObs = montarObservacao(form);
 
   return (
     <div>
@@ -147,6 +170,7 @@ export default function Solicitacoes() {
                   <option value="">Selecionar...</option>
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
+                {pixMotorista && <p style={{ fontSize:11, color:'#6b7280', marginTop:4 }}>PIX: {pixMotorista}</p>}
               </div>
 
               {alertas.emFerias && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#ede9fe', borderRadius:8, fontSize:13, color:'#6d28d9', fontWeight:500 }}>🏖️ Este motorista está de FÉRIAS!</div>}
@@ -198,9 +222,16 @@ export default function Solicitacoes() {
                 <label style={lbl}>Valor (R$)</label>
                 <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} required placeholder="0.00" style={inp}/>
               </div>
+
+              {/* Preview observação */}
+              {previewObs && (
+                <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#f9fafb', borderRadius:8, fontSize:12, color:'#6b7280', border:'1px solid #e5e7eb' }}>
+                  <span style={{ fontWeight:500, color:'#374151' }}>Observação: </span>{previewObs}
+                </div>
+              )}
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
-              <button type="button" onClick={()=>{ setShowForm(false); setAlertas({}); }} style={btn('#e5e7eb','#374151')}>Cancelar</button>
+              <button type="button" onClick={()=>{ setShowForm(false); setAlertas({}); setPixMotorista(''); }} style={btn('#e5e7eb','#374151')}>Cancelar</button>
               <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
