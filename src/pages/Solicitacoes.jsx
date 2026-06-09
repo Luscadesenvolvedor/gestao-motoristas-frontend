@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 const vazio = { motoristaId:'', tipoId:'', tipoValeId:'', tipoRefId:'', data: new Date().toISOString().split('T')[0], placa:'', valor:'' };
 
@@ -11,6 +11,27 @@ const FROTAS = [
   { key:'lbm',   label:'LBM',   cor:'#1a1a2e', bg:'#f0f0ff' },
   { key:'meli',  label:'MELI',  cor:'#d97706', bg:'#fffbeb' },
 ];
+
+const estiloCabecalho = {
+  fill: { fgColor: { rgb: 'A6A6A6' } },
+  font: { bold: true, color: { rgb: '000000' } },
+  border: {
+    top: { style:'thin', color:{ rgb:'000000' } },
+    bottom: { style:'thin', color:{ rgb:'000000' } },
+    left: { style:'thin', color:{ rgb:'000000' } },
+    right: { style:'thin', color:{ rgb:'000000' } },
+  },
+  alignment: { horizontal:'center', vertical:'center' }
+};
+
+const estiloCelula = {
+  border: {
+    top: { style:'thin', color:{ rgb:'D1D5DB' } },
+    bottom: { style:'thin', color:{ rgb:'D1D5DB' } },
+    left: { style:'thin', color:{ rgb:'D1D5DB' } },
+    right: { style:'thin', color:{ rgb:'D1D5DB' } },
+  }
+};
 
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
@@ -203,47 +224,45 @@ export default function Solicitacoes() {
       ? listaFiltrada.filter(s => selecionados.includes(s.id))
       : listaFiltrada;
 
-    const dados = exportBase.map(s => {
+    const cabecalho = ['Motorista','Liberado','Vale','Placa','Banco','Agência','Conta','Tipo','Observação'];
+
+    const linhas = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
-      return {
-        'Motorista': (s.motorista?.nome || '').toUpperCase(),
-        'Liberado': Number(s.liberado || 0),
-        'Vale': s.tipoVale?.nome || '',
-        'Placa': s.placa || '',
-        'Banco': m?.banco || '',
-        'Agência': m?.agencia || '',
-        'Conta': m?.conta || '',
-        'Tipo': s.tipo?.nome || '',
-        'Observação': s.observacao || '',
-      };
+      return [
+        { v: (s.motorista?.nome || '').toUpperCase(), s: estiloCelula },
+        { v: Number(s.liberado || 0), s: estiloCelula },
+        { v: s.tipoVale?.nome || '', s: estiloCelula },
+        { v: s.placa || '', s: estiloCelula },
+        { v: m?.banco || '', s: estiloCelula },
+        { v: m?.agencia || '', s: estiloCelula },
+        { v: m?.conta || '', s: estiloCelula },
+        { v: s.tipo?.nome || '', s: estiloCelula },
+        { v: s.observacao || '', s: estiloCelula },
+      ];
     });
 
     // Linha de total
-    dados.push({
-      'Motorista': '',
-      'Liberado': exportBase.reduce((s, x) => s + Number(x.liberado || 0), 0),
-      'Vale': '',
-      'Placa': '',
-      'Banco': '',
-      'Agência': '',
-      'Conta': '',
-      'Tipo': '',
-      'Observação': '',
-    });
+    const totalLiberado = exportBase.reduce((s, x) => s + Number(x.liberado || 0), 0);
+    linhas.push([
+      { v: '', s: estiloCelula },
+      { v: totalLiberado, s: { ...estiloCelula, font: { bold: true } } },
+      { v: '', s: estiloCelula },
+      { v: '', s: estiloCelula },
+      { v: '', s: estiloCelula },
+      { v: '', s: estiloCelula },
+      { v: '', s: estiloCelula },
+      { v: '', s: estiloCelula },
+      { v: '', s: estiloCelula },
+    ]);
 
-    const ws = XLSX.utils.json_to_sheet(dados);
+    const ws = XLSX.utils.aoa_to_sheet([
+      cabecalho.map(c => ({ v: c, s: estiloCabecalho })),
+      ...linhas
+    ]);
 
-    // Largura das colunas
     ws['!cols'] = [
-      { wch: 35 }, // Motorista
-      { wch: 12 }, // Liberado
-      { wch: 15 }, // Vale
-      { wch: 12 }, // Placa
-      { wch: 12 }, // Banco
-      { wch: 10 }, // Agência
-      { wch: 12 }, // Conta
-      { wch: 15 }, // Tipo
-      { wch: 60 }, // Observação
+      { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
+      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 60 },
     ];
 
     const wb = XLSX.utils.book_new();
@@ -262,7 +281,6 @@ export default function Solicitacoes() {
 
   return (
     <div>
-      {/* Filtros de frota em destaque */}
       <div style={{ display:'flex', gap:10, marginBottom:16 }}>
         {FROTAS.map(f => {
           const total = lista.filter(s => s.motorista?.frota === f.key).length;
@@ -277,7 +295,6 @@ export default function Solicitacoes() {
         })}
       </div>
 
-      {/* Cabeçalho */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e', margin:0 }}>Solicitações</h2>
@@ -296,7 +313,6 @@ export default function Solicitacoes() {
         </div>
       </div>
 
-      {/* Totais */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:16 }}>
         {[
           ['Total solicitado', totalBase, '#1a1a2e'],
@@ -312,7 +328,6 @@ export default function Solicitacoes() {
         ))}
       </div>
 
-      {/* Formulário */}
       {showForm && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <form onSubmit={salvar}>
@@ -443,7 +458,6 @@ export default function Solicitacoes() {
         </div>
       )}
 
-      {/* Filtros */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:'12px 16px', marginBottom:12, display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end' }}>
         <div>
           <label style={lbl}>Motorista</label>
@@ -497,7 +511,6 @@ export default function Solicitacoes() {
         )}
       </div>
 
-      {/* Tabela */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
