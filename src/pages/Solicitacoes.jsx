@@ -199,26 +199,53 @@ export default function Solicitacoes() {
   const pendenteBase = totalBase - liberadoBase;
 
   function exportarExcel() {
-    const dados = listaFiltrada.map(s => {
+    const exportBase = selecionados.length > 0
+      ? listaFiltrada.filter(s => selecionados.includes(s.id))
+      : listaFiltrada;
+
+    const dados = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
-      const bancoConta = [m?.banco, m?.agencia, m?.conta].filter(Boolean).join(' - ');
       return {
-        'Motorista': s.motorista?.nome || '',
-        'Frota': s.motorista?.frota || '',
-        'Tipo': s.tipo?.nome || '',
-        'Vale': s.tipoVale?.nome || '',
-        'Ref': s.tipoRef?.nome || '',
-        'Banco - Agência - Conta': bancoConta,
-        'Placa': s.placa || '',
-        'Valor': Number(s.valor),
+        'Motorista': (s.motorista?.nome || '').toUpperCase(),
         'Liberado': Number(s.liberado || 0),
-        'Pendente': Math.max(0, Number(s.valor) - Number(s.liberado || 0)),
-        'Status': s.status,
-        'Data': new Date(s.data).toLocaleDateString('pt-BR'),
+        'Vale': s.tipoVale?.nome || '',
+        'Placa': s.placa || '',
+        'Banco': m?.banco || '',
+        'Agência': m?.agencia || '',
+        'Conta': m?.conta || '',
+        'Tipo': s.tipo?.nome || '',
         'Observação': s.observacao || '',
       };
     });
+
+    // Linha de total
+    dados.push({
+      'Motorista': '',
+      'Liberado': exportBase.reduce((s, x) => s + Number(x.liberado || 0), 0),
+      'Vale': '',
+      'Placa': '',
+      'Banco': '',
+      'Agência': '',
+      'Conta': '',
+      'Tipo': '',
+      'Observação': '',
+    });
+
     const ws = XLSX.utils.json_to_sheet(dados);
+
+    // Largura das colunas
+    ws['!cols'] = [
+      { wch: 35 }, // Motorista
+      { wch: 12 }, // Liberado
+      { wch: 15 }, // Vale
+      { wch: 12 }, // Placa
+      { wch: 12 }, // Banco
+      { wch: 10 }, // Agência
+      { wch: 12 }, // Conta
+      { wch: 15 }, // Tipo
+      { wch: 60 }, // Observação
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
     XLSX.writeFile(wb, `solicitacoes_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
