@@ -58,7 +58,7 @@ export default function Folgas() {
               </div>
               <div>
                 <label style={lbl}>Período</label>
-                <input type="date" value={form.periodo} onChange={e=>setForm(f=>({...f,periodo:e.target.value}))} required style={inp}/>
+                <input type="text" value={form.periodo} onChange={e=>setForm(f=>({...f,periodo:e.target.value}))} required placeholder="Ex: Janeiro/2026" style={inp}/>
               </div>
               <div>
                 <label style={lbl}>Dias</label>
@@ -91,7 +91,7 @@ export default function Folgas() {
             {lista.map(f=>(
               <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                 <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
-                <td style={{ padding:'10px 14px', color:'#6b7280' }}>{new Date(f.periodo).toLocaleDateString('pt-BR')}</td>
+                <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.periodo}</td>
                 <td style={{ padding:'10px 14px' }}>{f.quantidadeDias}</td>
                 <td style={{ padding:'10px 14px', color:'#EB3238', fontWeight:500 }}>{valor(f.quantidadeDias)}</td>
                 <td style={{ padding:'10px 14px' }}>
