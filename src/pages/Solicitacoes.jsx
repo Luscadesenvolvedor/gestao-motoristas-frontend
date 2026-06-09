@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-const vazio = { motoristaId:'', tipoId:'', data: new Date().toISOString().split('T')[0], placa:'', valor:'' };
+const vazio = { motoristaId:'', tipoId:'', tipoValeId:'', tipoRefId:'', data: new Date().toISOString().split('T')[0], placa:'', valor:'' };
 
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
@@ -11,11 +11,16 @@ export default function Solicitacoes() {
   const [totais, setTotais] = useState({});
   const [motoristas, setMotoristas] = useState([]);
   const [tipos, setTipos] = useState([]);
+  const [tiposVale, setTiposVale] = useState([]);
+  const [tiposRef, setTiposRef] = useState([]);
   const [form, setForm] = useState(vazio);
   const [showForm, setShowForm] = useState(false);
   const [novoTipo, setNovoTipo] = useState('');
   const [showNovoTipo, setShowNovoTipo] = useState(false);
-  const [anexo, setAnexo] = useState(null);
+  const [novoVale, setNovoVale] = useState('');
+  const [showNovoVale, setShowNovoVale] = useState(false);
+  const [novoRef, setNovoRef] = useState('');
+  const [showNovoRef, setShowNovoRef] = useState(false);
   const [alertas, setAlertas] = useState({});
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
@@ -26,8 +31,16 @@ export default function Solicitacoes() {
   }
 
   async function carregarSelects() {
-    const [m, t] = await Promise.all([api.get('/motoristas'), api.get('/tipos/solicitacao')]);
-    setMotoristas(m.data); setTipos(t.data);
+    const [m, t, v, r] = await Promise.all([
+      api.get('/motoristas'),
+      api.get('/tipos/solicitacao'),
+      api.get('/tipos/vale'),
+      api.get('/tipos/ref'),
+    ]);
+    setMotoristas(m.data);
+    setTipos(t.data);
+    setTiposVale(v.data);
+    setTiposRef(r.data);
   }
 
   async function verificarStatus(motoristaId) {
@@ -41,10 +54,7 @@ export default function Solicitacoes() {
   async function salvar(e) {
     e.preventDefault();
     try {
-      const fd = new FormData();
-      Object.entries(form).forEach(([k,v]) => fd.append(k, v));
-      if (anexo) fd.append('anexo', anexo);
-      const { data } = await api.post('/solicitacoes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const { data } = await api.post('/solicitacoes', form);
       if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
       if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
       if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
@@ -58,6 +68,22 @@ export default function Solicitacoes() {
     if (!novoTipo.trim()) return;
     await api.post('/tipos/solicitacao', { nome: novoTipo });
     toast.success('Tipo adicionado'); setNovoTipo(''); setShowNovoTipo(false); carregarSelects();
+  }
+
+  async function salvarNovoVale() {
+    if (!novoVale.trim()) return;
+    const { data } = await api.post('/tipos/vale', { nome: novoVale });
+    toast.success('Vale adicionado'); setNovoVale(''); setShowNovoVale(false);
+    carregarSelects();
+    setForm(f => ({ ...f, tipoValeId: data.id }));
+  }
+
+  async function salvarNovoRef() {
+    if (!novoRef.trim()) return;
+    const { data } = await api.post('/tipos/ref', { nome: novoRef });
+    toast.success('Ref adicionado'); setNovoRef(''); setShowNovoRef(false);
+    carregarSelects();
+    setForm(f => ({ ...f, tipoRefId: data.id }));
   }
 
   async function atualizarLiberado(id, liberado) {
@@ -128,6 +154,42 @@ export default function Solicitacoes() {
               {alertas.emAfastamento && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#fee2e2', borderRadius:8, fontSize:13, color:'#991b1b', fontWeight:500 }}>⚠️ Este motorista está AFASTADO!</div>}
               {alertas.abandonou && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#fef2f2', borderRadius:8, fontSize:13, color:'#7f1d1d', fontWeight:500 }}>🚪 Este motorista ABANDONOU o serviço!</div>}
 
+              {/* Vale */}
+              <div>
+                <label style={lbl}>Vale</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <select value={form.tipoValeId} onChange={e=>setForm(f=>({...f,tipoValeId:e.target.value}))} style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                    <option value="">Selecionar...</option>
+                    {tiposVale.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+                  </select>
+                  <button type="button" onClick={()=>setShowNovoVale(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
+                </div>
+                {showNovoVale && (
+                  <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                    <input value={novoVale} onChange={e=>setNovoVale(e.target.value)} placeholder="Nome do vale" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+                    <button type="button" onClick={salvarNovoVale} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Ref */}
+              <div>
+                <label style={lbl}>Ref</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <select value={form.tipoRefId} onChange={e=>setForm(f=>({...f,tipoRefId:e.target.value}))} style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                    <option value="">Selecionar...</option>
+                    {tiposRef.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+                  </select>
+                  <button type="button" onClick={()=>setShowNovoRef(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
+                </div>
+                {showNovoRef && (
+                  <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                    <input value={novoRef} onChange={e=>setNovoRef(e.target.value)} placeholder="Nome da ref" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+                    <button type="button" onClick={salvarNovoRef} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label style={lbl}>Placa</label>
                 <input value={form.placa} onChange={e=>setForm(f=>({...f,placa:e.target.value}))} placeholder="ABC-1234" style={inp}/>
@@ -135,10 +197,6 @@ export default function Solicitacoes() {
               <div>
                 <label style={lbl}>Valor (R$)</label>
                 <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} required placeholder="0.00" style={inp}/>
-              </div>
-              <div style={{ gridColumn:'1/-1' }}>
-                <label style={lbl}>Anexo</label>
-                <input type="file" onChange={e=>setAnexo(e.target.files[0])} style={{ fontSize:13 }}/>
               </div>
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
@@ -154,8 +212,8 @@ export default function Solicitacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Motorista','Tipo','Placa','Valor','Liberado','Status','Anexo',...(isAdmin?['Alteração']:[])].map(h=>(
-                  <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                {['Motorista','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status',...(isAdmin?['Alteração']:[])].map(h=>(
+                  <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -164,6 +222,8 @@ export default function Solicitacoes() {
                 <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
+                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
+                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
                   <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
                   <td style={{ padding:'10px 14px' }}>
@@ -172,16 +232,16 @@ export default function Solicitacoes() {
                         style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
                     ) : fmt(s.liberado||0)}
                   </td>
+                  <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
+                    {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
+                  </td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
                   </td>
-                  <td style={{ padding:'10px 14px' }}>
-                    {s.anexoUrl ? <a href={s.anexoUrl} target="_blank" rel="noreferrer" style={{ color:'#EB3238', fontSize:12 }}>Ver</a> : '—'}
-                  </td>
-                  {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+                  {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
                 </tr>
               ))}
-              {lista.length===0 && <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação</td></tr>}
+              {lista.length===0 && <tr><td colSpan={10} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação</td></tr>}
             </tbody>
           </table>
         </div>
