@@ -37,12 +37,14 @@ export default function Solicitacoes() {
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRapido, setFiltroRapido] = useState('');
   const [filtroFrota, setFiltroFrota] = useState('');
+  const [selecionados, setSelecionados] = useState([]);
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
 
   async function carregar() {
     const { data } = await api.get('/solicitacoes');
     setLista(data.solicitacoes);
+    setSelecionados([]);
   }
 
   async function carregarSelects() {
@@ -142,6 +144,18 @@ export default function Solicitacoes() {
     carregar();
   }
 
+  function toggleSelecionado(id) {
+    setSelecionados(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  }
+
+  function toggleTodos() {
+    if (selecionados.length === listaFiltrada.length) {
+      setSelecionados([]);
+    } else {
+      setSelecionados(listaFiltrada.map(s => s.id));
+    }
+  }
+
   const FILTROS_RAPIDOS = [
     { key:'fluxos', label:'Fluxos Diários', nomes:['reembolso','vale pessoal','diarias','diária','diárias'] },
     { key:'saldos', label:'Saldos', nomes:['saldo'] },
@@ -172,9 +186,14 @@ export default function Solicitacoes() {
     return true;
   });
 
-  const totalFiltrado = listaFiltrada.reduce((s, x) => s + Number(x.valor), 0);
-  const liberadoFiltrado = listaFiltrada.reduce((s, x) => s + Number(x.liberado || 0), 0);
-  const pendenteFiltrado = totalFiltrado - liberadoFiltrado;
+  // Cálculos — usa selecionados se houver, senão usa tudo filtrado
+  const base = selecionados.length > 0
+    ? listaFiltrada.filter(s => selecionados.includes(s.id))
+    : listaFiltrada;
+
+  const totalBase = base.reduce((s, x) => s + Number(x.valor), 0);
+  const liberadoBase = base.reduce((s, x) => s + Number(x.liberado || 0), 0);
+  const pendenteBase = totalBase - liberadoBase;
 
   function exportarExcel() {
     const dados = listaFiltrada.map(s => ({
@@ -204,6 +223,7 @@ export default function Solicitacoes() {
   const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
   const previewObs = montarObservacao(form);
   const podeExcluir = usuario?.papel === 'admin' || usuario?.papel === 'financeiro';
+  const todosSelecionados = selecionados.length === listaFiltrada.length && listaFiltrada.length > 0;
 
   return (
     <div>
@@ -243,9 +263,15 @@ export default function Solicitacoes() {
 
       {/* Totais */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:16 }}>
-        {[['Total solicitado', totalFiltrado,'#1a1a2e'],['Total liberado', liberadoFiltrado,'#16a34a'],['Pendente', pendenteFiltrado,'#d97706']].map(([l,v,c])=>(
+        {[
+          ['Total solicitado', totalBase, '#1a1a2e'],
+          ['Total liberado', liberadoBase, '#16a34a'],
+          ['Pendente', pendenteBase, '#d97706']
+        ].map(([l,v,c])=>(
           <div key={l} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:'1px solid #e5e7eb' }}>
-            <div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>{l}</div>
+            <div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>
+              {l} {selecionados.length > 0 && <span style={{ color:'#EB3238', fontSize:10 }}>({selecionados.length} selecionados)</span>}
+            </div>
             <div style={{ fontSize:22, fontWeight:600, color:c }}>{fmt(v||0)}</div>
           </div>
         ))}
@@ -423,11 +449,16 @@ export default function Solicitacoes() {
           <label style={lbl}>Mês</label>
           <input type="month" value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
         </div>
-        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); setFiltroRapido(''); setFiltroFrota(''); }}
+        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); setFiltroRapido(''); setFiltroFrota(''); setSelecionados([]); }}
           style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff', color:'#6b7280' }}>
           Limpar
         </button>
         <span style={{ fontSize:12, color:'#6b7280', alignSelf:'center' }}>{listaFiltrada.length} registro(s)</span>
+        {selecionados.length > 0 && (
+          <button onClick={()=>setSelecionados([])} style={{ padding:'7px 14px', border:'1px solid #EB3238', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+            Limpar seleção ({selecionados.length})
+          </button>
+        )}
       </div>
 
       {/* Tabela */}
@@ -436,6 +467,9 @@ export default function Solicitacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
+                <th style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', width:40 }}>
+                  <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
+                </th>
                 {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
@@ -444,8 +478,12 @@ export default function Solicitacoes() {
             <tbody>
               {listaFiltrada.map(s=>{
                 const frota = FROTAS.find(f => f.key === s.motorista?.frota);
+                const sel = selecionados.includes(s.id);
                 return (
-                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
+                    <td style={{ padding:'10px 14px' }}>
+                      <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
+                    </td>
                     <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
                     <td style={{ padding:'10px 14px' }}>
                       {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
@@ -478,7 +516,7 @@ export default function Solicitacoes() {
                   </tr>
                 );
               })}
-              {listaFiltrada.length===0 && <tr><td colSpan={12} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
+              {listaFiltrada.length===0 && <tr><td colSpan={13} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
             </tbody>
           </table>
         </div>
