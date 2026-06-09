@@ -29,6 +29,7 @@ export default function Solicitacoes() {
   const [showNovoRef, setShowNovoRef] = useState(false);
   const [alertas, setAlertas] = useState({});
   const [pixMotorista, setPixMotorista] = useState('');
+  const [contaMotorista, setContaMotorista] = useState('');
   const [filtroMotorista, setFiltroMotorista] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroVale, setFiltroVale] = useState('');
@@ -61,26 +62,30 @@ export default function Solicitacoes() {
   }
 
   async function verificarStatus(motoristaId) {
-    if (!motoristaId) { setAlertas({}); setPixMotorista(''); return; }
+    if (!motoristaId) { setAlertas({}); setPixMotorista(''); setContaMotorista(''); return; }
     try {
       const { data } = await api.get(`/ferias/ativo/${motoristaId}`);
       setAlertas(data);
     } catch { setAlertas({}); }
     const m = motoristas.find(x => x.id === motoristaId);
     setPixMotorista(m?.pix || '');
+    setContaMotorista(m?.conta || '');
   }
 
   function montarObservacao(formAtual) {
     const vale = tiposVale.find(t => t.id === formAtual.tipoValeId)?.nome || '';
     const tipo = tipos.find(t => t.id === formAtual.tipoId)?.nome || '';
     const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
-    const pix = pixMotorista || '';
+    const nomesTipo = tipo.toLowerCase();
+    const usaConta = nomesTipo.includes('saldo') || nomesTipo.includes('folga');
+    const pagamento = usaConta ? contaMotorista : pixMotorista;
+    const labelPagamento = usaConta ? 'Dep via Conta:' : 'Dep via PIX:';
     const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
     const partes = [];
     if (vale) partes.push(vale);
     if (tipo) partes.push(tipo);
     if (ref) partes.push(`Ref: ${ref}`);
-    if (pix) partes.push(`Dep via PIX: ${pix}`);
+    if (pagamento) partes.push(`${labelPagamento} ${pagamento}`);
     if (data) partes.push(data);
     return partes.join(' - ');
   }
@@ -95,7 +100,7 @@ export default function Solicitacoes() {
       if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
       if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
       toast.success('Solicitação criada');
-      setForm(vazio); setShowForm(false); setAlertas({}); setPixMotorista(''); carregar();
+      setForm(vazio); setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); carregar();
     } catch {}
   }
 
@@ -186,7 +191,6 @@ export default function Solicitacoes() {
     return true;
   });
 
-  // Cálculos — usa selecionados se houver, senão usa tudo filtrado
   const base = selecionados.length > 0
     ? listaFiltrada.filter(s => selecionados.includes(s.id))
     : listaFiltrada;
@@ -323,6 +327,7 @@ export default function Solicitacoes() {
                   {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
                 {pixMotorista && <p style={{ fontSize:11, color:'#6b7280', marginTop:4 }}>PIX: {pixMotorista}</p>}
+                {contaMotorista && <p style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>Conta: {contaMotorista}</p>}
               </div>
 
               {alertas.emFerias && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#ede9fe', borderRadius:8, fontSize:13, color:'#6d28d9', fontWeight:500 }}>🏖️ Este motorista está de FÉRIAS!</div>}
@@ -400,7 +405,7 @@ export default function Solicitacoes() {
               )}
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
-              <button type="button" onClick={()=>{ setShowForm(false); setAlertas({}); setPixMotorista(''); }} style={btn('#e5e7eb','#374151')}>Cancelar</button>
+              <button type="button" onClick={()=>{ setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); }} style={btn('#e5e7eb','#374151')}>Cancelar</button>
               <button type="submit" style={btn('#EB3238')}>Salvar</button>
             </div>
           </form>
