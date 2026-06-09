@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 const vazio = { motoristaId:'', tipoId:'', tipoValeId:'', tipoRefId:'', data: new Date().toISOString().split('T')[0], placa:'', valor:'' };
 
@@ -23,6 +24,14 @@ export default function Solicitacoes() {
   const [showNovoRef, setShowNovoRef] = useState(false);
   const [alertas, setAlertas] = useState({});
   const [pixMotorista, setPixMotorista] = useState('');
+
+  // Filtros
+  const [filtroMotorista, setFiltroMotorista] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroVale, setFiltroVale] = useState('');
+  const [filtroRef, setFiltroRef] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroMes, setFiltroMes] = useState('');
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
 
@@ -50,7 +59,6 @@ export default function Solicitacoes() {
       const { data } = await api.get(`/ferias/ativo/${motoristaId}`);
       setAlertas(data);
     } catch { setAlertas({}); }
-    // Pega o PIX do motorista
     const m = motoristas.find(x => x.id === motoristaId);
     setPixMotorista(m?.pix || '');
   }
@@ -60,13 +68,11 @@ export default function Solicitacoes() {
     const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
     const pix = pixMotorista || '';
     const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
-
     const partes = [];
     if (vale) partes.push(vale);
     if (ref) partes.push(`Ref: ${ref}`);
     if (pix) partes.push(`Dep via PIX: ${pix}`);
     if (data) partes.push(data);
-
     return partes.join(' - ');
   }
 
@@ -111,24 +117,66 @@ export default function Solicitacoes() {
     carregar();
   }
 
+  // Filtragem
+  const listaFiltrada = lista.filter(s => {
+    if (filtroMotorista && s.motoristaId !== filtroMotorista) return false;
+    if (filtroTipo && s.tipoId !== filtroTipo) return false;
+    if (filtroVale && s.tipoValeId !== filtroVale) return false;
+    if (filtroRef && s.tipoRefId !== filtroRef) return false;
+    if (filtroStatus && s.status !== filtroStatus) return false;
+    if (filtroMes) {
+      const [ano, mes] = filtroMes.split('-').map(Number);
+      const d = new Date(s.data);
+      if (d.getFullYear() !== ano || d.getMonth() + 1 !== mes) return false;
+    }
+    return true;
+  });
+
+  // Totais filtrados
+  const totalFiltrado = listaFiltrada.reduce((s, x) => s + Number(x.valor), 0);
+  const liberadoFiltrado = listaFiltrada.reduce((s, x) => s + Number(x.liberado || 0), 0);
+  const pendenteFiltrado = totalFiltrado - liberadoFiltrado;
+
+  function exportarExcel() {
+    const dados = listaFiltrada.map(s => ({
+      'Motorista': s.motorista?.nome || '',
+      'Tipo': s.tipo?.nome || '',
+      'Vale': s.tipoVale?.nome || '',
+      'Ref': s.tipoRef?.nome || '',
+      'Placa': s.placa || '',
+      'Valor': Number(s.valor),
+      'Liberado': Number(s.liberado || 0),
+      'Pendente': Math.max(0, Number(s.valor) - Number(s.liberado || 0)),
+      'Status': s.status,
+      'Data': new Date(s.data).toLocaleDateString('pt-BR'),
+      'Observação': s.observacao || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
+    XLSX.writeFile(wb, `solicitacoes_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
+    toast.success('Excel exportado!');
+  }
+
   const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
   const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
-
-  // Preview da observação
   const previewObs = montarObservacao(form);
 
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Solicitações</h2>
-        <button onClick={()=>setShowForm(v=>!v)} style={btn('#EB3238')}>+ Incluir solicitação</button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={exportarExcel} style={btn('#16a34a')}>⬇ Exportar Excel</button>
+          <button onClick={()=>setShowForm(v=>!v)} style={btn('#EB3238')}>+ Incluir solicitação</button>
+        </div>
       </div>
 
       {/* Totais */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:16 }}>
-        {[['Total solicitado', totais.totalSolicitado,'#1a1a2e'],['Total liberado', totais.totalLiberado,'#16a34a'],['Pendente', totais.pendente,'#d97706']].map(([l,v,c])=>(
+        {[['Total solicitado', totalFiltrado,'#1a1a2e'],['Total liberado', liberadoFiltrado,'#16a34a'],['Pendente', pendenteFiltrado,'#d97706']].map(([l,v,c])=>(
           <div key={l} style={{ background:'#fff', borderRadius:12, padding:'14px 18px', border:'1px solid #e5e7eb' }}>
             <div style={{ fontSize:11, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>{l}</div>
             <div style={{ fontSize:22, fontWeight:600, color:c }}>{fmt(v||0)}</div>
@@ -136,6 +184,7 @@ export default function Solicitacoes() {
         ))}
       </div>
 
+      {/* Formulário */}
       {showForm && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <form onSubmit={salvar}>
@@ -178,7 +227,6 @@ export default function Solicitacoes() {
               {alertas.emAfastamento && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#fee2e2', borderRadius:8, fontSize:13, color:'#991b1b', fontWeight:500 }}>⚠️ Este motorista está AFASTADO!</div>}
               {alertas.abandonou && <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#fef2f2', borderRadius:8, fontSize:13, color:'#7f1d1d', fontWeight:500 }}>🚪 Este motorista ABANDONOU o serviço!</div>}
 
-              {/* Vale */}
               <div>
                 <label style={lbl}>Vale</label>
                 <div style={{ display:'flex', gap:8 }}>
@@ -196,7 +244,6 @@ export default function Solicitacoes() {
                 )}
               </div>
 
-              {/* Ref */}
               <div>
                 <label style={lbl}>Ref</label>
                 <div style={{ display:'flex', gap:8 }}>
@@ -223,7 +270,6 @@ export default function Solicitacoes() {
                 <input type="number" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} required placeholder="0.00" style={inp}/>
               </div>
 
-              {/* Preview observação */}
               {previewObs && (
                 <div style={{ gridColumn:'1/-1', padding:'10px 14px', background:'#f9fafb', borderRadius:8, fontSize:12, color:'#6b7280', border:'1px solid #e5e7eb' }}>
                   <span style={{ fontWeight:500, color:'#374151' }}>Observação: </span>{previewObs}
@@ -238,6 +284,56 @@ export default function Solicitacoes() {
         </div>
       )}
 
+      {/* Filtros */}
+      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:'12px 16px', marginBottom:12, display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end' }}>
+        <div>
+          <label style={lbl}>Motorista</label>
+          <select value={filtroMotorista} onChange={e=>setFiltroMotorista(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todos</option>
+            {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Tipo</label>
+          <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todos</option>
+            {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Vale</label>
+          <select value={filtroVale} onChange={e=>setFiltroVale(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todos</option>
+            {tiposVale.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Ref</label>
+          <select value={filtroRef} onChange={e=>setFiltroRef(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todos</option>
+            {tiposRef.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Status</label>
+          <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todos</option>
+            <option value="pendente">Pendente</option>
+            <option value="pago">Pago</option>
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Mês</label>
+          <input type="month" value={filtroMes} onChange={e=>setFiltroMes(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+        </div>
+        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroVale(''); setFiltroRef(''); setFiltroStatus(''); setFiltroMes(''); }}
+          style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff', color:'#6b7280' }}>
+          Limpar
+        </button>
+        <span style={{ fontSize:12, color:'#6b7280', alignSelf:'center' }}>{listaFiltrada.length} registro(s)</span>
+      </div>
+
+      {/* Tabela */}
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
@@ -249,7 +345,7 @@ export default function Solicitacoes() {
               </tr>
             </thead>
             <tbody>
-              {lista.map(s=>(
+              {listaFiltrada.map(s=>(
                 <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
@@ -272,7 +368,7 @@ export default function Solicitacoes() {
                   {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
                 </tr>
               ))}
-              {lista.length===0 && <tr><td colSpan={10} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação</td></tr>}
+              {listaFiltrada.length===0 && <tr><td colSpan={10} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
             </tbody>
           </table>
         </div>
