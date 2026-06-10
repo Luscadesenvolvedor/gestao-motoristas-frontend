@@ -59,7 +59,7 @@ export default function Solicitacoes() {
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroVale, setFiltroVale] = useState('');
   const [filtroRef, setFiltroRef] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('pendente');
   const [filtroMes, setFiltroMes] = useState('');
   const [filtroRapido, setFiltroRapido] = useState('');
   const [filtroFrota, setFiltroFrota] = useState('');
