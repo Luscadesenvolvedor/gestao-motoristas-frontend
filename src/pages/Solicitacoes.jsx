@@ -119,7 +119,7 @@ export default function Solicitacoes() {
   e.preventDefault();
   try {
     const observacao = montarObservacao(form);
-    const { data } = await api.post('/solicitacoes', { ...form, observacao });
+    const data = formAtual.data ? (() => { const [a,m,d] = formAtual.data.split('-'); return `${d}/${m}`; })() : '';
     if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
     if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
     if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
