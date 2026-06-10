@@ -532,8 +532,11 @@ export default function Solicitacoes() {
                   <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
                     <td style={{ padding:'10px 14px' }}>
   {isAdmin && s.status !== 'pago' ? (
-    <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
-      style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
+      <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
+        style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
+    </div>
   ) : fmt(s.liberado||0)}
 </td>
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
