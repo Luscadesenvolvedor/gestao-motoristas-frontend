@@ -12,6 +12,7 @@ const menus = [
   { path: 'ferias',       label: 'Férias',              icon: 'ti-beach',          recurso: 'ferias' },
   { path: 'agendamentos', label: 'Agendamento',         icon: 'ti-calendar-event', recurso: 'agendamentos' },
   { path: 'financeiro',   label: 'Controle Financeiro', icon: 'ti-coin',           recurso: 'financeiro' },
+  { path: 'indicadores',  label: 'Indicadores',         icon: 'ti-chart-bar',      recurso: 'solicitacoes' },
 ];
 
 export default function Layout() {
