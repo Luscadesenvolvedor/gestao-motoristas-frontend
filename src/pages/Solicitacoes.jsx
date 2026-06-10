@@ -169,9 +169,16 @@ async function salvar(e) {
   }
 
   async function atualizarLiberado(id, liberado) {
-    await api.patch(`/solicitacoes/${id}/liberado`, { liberado: parseFloat(liberado) });
-    carregar();
-  }
+  await api.patch(`/solicitacoes/${id}/liberado`, { liberado: parseFloat(liberado) });
+  carregar();
+}
+
+async function marcarPago(id) {
+  if (!confirm('Marcar esta solicitação como PAGA?')) return;
+  await api.patch(`/solicitacoes/${id}/liberado`, { marcarPago: true });
+  toast.success('Marcado como pago!');
+  carregar();
+}
 
   function toggleSelecionado(id) {
     setSelecionados(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
@@ -534,13 +541,18 @@ async function salvar(e) {
     const sel = selecionados.includes(s.id);
     return (
       <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
-        <td style={{ padding:'10px 14px' }}>
-          <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
-        </td>
-        <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
-        <td style={{ padding:'10px 14px' }}>
-          {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
-        </td>
+        <td style={{ padding:'10px 14px', display:'flex', gap:6, flexWrap:'wrap' }}>
+  {isAdmin && s.status !== 'pago' && (
+    <button onClick={()=>marcarPago(s.id)} style={{ padding:'4px 10px', border:'1px solid #16a34a', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#16a34a' }}>
+      ✓ Pagar
+    </button>
+  )}
+  {podeExcluir && (
+    <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+      Excluir
+    </button>
+  )}
+</td>
         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
