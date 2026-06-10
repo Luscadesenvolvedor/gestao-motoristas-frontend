@@ -535,24 +535,19 @@ async function marcarPago(id) {
                 ))}
               </tr>
             </thead>
-              <tbody>
+             <tbody>
   {listaFiltrada.map(s=>{
     const frota = FROTAS.find(f => f.key === s.motorista?.frota);
     const sel = selecionados.includes(s.id);
     return (
       <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
-        <td style={{ padding:'10px 14px', display:'flex', gap:6, flexWrap:'wrap' }}>
-  {isAdmin && s.status !== 'pago' && (
-    <button onClick={()=>marcarPago(s.id)} style={{ padding:'4px 10px', border:'1px solid #16a34a', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#16a34a' }}>
-      ✓ Pagar
-    </button>
-  )}
-  {podeExcluir && (
-    <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
-      Excluir
-    </button>
-  )}
-</td>
+        <td style={{ padding:'10px 14px' }}>
+          <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
+        </td>
+        <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
+        <td style={{ padding:'10px 14px' }}>
+          {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
+        </td>
         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
@@ -573,7 +568,12 @@ async function marcarPago(id) {
         <td style={{ padding:'10px 14px' }}>
           <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
         </td>
-        <td style={{ padding:'10px 14px' }}>
+        <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
+          {isAdmin && s.status !== 'pago' && (
+            <button onClick={()=>marcarPago(s.id)} style={{ padding:'4px 10px', border:'1px solid #16a34a', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#16a34a' }}>
+              ✓ Pagar
+            </button>
+          )}
           {podeExcluir && (
             <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
               Excluir
@@ -585,7 +585,7 @@ async function marcarPago(id) {
     );
   })}
   {listaFiltrada.length===0 && <tr><td colSpan={13} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
-            </tbody>
+</tbody>
           </table>
         </div>
       </div>
