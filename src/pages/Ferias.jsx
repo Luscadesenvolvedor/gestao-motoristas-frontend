@@ -9,6 +9,12 @@ const TABS = [
   { key: 'abandonos', label: '🚪 Abandonos' },
 ];
 
+function fmtData(str) {
+  if (!str) return '—';
+  const [a, m, d] = str.split('T')[0].split('-');
+  return `${d}/${m}/${a}`;
+}
+
 export default function Ferias() {
   const { isAdmin, pode } = useAuth();
   const [tab, setTab] = useState('ferias');
@@ -132,7 +138,6 @@ export default function Ferias() {
         )}
       </div>
 
-      {/* Tabs */}
       <div style={{ display:'flex', gap:4, marginBottom:16, background:'#f3f4f6', borderRadius:10, padding:4 }}>
         {TABS.map(t => (
           <button key={t.key} onClick={()=>{ setTab(t.key); setShowForm(false); setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }}
@@ -142,7 +147,6 @@ export default function Ferias() {
         ))}
       </div>
 
-      {/* Filtros */}
       <div style={{ background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:12, border:'1px solid #e5e7eb', display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
         <div>
           <label style={lbl}>Motorista</label>
@@ -174,7 +178,6 @@ export default function Ferias() {
         <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }} style={{ ...btn('#f3f4f6','#374151'), fontSize:12 }}>Limpar filtros</button>
       </div>
 
-      {/* Form Férias/Atestado */}
       {showForm && tab === 'ferias' && canEdit && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>Novo registro</h3>
@@ -220,7 +223,6 @@ export default function Ferias() {
         </div>
       )}
 
-      {/* Form Afastamento */}
       {showForm && tab === 'afastamentos' && canEdit && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>Novo afastamento</h3>
@@ -258,7 +260,6 @@ export default function Ferias() {
         </div>
       )}
 
-      {/* Form Abandono */}
       {showForm && tab === 'abandonos' && canEdit && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
           <h3 style={{ fontSize:14, fontWeight:600, marginBottom:14 }}>Registrar abandono</h3>
@@ -288,7 +289,6 @@ export default function Ferias() {
         </div>
       )}
 
-      {/* Tabela Férias/Atestado */}
       {tab === 'ferias' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
           <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
@@ -311,8 +311,8 @@ export default function Ferias() {
                       {f.tipo === 'ferias' ? '🏖️ Férias' : '🏥 Atestado'}
                     </span>
                   </td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{new Date(f.inicio).toLocaleDateString('pt-BR')}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.fim ? new Date(f.fim).toLocaleDateString('pt-BR') : '—'}</td>
+                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{fmtData(f.inicio)}</td>
+                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.fim ? fmtData(f.fim) : '—'}</td>
                   <td style={{ padding:'10px 14px' }}>{calcDias(f.inicio, f.fim)}</td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:emFerias(f)?'#dcfce7':'#f3f4f6', color:emFerias(f)?'#166534':'#6b7280' }}>
@@ -334,7 +334,6 @@ export default function Ferias() {
         </div>
       )}
 
-      {/* Tabela Afastamentos */}
       {tab === 'afastamentos' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
           <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
@@ -352,9 +351,9 @@ export default function Ferias() {
               {afastFiltrados.map(a=>(
                 <tr key={a.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{a.motorista?.nome}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{new Date(a.dataInicio).toLocaleDateString('pt-BR')}</td>
+                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{fmtData(a.dataInicio)}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>
-                    {a.indeterminado ? <span style={{ color:'#d97706', fontSize:12 }}>Indeterminado</span> : a.dataRetorno ? new Date(a.dataRetorno).toLocaleDateString('pt-BR') : '—'}
+                    {a.indeterminado ? <span style={{ color:'#d97706', fontSize:12 }}>Indeterminado</span> : a.dataRetorno ? fmtData(a.dataRetorno) : '—'}
                   </td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:a.retornou?'#dcfce7':'#fee2e2', color:a.retornou?'#166534':'#991b1b' }}>
@@ -380,7 +379,6 @@ export default function Ferias() {
         </div>
       )}
 
-      {/* Tabela Abandonos */}
       {tab === 'abandonos' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
           <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
@@ -398,7 +396,7 @@ export default function Ferias() {
               {abandFiltrados.map(a=>(
                 <tr key={a.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{a.motorista?.nome}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{new Date(a.data).toLocaleDateString('pt-BR')}</td>
+                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{fmtData(a.data)}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{a.observacao || '—'}</td>
                   <td style={{ padding:'10px 14px' }}>
                     {canEdit && (
