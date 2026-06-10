@@ -4,6 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx-js-style';
 
+const hoje = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
 const vazio = { motoristaId:'', tipoId:'', tipoValeId:'', tipoRefId:'', data: new Date().toISOString().split('T')[0], placa:'', valor:'' };
 
 const FROTAS = [
@@ -111,18 +116,18 @@ export default function Solicitacoes() {
   }
 
   async function salvar(e) {
-    e.preventDefault();
-    try {
-      const observacao = montarObservacao(form);
-      const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
-      if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
-      if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
-      if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
-      if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
-      toast.success('Solicitação criada');
-      setForm(vazio); setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); carregar();
-    } catch {}
-  }
+  e.preventDefault();
+  try {
+    const observacao = montarObservacao(form);
+    const { data } = await api.post('/solicitacoes', { ...form, observacao });
+    if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
+    if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
+    if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
+    if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
+    toast.success('Solicitação criada');
+    setForm({ ...vazio, data: hoje() }); setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); carregar();
+  } catch {}
+}
 
   async function excluir(id) {
     if (!confirm('Excluir esta solicitação?')) return;
