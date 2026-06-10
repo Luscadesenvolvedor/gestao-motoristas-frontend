@@ -524,50 +524,51 @@ export default function Solicitacoes() {
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {listaFiltrada.map(s=>{
-                const frota = FROTAS.find(f => f.key === s.motorista?.frota);
-                const sel = selecionados.includes(s.id);
-                return (
-                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
-                    <td style={{ padding:'10px 14px' }}>
-  {isAdmin && s.status !== 'pago' ? (
-    <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-      <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
-      <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
-        style={{ width:80, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
-    </div>
-  ) : fmt(s.liberado||0)}
-</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
-                    <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
-                    <td style={{ padding:'10px 14px' }}>
-                      {isAdmin ? (
-                        <input type="number" defaultValue={s.liberado||''} onBlur={e=>atualizarLiberado(s.id,e.target.value)}
-                          style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
-                      ) : fmt(s.liberado||0)}
-                    </td>
-                    <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
-                      {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
-                    </td>
-                    <td style={{ padding:'10px 14px' }}>
-                      <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
-                    </td>
-                    <td style={{ padding:'10px 14px' }}>
-                      {podeExcluir && (
-                        <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
-                          Excluir
-                        </button>
-                      )}
-                    </td>
-                    {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
-                  </tr>
-                );
-              })}
-              {listaFiltrada.length===0 && <tr><td colSpan={13} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
+              <tbody>
+  {listaFiltrada.map(s=>{
+    const frota = FROTAS.find(f => f.key === s.motorista?.frota);
+    const sel = selecionados.includes(s.id);
+    return (
+      <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
+        <td style={{ padding:'10px 14px' }}>
+          <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
+        </td>
+        <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
+        <td style={{ padding:'10px 14px' }}>
+          {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
+        </td>
+        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
+        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
+        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
+        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
+        <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
+        <td style={{ padding:'10px 14px' }}>
+          {isAdmin && s.status !== 'pago' ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+              <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
+              <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
+                style={{ width:80, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
+            </div>
+          ) : fmt(s.liberado||0)}
+        </td>
+        <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
+          {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
+        </td>
+        <td style={{ padding:'10px 14px' }}>
+          <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
+        </td>
+        <td style={{ padding:'10px 14px' }}>
+          {podeExcluir && (
+            <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+              Excluir
+            </button>
+          )}
+        </td>
+        {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+      </tr>
+    );
+  })}
+  {listaFiltrada.length===0 && <tr><td colSpan={13} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
             </tbody>
           </table>
         </div>
