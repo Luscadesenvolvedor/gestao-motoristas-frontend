@@ -114,7 +114,7 @@ export default function Solicitacoes() {
     e.preventDefault();
     try {
       const observacao = montarObservacao(form);
-      const { data } = await api.post('/solicitacoes', { ...form, observacao });
+      const data = formAtual.data ? new Date(formAtual.data + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
       if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
       if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
       if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
