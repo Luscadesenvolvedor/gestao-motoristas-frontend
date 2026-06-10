@@ -531,12 +531,11 @@ export default function Solicitacoes() {
                 return (
                   <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
                     <td style={{ padding:'10px 14px' }}>
-                      <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
-                    </td>
-                    <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
-                    <td style={{ padding:'10px 14px' }}>
-                      {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
-                    </td>
+  {isAdmin && s.status !== 'pago' ? (
+    <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
+      style={{ width:90, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
+  ) : fmt(s.liberado||0)}
+</td>
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
