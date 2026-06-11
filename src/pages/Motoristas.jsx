@@ -1,4 +1,3 @@
-// frontend/src/pages/Motoristas.jsx
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,14 +32,15 @@ export default function Motoristas() {
   const [editId, setEditId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [busca, setBusca] = useState('');
+  const [mostrarDesligados, setMostrarDesligados] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const carregar = useCallback(async (termo = busca) => {
-    const { data } = await api.get('/motoristas', { params: { busca: termo } });
+    const { data } = await api.get('/motoristas', { params: { busca: termo, status: mostrarDesligados ? 'desligado' : 'ativo' } });
     setMotoristas(data);
-  }, [busca]);
+  }, [busca, mostrarDesligados]);
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); }, [mostrarDesligados]);
 
   useEffect(() => {
     const timer = setTimeout(() => { carregar(busca); }, 300);
@@ -103,7 +103,7 @@ export default function Motoristas() {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Motoristas</h2>
-          <p style={{ fontSize:13, color:'#6b7280', marginTop:2 }}>{motoristas.length} cadastrados</p>
+          <p style={{ fontSize:13, color:'#6b7280', marginTop:2 }}>{motoristas.length} {mostrarDesligados ? 'desligados' : 'ativos'}</p>
         </div>
         {canEdit && (
           <button onClick={() => { setForm(vazio); setEditId(null); setShowForm(v => !v); }}
@@ -129,8 +129,8 @@ export default function Motoristas() {
               <div>
                 <label style={labelStyle}>Frota</label>
                 <select value={form.frota} onChange={e=>setForm(f=>({...f,frota:e.target.value}))} style={inputStyle}>
-  {FROTAS.map(x=><option key={x} value={x}>{FROTAS_LABEL[x]}</option>)}
-               </select>
+                  {FROTAS.map(x=><option key={x} value={x}>{FROTAS_LABEL[x]}</option>)}
+                </select>
               </div>
               <div>
                 <label style={labelStyle}>Status</label>
@@ -155,9 +155,13 @@ export default function Motoristas() {
       )}
 
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
-        <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb' }}>
+        <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb', display:'flex', gap:10, alignItems:'center' }}>
           <input placeholder="Buscar motorista..." value={busca} onChange={e => setBusca(e.target.value)}
             style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, width:260 }} />
+          <button onClick={()=>setMostrarDesligados(v=>!v)}
+            style={{ padding:'8px 14px', border:'1px solid '+(mostrarDesligados?'#EB3238':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:mostrarDesligados?'#EB3238':'#fff', color:mostrarDesligados?'#fff':'#374151', fontWeight:mostrarDesligados?500:400 }}>
+            {mostrarDesligados ? '● Desligados' : 'Desligados'}
+          </button>
         </div>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
@@ -174,7 +178,7 @@ export default function Motoristas() {
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{m.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.cpf}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.contato}</td>
-                  <td style={{ padding:'10px 14px', textTransform:'uppercase', fontSize:12 }}>{FROTAS_LABEL[m.frota] || m.frota?.toUpperCase()}</td>
+                  <td style={{ padding:'10px 14px', fontSize:12 }}>{FROTAS_LABEL[m.frota] || m.frota?.toUpperCase()}</td>
                   <td style={{ padding:'10px 14px' }}>{CATEGORIAS_LABEL[m.categoria]}</td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:m.status==='ativo'?'#dcfce7':'#fee2e2', color:m.status==='ativo'?'#166534':'#991b1b' }}>
