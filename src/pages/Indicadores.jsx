@@ -6,7 +6,8 @@ const MESES_NOMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out'
 const FROTAS = [
   { key:'buzin', label:'BUZIN', cor:'#EB3238' },
   { key:'lbm',   label:'LBM',   cor:'#1a1a2e' },
-  { key:'meli',  label:'MELI',  cor:'#d97706' },
+  { key:'meli_buzin',label:'MELI BUZIN',cor:'#f97316' },
+  { key:'meli_lbm',  label:'MELI LBM',  cor:'#8b5cf6' },
 ];
 
 const TIPOS_RAPIDOS = [
@@ -94,7 +95,7 @@ export default function Indicadores() {
 
       {/* Cards por frota */}
       <h3 style={{ fontSize:14, fontWeight:600, color:'#374151', marginBottom:10 }}>Por Frota</h3>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:12, marginBottom:24 }}>
         {totaisFrota.map(f => (
           <div key={f.key} style={{ background:'#fff', borderRadius:12, padding:'16px 20px', border:`2px solid ${f.cor}` }}>
             <div style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.5px', color:f.cor, fontWeight:700, marginBottom:6 }}>{f.label}</div>
