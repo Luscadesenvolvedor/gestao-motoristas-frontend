@@ -354,7 +354,7 @@ async function marcarPago(id) {
               <div>
                 <label style={lbl}>Tipo</label>
                 <div style={{ display:'flex', gap:8 }}>
-                  <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                  <select value={form.tipoValeId} onChange={e=>setForm(f=>({...f,tipoValeId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
                     {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
@@ -422,7 +422,7 @@ async function marcarPago(id) {
               <div>
                 <label style={lbl}>Ref</label>
                 <div style={{ display:'flex', gap:8 }}>
-                  <select value={form.tipoRefId} onChange={e=>setForm(f=>({...f,tipoRefId:e.target.value}))} style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                  <select value={form.tipoRefId} onChange={e=>setForm(f=>({...f,tipoRefId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
                     {tiposRef.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
@@ -448,7 +448,7 @@ async function marcarPago(id) {
 
               <div>
                 <label style={lbl}>Placa</label>
-                <input value={form.placa} onChange={e=>setForm(f=>({...f,placa:e.target.value}))} placeholder="ABC-1234" style={inp}/>
+                <input value={form.placa} onChange={e=>setForm(f=>({...f,placa:e.target.value}))} placeholder="ABC-1234" required style={inp}/>
               </div>
               <div>
                 <label style={lbl}>Valor (R$)</label>
