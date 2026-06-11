@@ -33,14 +33,21 @@ export default function Motoristas() {
   const [showForm, setShowForm] = useState(false);
   const [busca, setBusca] = useState('');
   const [mostrarDesligados, setMostrarDesligados] = useState(false);
+  const [filtroFrota, setFiltroFrota] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const carregar = useCallback(async (termo = busca) => {
-    const { data } = await api.get('/motoristas', { params: { busca: termo, status: mostrarDesligados ? 'desligado' : 'ativo' } });
+    const { data } = await api.get('/motoristas', { params: {
+      busca: termo,
+      status: mostrarDesligados ? 'desligado' : 'ativo',
+      frota: filtroFrota || undefined,
+      categoria: filtroCategoria || undefined
+    }});
     setMotoristas(data);
-  }, [busca, mostrarDesligados]);
+  }, [busca, mostrarDesligados, filtroFrota, filtroCategoria]);
 
-  useEffect(() => { carregar(); }, [mostrarDesligados]);
+  useEffect(() => { carregar(); }, [mostrarDesligados, filtroFrota, filtroCategoria]);
 
   useEffect(() => {
     const timer = setTimeout(() => { carregar(busca); }, 300);
@@ -155,12 +162,26 @@ export default function Motoristas() {
       )}
 
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
-        <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb', display:'flex', gap:10, alignItems:'center' }}>
+        <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
           <input placeholder="Buscar motorista..." value={busca} onChange={e => setBusca(e.target.value)}
-            style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, width:260 }} />
+            style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, width:220 }} />
+          <select value={filtroFrota} onChange={e=>setFiltroFrota(e.target.value)}
+            style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todas as frotas</option>
+            {FROTAS.map(x=><option key={x} value={x}>{FROTAS_LABEL[x]}</option>)}
+          </select>
+          <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)}
+            style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+            <option value="">Todas as categorias</option>
+            {CATEGORIAS.map(x=><option key={x} value={x}>{CATEGORIAS_LABEL[x]}</option>)}
+          </select>
           <button onClick={()=>setMostrarDesligados(v=>!v)}
             style={{ padding:'8px 14px', border:'1px solid '+(mostrarDesligados?'#EB3238':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:mostrarDesligados?'#EB3238':'#fff', color:mostrarDesligados?'#fff':'#374151', fontWeight:mostrarDesligados?500:400 }}>
             {mostrarDesligados ? '● Desligados' : 'Desligados'}
+          </button>
+          <button onClick={()=>{ setBusca(''); setFiltroFrota(''); setFiltroCategoria(''); setMostrarDesligados(false); }}
+            style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff', color:'#6b7280' }}>
+            Limpar
           </button>
         </div>
         <div style={{ overflowX:'auto' }}>
