@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 
 const CATEGORIAS = ['frota', 'dedicado_usiminas', 'dedicado_arcelormittal', 'patio', 'tirador_ferias'];
 const CATEGORIAS_LABEL = { frota: 'Frota', dedicado_usiminas: 'Ded. Usiminas', dedicado_arcelormittal: 'Ded. ArcelorMittal', patio: 'Pátio', tirador_ferias: 'Tirador Férias' };
-const FROTAS = ['buzin', 'lbm', 'meli'];
+const FROTAS = ['buzin', 'lbm', 'meli_buzin', 'meli_lbm'];
+const FROTAS_LABEL = { buzin: 'BUZIN', lbm: 'LBM', meli_buzin: 'MELI BUZIN', meli_lbm: 'MELI LBM' };
 
 const vazio = { nome:'', cpf:'', contato:'', banco:'', agencia:'', conta:'', pix:'', destinatario:'', frota:'buzin', status:'ativo', categoria:'frota' };
 
@@ -128,8 +129,8 @@ export default function Motoristas() {
               <div>
                 <label style={labelStyle}>Frota</label>
                 <select value={form.frota} onChange={e=>setForm(f=>({...f,frota:e.target.value}))} style={inputStyle}>
-                  {FROTAS.map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}
-                </select>
+  {FROTAS.map(x=><option key={x} value={x}>{FROTAS_LABEL[x]}</option>)}
+               </select>
               </div>
               <div>
                 <label style={labelStyle}>Status</label>
@@ -173,7 +174,7 @@ export default function Motoristas() {
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{m.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.cpf}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.contato}</td>
-                  <td style={{ padding:'10px 14px', textTransform:'uppercase', fontSize:12 }}>{m.frota}</td>
+                  <td style={{ padding:'10px 14px', textTransform:'uppercase', fontSize:12 }}>{FROTAS_LABEL[m.frota] || m.frota?.toUpperCase()}</td>
                   <td style={{ padding:'10px 14px' }}>{CATEGORIAS_LABEL[m.categoria]}</td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:m.status==='ativo'?'#dcfce7':'#fee2e2', color:m.status==='ativo'?'#166534':'#991b1b' }}>
