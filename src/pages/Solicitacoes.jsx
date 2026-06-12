@@ -354,7 +354,7 @@ async function marcarPago(id) {
               <div>
                 <label style={lbl}>Tipo</label>
                 <div style={{ display:'flex', gap:8 }}>
-                  <select value={form.tipoValeId} onChange={e=>setForm(f=>({...f,tipoValeId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                  <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}> required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
                     {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
