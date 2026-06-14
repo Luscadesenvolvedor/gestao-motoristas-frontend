@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx-js-style';
 
+
 function dataHoje() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -321,6 +322,7 @@ export default function Solicitacoes() {
   const previewObs = montarObservacao(form);
   const podeExcluir = usuario?.papel === 'admin' || usuario?.papel === 'financeiro';
   const todosSelecionados = selecionados.length === listaFiltrada.length && listaFiltrada.length > 0;
+  const ocultarLiberadoPendente = filtroRapido === 'saldos';
 
   return (
     <div>
@@ -562,7 +564,7 @@ export default function Solicitacoes() {
                 <th style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', width:40 }}>
                   <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
                 </th>
-                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Data Pagto','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Status','Data Pagto','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -586,20 +588,24 @@ export default function Solicitacoes() {
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
                     <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
-                    <td style={{ padding:'10px 14px' }}>
-                      {saldo ? (
-                        fmt(s.valor)
-                      ) : isAdmin && s.status !== 'pago' ? (
-                        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                          <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
-                          <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
-                            style={{ width:80, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
-                        </div>
-                      ) : fmt(s.liberado||0)}
-                    </td>
-                    <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
-                      {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
-                    </td>
+                    {!ocultarLiberadoPendente && (
+  <>
+    <td style={{ padding:'10px 14px' }}>
+      {saldo ? (
+        '—'
+      ) : isAdmin && s.status !== 'pago' ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+          <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
+          <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
+            style={{ width:80, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
+        </div>
+      ) : fmt(s.liberado||0)}
+    </td>
+    <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
+      {saldo ? '—' : fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
+    </td>
+  </>
+)}
                     <td style={{ padding:'10px 14px' }}>
                       <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
                     </td>
