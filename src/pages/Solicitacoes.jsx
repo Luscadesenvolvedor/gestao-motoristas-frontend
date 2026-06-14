@@ -37,6 +37,10 @@ const estiloCelula = {
   }
 };
 
+function ehTipoSaldo(nomeTipo) {
+  return (nomeTipo || '').toLowerCase().includes('saldo');
+}
+
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
   const [lista, setLista] = useState([]);
@@ -98,35 +102,37 @@ export default function Solicitacoes() {
   }
 
   function montarObservacao(formAtual) {
-  const vale = tiposVale.find(t => t.id === formAtual.tipoValeId)?.nome || '';
-  const tipo = tipos.find(t => t.id === formAtual.tipoId)?.nome || '';
-  const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
-  const nomesTipo = tipo.toLowerCase();
-  const usaConta = nomesTipo.includes('saldo') || nomesTipo.includes('folga');
-  const pagamento = usaConta ? 'Dep em Conta' : (pixMotorista ? `Dep via PIX: ${pixMotorista}` : '');
-  const data = formAtual.data ? (() => { const [a,m,d] = formAtual.data.split('-'); return `${d}/${m}`; })() : '';
-  const partes = [];
-  if (vale) partes.push(vale);
-  if (tipo) partes.push(tipo);
-  if (ref) partes.push(`Ref: ${ref}`);
-  if (pagamento) partes.push(pagamento);
-  if (data) partes.push(data);
-  return partes.join(' - ');
-}
+    const vale = tiposVale.find(t => t.id === formAtual.tipoValeId)?.nome || '';
+    const tipo = tipos.find(t => t.id === formAtual.tipoId)?.nome || '';
+    const ref = tiposRef.find(t => t.id === formAtual.tipoRefId)?.nome || '';
+    const nomesTipo = tipo.toLowerCase();
+    const saldo = nomesTipo.includes('saldo');
+    const usaConta = saldo || nomesTipo.includes('folga');
+    const pagamento = usaConta ? 'Dep em Conta' : (pixMotorista ? `Dep via PIX: ${pixMotorista}` : '');
+    const data = formAtual.data ? (() => { const [a,m,d] = formAtual.data.split('-'); return `${d}/${m}`; })() : '';
+    const partes = [];
+    if (vale) partes.push(vale);
+    if (tipo) partes.push(tipo);
+    if (ref) partes.push(`Ref: ${ref}`);
+    if (saldo) partes.push(`Solicitado por: ${usuario?.nome || ''}`);
+    if (pagamento) partes.push(pagamento);
+    if (data) partes.push(data);
+    return partes.join(' - ');
+  }
 
-async function salvar(e) {
-  e.preventDefault();
-  try {
-    const observacao = montarObservacao(form);
-    const { data } = await api.post('/solicitacoes', { ...form, observacao });
-    if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
-    if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
-    if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
-    if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
-    toast.success('Solicitação criada');
-    setForm({...vazio, data: dataHoje()}); setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); carregar();
-  } catch {}
-}
+  async function salvar(e) {
+    e.preventDefault();
+    try {
+      const observacao = montarObservacao(form);
+      const { data } = await api.post('/solicitacoes', { ...form, observacao });
+      if (data.alertaFerias) toast.error('🏖️ Este motorista está de FÉRIAS!', { duration: 6000 });
+      if (data.alertaAtestado) toast.error('🏥 Este motorista está de ATESTADO!', { duration: 6000 });
+      if (data.alertaAfastamento) toast.error('⚠️ Este motorista está AFASTADO!', { duration: 6000 });
+      if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
+      toast.success('Solicitação criada');
+      setForm({...vazio, data: dataHoje()}); setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); carregar();
+    } catch {}
+  }
 
   async function excluir(id) {
     if (!confirm('Excluir esta solicitação?')) return;
@@ -169,16 +175,21 @@ async function salvar(e) {
   }
 
   async function atualizarLiberado(id, liberado) {
-  await api.patch(`/solicitacoes/${id}/liberado`, { liberado: parseFloat(liberado) });
-  carregar();
-}
+    await api.patch(`/solicitacoes/${id}/liberado`, { liberado: parseFloat(liberado) });
+    carregar();
+  }
 
-async function marcarPago(id) {
-  if (!confirm('Marcar esta solicitação como PAGA?')) return;
-  await api.patch(`/solicitacoes/${id}/liberado`, { marcarPago: true });
-  toast.success('Marcado como pago!');
-  carregar();
-}
+  async function marcarPago(id) {
+    if (!confirm('Marcar esta solicitação como PAGA?')) return;
+    await api.patch(`/solicitacoes/${id}/liberado`, { marcarPago: true });
+    toast.success('Marcado como pago!');
+    carregar();
+  }
+
+  async function atualizarDataPagamento(id, data) {
+    await api.patch(`/solicitacoes/${id}/data-pagamento`, { dataPagamento: data || null });
+    carregar();
+  }
 
   function toggleSelecionado(id) {
     setSelecionados(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
@@ -230,30 +241,50 @@ async function marcarPago(id) {
   const liberadoBase = base.reduce((s, x) => s + Number(x.liberado || 0), 0);
   const pendenteBase = totalBase - liberadoBase;
 
-  function exportarExcel() {
+  async function exportarExcel() {
     const exportBase = selecionados.length > 0
       ? listaFiltrada.filter(s => selecionados.includes(s.id))
       : listaFiltrada;
+
+    const idsSaldo = [];
+    const observacoesFinais = {};
+    exportBase.forEach(s => {
+      if (ehTipoSaldo(s.tipo?.nome)) {
+        let obs = s.observacao || '';
+        obs = obs.replace(/ - Realizado por: .*/i, '');
+        if (s.dataPagamento) {
+          const [a,m,d] = s.dataPagamento.split('T')[0].split('-');
+          obs = obs.replace(/\d{2}\/\d{2}$/, `${d}/${m}`);
+        }
+        obs = `${obs} - Realizado por: ${usuario?.nome || ''}`;
+        observacoesFinais[s.id] = obs;
+        idsSaldo.push(s.id);
+      }
+    });
+
+    if (idsSaldo.length > 0) {
+      try { await api.patch('/solicitacoes/marcar-realizado', { ids: idsSaldo, observacoes: observacoesFinais }); } catch {}
+    }
 
     const cabecalho = ['Motorista','Liberado','Vale','Placa','Banco','Agência','Conta','Tipo','Observação'];
 
     const linhas = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
+      const liberadoFinal = ehTipoSaldo(s.tipo?.nome) ? Number(s.valor) : Number(s.liberado || 0);
       return [
         { v: (s.motorista?.nome || '').toUpperCase(), s: estiloCelula },
-        { v: Number(s.liberado || 0), s: estiloCelula },
+        { v: liberadoFinal, s: estiloCelula },
         { v: s.tipoVale?.nome || '', s: estiloCelula },
         { v: s.placa || '', s: estiloCelula },
         { v: m?.banco || '', s: estiloCelula },
         { v: m?.agencia || '', s: estiloCelula },
         { v: m?.conta || '', s: estiloCelula },
         { v: s.tipo?.nome || '', s: estiloCelula },
-        { v: s.observacao || '', s: estiloCelula },
+        { v: observacoesFinais[s.id] || s.observacao || '', s: estiloCelula },
       ];
     });
 
-    // Linha de total
-    const totalLiberado = exportBase.reduce((s, x) => s + Number(x.liberado || 0), 0);
+    const totalLiberado = linhas.reduce((s, x) => s + Number(x[1].v || 0), 0);
     linhas.push([
       { v: '', s: estiloCelula },
       { v: totalLiberado, s: { ...estiloCelula, font: { bold: true } } },
@@ -280,6 +311,7 @@ async function marcarPago(id) {
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
     XLSX.writeFile(wb, `solicitacoes_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
     toast.success('Excel exportado!');
+    if (idsSaldo.length > 0) carregar();
   }
 
   const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -354,7 +386,7 @@ async function marcarPago(id) {
               <div>
                 <label style={lbl}>Tipo</label>
                 <div style={{ display:'flex', gap:8 }}>
-                 <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                  <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
                     {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
@@ -395,7 +427,7 @@ async function marcarPago(id) {
               <div>
                 <label style={lbl}>Vale</label>
                 <div style={{ display:'flex', gap:8 }}>
-                  <select value={form.tipoValeId} onChange={e=>setForm(f=>({...f,tipoValeId:e.target.value}))} style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+                  <select value={form.tipoValeId} onChange={e=>setForm(f=>({...f,tipoValeId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
                     {tiposVale.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
@@ -530,62 +562,72 @@ async function marcarPago(id) {
                 <th style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', width:40 }}>
                   <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
                 </th>
-                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor','Liberado','Pendente','Status','Data Pagto','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
-             <tbody>
-  {listaFiltrada.map(s=>{
-    const frota = FROTAS.find(f => f.key === s.motorista?.frota);
-    const sel = selecionados.includes(s.id);
-    return (
-      <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
-        <td style={{ padding:'10px 14px' }}>
-          <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
-        </td>
-        <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
-        <td style={{ padding:'10px 14px' }}>
-          {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
-        </td>
-        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
-        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
-        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
-        <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
-        <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
-        <td style={{ padding:'10px 14px' }}>
-          {isAdmin && s.status !== 'pago' ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-              <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
-              <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
-                style={{ width:80, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
-            </div>
-          ) : fmt(s.liberado||0)}
-        </td>
-        <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
-          {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
-        </td>
-        <td style={{ padding:'10px 14px' }}>
-          <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
-        </td>
-        <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
-          {isAdmin && s.status !== 'pago' && (
-            <button onClick={()=>marcarPago(s.id)} style={{ padding:'4px 10px', border:'1px solid #16a34a', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#16a34a' }}>
-              ✓ Pagar
-            </button>
-          )}
-          {podeExcluir && (
-            <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
-              Excluir
-            </button>
-          )}
-        </td>
-        {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
-      </tr>
-    );
-  })}
-  {listaFiltrada.length===0 && <tr><td colSpan={13} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
-</tbody>
+            <tbody>
+              {listaFiltrada.map(s=>{
+                const frota = FROTAS.find(f => f.key === s.motorista?.frota);
+                const sel = selecionados.includes(s.id);
+                const saldo = ehTipoSaldo(s.tipo?.nome);
+                return (
+                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
+                    <td style={{ padding:'10px 14px' }}>
+                      <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
+                    </td>
+                    <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
+                    </td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
+                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
+                    <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {saldo ? (
+                        fmt(s.valor)
+                      ) : isAdmin && s.status !== 'pago' ? (
+                        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                          <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
+                          <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
+                            style={{ width:80, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
+                        </div>
+                      ) : fmt(s.liberado||0)}
+                    </td>
+                    <td style={{ padding:'10px 14px', fontWeight:500, color:'#d97706' }}>
+                      {fmt(Math.max(0, Number(s.valor) - Number(s.liberado||0)))}
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
+                    </td>
+                    <td style={{ padding:'10px 14px' }}>
+                      {saldo ? (
+                        <input type="date" value={s.dataPagamento ? s.dataPagamento.split('T')[0] : ''}
+                          onChange={e=>atualizarDataPagamento(s.id, e.target.value)}
+                          style={{ padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, width:120 }}/>
+                      ) : '—'}
+                    </td>
+                    <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
+                      {isAdmin && s.status !== 'pago' && (
+                        <button onClick={()=>marcarPago(s.id)} style={{ padding:'4px 10px', border:'1px solid #16a34a', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#16a34a' }}>
+                          ✓ Pagar
+                        </button>
+                      )}
+                      {podeExcluir && (
+                        <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+                          Excluir
+                        </button>
+                      )}
+                    </td>
+                    {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+                  </tr>
+                );
+              })}
+              {listaFiltrada.length===0 && <tr><td colSpan={14} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
+            </tbody>
           </table>
         </div>
       </div>
