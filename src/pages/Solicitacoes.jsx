@@ -328,7 +328,7 @@ export default function Solicitacoes() {
     <div>
       <div style={{ display:'flex', gap:10, marginBottom:16 }}>
         {FROTAS.map(f => {
-          const total = lista.filter(s => s.motorista?.frota === f.key).length;
+         const total = lista.filter(s => s.motorista?.frota === f.key && s.status === 'pendente').length;
           const ativo = filtroFrota === f.key;
           return (
             <button key={f.key} onClick={() => setFiltroFrota(ativo ? '' : f.key)}
