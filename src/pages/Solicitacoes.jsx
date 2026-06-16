@@ -203,6 +203,19 @@ export default function Solicitacoes() {
     carregar();
   }
 
+  async function aplicarDataEmMassa(data) {
+    if (!data) return;
+    const ids = selecionados.length > 0
+      ? listaFiltrada.filter(s => selecionados.includes(s.id)).map(s => s.id)
+      : listaFiltrada.map(s => s.id);
+    if (!ids.length) return;
+    const qtd = ids.length;
+    if (!confirm(`Aplicar data ${data.split('-').reverse().join('/')} em ${qtd} registro(s)?`)) return;
+    await api.patch('/solicitacoes/data-pagamento-bulk', { ids, dataPagamento: data });
+    toast.success(`Data aplicada em ${qtd} registro(s)!`);
+    carregar();
+  }
+
   function toggleSelecionado(id) {
     setSelecionados(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   }
@@ -568,6 +581,14 @@ export default function Solicitacoes() {
             Limpar seleção ({selecionados.length})
           </button>
         )}
+        <div style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto' }}>
+          <span style={{ fontSize:12, color:'#6b7280', whiteSpace:'nowrap' }}>
+            Data pagto {selecionados.length > 0 ? `(${selecionados.length} selecionados)` : '(todos filtrados)'}:
+          </span>
+          <input type="date"
+            onChange={e => aplicarDataEmMassa(e.target.value)}
+            style={{ padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+        </div>
       </div>
 
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
