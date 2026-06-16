@@ -48,7 +48,9 @@ function ehTipoFluxo(nomeTipo) {
 }
 
 function limparPix(pix) {
-  return (pix || '').replace(/[^a-zA-Z0-9@._\-+]/g, '');
+  const p = pix || '';
+  if (p.includes('@')) return p.trim();
+  return p.replace(/[^a-zA-Z0-9]/g, '');
 }
 
 export default function Solicitacoes() {
