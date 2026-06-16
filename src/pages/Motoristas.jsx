@@ -58,7 +58,6 @@ export default function Motoristas() {
     setForm(m);
     setEditId(m.id);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function salvar(e) {
@@ -121,43 +120,45 @@ export default function Motoristas() {
       </div>
 
       {showForm && canEdit && (
-        <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
-          <h3 style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>{editId ? 'Editar' : 'Novo'} motorista</h3>
-          <form onSubmit={salvar}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
-              <div><label style={labelStyle}>Nome *</label><input type="text" value={form.nome||''} onChange={e=>setForm(f=>({...f,nome:e.target.value}))} required style={inputStyle} /></div>
-              <div><label style={labelStyle}>CPF *</label><input type="text" value={form.cpf||''} onChange={handleCPF} required placeholder="000.000.000-00" style={inputStyle} /></div>
-              <div><label style={labelStyle}>Contato *</label><input type="text" value={form.contato||''} onChange={handleContato} required placeholder="(00) 0 0000-0000" style={inputStyle} /></div>
-              <div><label style={labelStyle}>Banco</label><input type="text" value={form.banco||''} onChange={e=>setForm(f=>({...f,banco:e.target.value}))} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Agência</label><input type="text" value={form.agencia||''} onChange={e=>setForm(f=>({...f,agencia:e.target.value}))} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Conta</label><input type="text" value={form.conta||''} onChange={e=>setForm(f=>({...f,conta:e.target.value}))} style={inputStyle} /></div>
-              <div><label style={labelStyle}>PIX</label><input type="text" value={form.pix||''} onChange={e=>setForm(f=>({...f,pix:e.target.value}))} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Destinatário (opcional)</label><input type="text" value={form.destinatario||''} onChange={e=>setForm(f=>({...f,destinatario:e.target.value}))} style={inputStyle} /></div>
-              <div>
-                <label style={labelStyle}>Frota</label>
-                <select value={form.frota} onChange={e=>setForm(f=>({...f,frota:e.target.value}))} style={inputStyle}>
-                  {FROTAS.map(x=><option key={x} value={x}>{FROTAS_LABEL[x]}</option>)}
-                </select>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:12, padding:24, width:'100%', maxWidth:700, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>
+            <h3 style={{ fontSize:15, fontWeight:600, marginBottom:16 }}>{editId ? 'Editar' : 'Novo'} motorista</h3>
+            <form onSubmit={salvar}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>
+                <div><label style={labelStyle}>Nome *</label><input type="text" value={form.nome||''} onChange={e=>setForm(f=>({...f,nome:e.target.value}))} required style={inputStyle} /></div>
+                <div><label style={labelStyle}>CPF *</label><input type="text" value={form.cpf||''} onChange={handleCPF} required placeholder="000.000.000-00" style={inputStyle} /></div>
+                <div><label style={labelStyle}>Contato *</label><input type="text" value={form.contato||''} onChange={handleContato} required placeholder="(00) 0 0000-0000" style={inputStyle} /></div>
+                <div><label style={labelStyle}>Banco</label><input type="text" value={form.banco||''} onChange={e=>setForm(f=>({...f,banco:e.target.value}))} style={inputStyle} /></div>
+                <div><label style={labelStyle}>Agência</label><input type="text" value={form.agencia||''} onChange={e=>setForm(f=>({...f,agencia:e.target.value}))} style={inputStyle} /></div>
+                <div><label style={labelStyle}>Conta</label><input type="text" value={form.conta||''} onChange={e=>setForm(f=>({...f,conta:e.target.value}))} style={inputStyle} /></div>
+                <div><label style={labelStyle}>PIX</label><input type="text" value={form.pix||''} onChange={e=>setForm(f=>({...f,pix:e.target.value}))} style={inputStyle} /></div>
+                <div><label style={labelStyle}>Destinatário (opcional)</label><input type="text" value={form.destinatario||''} onChange={e=>setForm(f=>({...f,destinatario:e.target.value}))} style={inputStyle} /></div>
+                <div>
+                  <label style={labelStyle}>Frota</label>
+                  <select value={form.frota} onChange={e=>setForm(f=>({...f,frota:e.target.value}))} style={inputStyle}>
+                    {FROTAS.map(x=><option key={x} value={x}>{FROTAS_LABEL[x]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Status</label>
+                  <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inputStyle}>
+                    <option value="ativo">Ativo</option>
+                    <option value="desligado">Desligado</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Categoria</label>
+                  <select value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))} style={inputStyle}>
+                    {CATEGORIAS.map(x=><option key={x} value={x}>{CATEGORIAS_LABEL[x]}</option>)}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label style={labelStyle}>Status</label>
-                <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inputStyle}>
-                  <option value="ativo">Ativo</option>
-                  <option value="desligado">Desligado</option>
-                </select>
+              <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
+                <button type="button" onClick={() => { setShowForm(false); setEditId(null); setForm(vazio); }} style={{ padding:'8px 16px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Cancelar</button>
+                <button type="submit" style={{ padding:'8px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
               </div>
-              <div>
-                <label style={labelStyle}>Categoria</label>
-                <select value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))} style={inputStyle}>
-                  {CATEGORIAS.map(x=><option key={x} value={x}>{CATEGORIAS_LABEL[x]}</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
-              <button type="button" onClick={() => setShowForm(false)} style={{ padding:'8px 16px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Cancelar</button>
-              <button type="submit" style={{ padding:'8px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       )}
 
