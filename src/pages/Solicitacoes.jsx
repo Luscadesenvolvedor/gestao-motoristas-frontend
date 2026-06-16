@@ -42,6 +42,15 @@ function ehTipoSaldo(nomeTipo) {
   return (nomeTipo || '').toLowerCase().includes('saldo');
 }
 
+function ehTipoFluxo(nomeTipo) {
+  const n = (nomeTipo || '').toLowerCase();
+  return !n.includes('saldo') && !n.includes('folga');
+}
+
+function limparPix(pix) {
+  return (pix || '').replace(/[^a-zA-Z0-9]/g, '');
+}
+
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
   const [lista, setLista] = useState([]);
@@ -109,7 +118,7 @@ export default function Solicitacoes() {
     const nomesTipo = tipo.toLowerCase();
     const saldo = nomesTipo.includes('saldo');
     const usaConta = saldo || nomesTipo.includes('folga');
-    const pagamento = usaConta ? 'Dep em Conta' : (pixMotorista ? `Dep via PIX: ${pixMotorista}` : '');
+    const pagamento = usaConta ? 'Dep via Envelope' : (pixMotorista ? `Dep via PIX: ${pixMotorista}` : '');
     const data = formAtual.data ? (() => { const [a,m,d] = formAtual.data.split('-'); return `${d}/${m}`; })() : '';
     const partes = [];
     if (vale) partes.push(vale);
@@ -267,21 +276,24 @@ export default function Solicitacoes() {
       try { await api.patch('/solicitacoes/marcar-realizado', { ids: idsSaldo, observacoes: observacoesFinais }); } catch {}
     }
 
-    const cabecalho = ['Motorista','Liberado','Vale','Placa','Banco','Agência','Conta','Tipo','Observação'];
+    const cabecalho = ['Motorista','Liberado','Vale','Placa','Banco','Agência','Conta','Tipo','Observação','PIX'];
 
     const linhas = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
       const liberadoFinal = ehTipoSaldo(s.tipo?.nome) ? Number(s.valor) : Number(s.liberado || 0);
+      const fluxo = ehTipoFluxo(s.tipo?.nome);
+      const ehLbm = s.motorista?.frota === 'lbm';
       return [
         { v: (s.motorista?.nome || '').toUpperCase(), s: estiloCelula },
         { v: liberadoFinal, s: estiloCelula },
         { v: s.tipoVale?.nome || '', s: estiloCelula },
         { v: s.placa || '', s: estiloCelula },
-        { v: m?.banco || '', s: estiloCelula },
-        { v: m?.agencia || '', s: estiloCelula },
-        { v: m?.conta || '', s: estiloCelula },
+        { v: fluxo ? '' : (m?.banco || ''), s: estiloCelula },
+        { v: fluxo ? '' : (m?.agencia || ''), s: estiloCelula },
+        { v: fluxo ? '' : (m?.conta || ''), s: estiloCelula },
         { v: s.tipo?.nome || '', s: estiloCelula },
         { v: observacoesFinais[s.id] || s.observacao || '', s: estiloCelula },
+        { v: (fluxo && ehLbm) ? limparPix(m?.pix) : '', s: estiloCelula },
       ];
     });
 
@@ -289,6 +301,7 @@ export default function Solicitacoes() {
     linhas.push([
       { v: '', s: estiloCelula },
       { v: totalLiberado, s: { ...estiloCelula, font: { bold: true } } },
+      { v: '', s: estiloCelula },
       { v: '', s: estiloCelula },
       { v: '', s: estiloCelula },
       { v: '', s: estiloCelula },
@@ -305,7 +318,7 @@ export default function Solicitacoes() {
 
     ws['!cols'] = [
       { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
-      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 60 },
+      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 60 }, { wch: 18 },
     ];
 
     const wb = XLSX.utils.book_new();
