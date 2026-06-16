@@ -291,9 +291,9 @@ export default function Solicitacoes() {
         { v: s.tipoVale?.nome || '', s: estiloCelula },
         { v: s.placa || '', s: estiloCelula },
         { v: s.tipo?.nome || '', s: estiloCelula },
-        { v: !fluxo ? (m?.banco || '') : '', s: estiloCelula },
-        { v: !fluxo ? (m?.agencia || '') : '', s: estiloCelula },
-        { v: !fluxo ? (m?.conta || '') : '', s: estiloCelula },
+        { v: m?.banco || '', s: estiloCelula },
+        { v: m?.agencia || '', s: estiloCelula },
+        { v: m?.conta || '', s: estiloCelula },
         { v: (fluxo && ehLbm) ? limparPix(m?.pix) : '', s: estiloCelula },
         { v: observacoesFinais[s.id] || s.observacao || '', s: estiloCelula },
       ];
