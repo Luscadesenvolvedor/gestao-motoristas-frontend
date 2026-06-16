@@ -599,7 +599,7 @@ export default function Solicitacoes() {
                 <th style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', width:40 }}>
                   <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
                 </th>
-                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Status','Data Pagto','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -643,13 +643,6 @@ export default function Solicitacoes() {
 )}
                     <td style={{ padding:'10px 14px' }}>
                       <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
-                    </td>
-                    <td style={{ padding:'10px 14px' }}>
-                      {saldo ? (
-                        <input type="date" value={s.dataPagamento ? s.dataPagamento.split('T')[0] : ''}
-                          onChange={e=>atualizarDataPagamento(s.id, e.target.value)}
-                          style={{ padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, width:120 }}/>
-                      ) : '—'}
                     </td>
                     <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
                       {isAdmin && s.status !== 'pago' && (
