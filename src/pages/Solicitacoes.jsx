@@ -166,13 +166,13 @@ export default function Solicitacoes() {
 
   async function salvarNovoTipo() {
     if (!novoTipo.trim()) return;
-    await api.post('/tipos/solicitacao', { nome: novoTipo });
+    await api.post('/tipos/solicitacao', { nome: novoTipo.toUpperCase() });
     toast.success('Tipo adicionado'); setNovoTipo(''); setShowNovoTipo(false); carregarSelects();
   }
 
   async function salvarNovoVale() {
     if (!novoVale.trim()) return;
-    const { data } = await api.post('/tipos/vale', { nome: novoVale });
+    const { data } = await api.post('/tipos/vale', { nome: novoVale.toUpperCase() });
     toast.success('Vale adicionado'); setNovoVale(''); setShowNovoVale(false);
     carregarSelects();
     setForm(f => ({ ...f, tipoValeId: data.id }));
@@ -180,7 +180,7 @@ export default function Solicitacoes() {
 
   async function salvarNovoRef() {
     if (!novoRef.trim()) return;
-    const { data } = await api.post('/tipos/ref', { nome: novoRef });
+    const { data } = await api.post('/tipos/ref', { nome: novoRef.toUpperCase() });
     toast.success('Ref adicionado'); setNovoRef(''); setShowNovoRef(false);
     carregarSelects();
     setForm(f => ({ ...f, tipoRefId: data.id }));
@@ -491,7 +491,7 @@ export default function Solicitacoes() {
 
               <div>
                 <label style={lbl}>Placa</label>
-                <input value={form.placa} onChange={e=>setForm(f=>({...f,placa:e.target.value}))} placeholder="ABC-1234" required style={inp}/>
+                <input value={form.placa} onChange={e=>setForm(f=>({...f,placa:e.target.value.toUpperCase()}))} placeholder="ABC-1234" required style={inp}/>
               </div>
               <div>
                 <label style={lbl}>Valor (R$)</label>
