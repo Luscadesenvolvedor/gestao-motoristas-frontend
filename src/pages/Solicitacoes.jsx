@@ -203,6 +203,17 @@ export default function Solicitacoes() {
     carregar();
   }
 
+  async function pagarEmMassa() {
+    const ids = selecionados.length > 0
+      ? listaFiltrada.filter(s => selecionados.includes(s.id)).map(s => s.id)
+      : listaFiltrada.map(s => s.id);
+    if (!ids.length) return;
+    if (!confirm(`Marcar ${ids.length} registro(s) como PAGO?`)) return;
+    const { data } = await api.patch('/solicitacoes/pagar-bulk', { ids });
+    toast.success(`${data.atualizados} registro(s) marcado(s) como pago!`);
+    carregar();
+  }
+
   async function aplicarDataEmMassa(data) {
     if (!data) return;
     const ids = selecionados.length > 0
@@ -581,13 +592,19 @@ export default function Solicitacoes() {
             Limpar seleção ({selecionados.length})
           </button>
         )}
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginLeft:'auto' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:'auto', flexWrap:'wrap' }}>
           <span style={{ fontSize:12, color:'#6b7280', whiteSpace:'nowrap' }}>
-            Data pagto {selecionados.length > 0 ? `(${selecionados.length} selecionados)` : '(todos filtrados)'}:
+            {selecionados.length > 0 ? `${selecionados.length} selecionados` : 'Todos filtrados'}:
           </span>
           <input type="date"
             onChange={e => aplicarDataEmMassa(e.target.value)}
+            title="Aplicar data de pagamento"
             style={{ padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
+          {isAdmin && (
+            <button onClick={pagarEmMassa} style={{ padding:'6px 14px', background:'#16a34a', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
+              ✓ Pagar
+            </button>
+          )}
         </div>
       </div>
 
@@ -645,11 +662,6 @@ export default function Solicitacoes() {
                       <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
                     </td>
                     <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
-                      {isAdmin && s.status !== 'pago' && (
-                        <button onClick={()=>marcarPago(s.id)} style={{ padding:'4px 10px', border:'1px solid #16a34a', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#16a34a' }}>
-                          ✓ Pagar
-                        </button>
-                      )}
                       {podeExcluir && (
                         <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
                           Excluir
