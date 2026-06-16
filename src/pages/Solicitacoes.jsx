@@ -321,7 +321,6 @@ export default function Solicitacoes() {
       { wch: 60 },
     ];
     ws['!cols'] = colWidths;
-    ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
