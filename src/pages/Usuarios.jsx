@@ -55,10 +55,14 @@ export default function Usuarios() {
   async function salvar(e) {
     e.preventDefault();
     try {
-      if (editId) { await api.put(`/usuarios/${editId}`, form); toast.success('Usuário atualizado'); }
-      else { await api.post('/usuarios', form); toast.success('Usuário criado'); }
+      const payload = { nome: form.nome, email: form.email, papel: form.papel, senha: form.senha };
+      if (editId) { await api.put(`/usuarios/${editId}`, payload); toast.success('Usuário atualizado'); }
+      else { await api.post('/usuarios', payload); toast.success('Usuário criado'); }
       setForm(vazio); setEditId(null); setShowForm(false); carregar();
-    } catch {}
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Erro ao salvar usuário';
+      toast.error(msg);
+    }
   }
 
   async function excluir(id, nome) {
@@ -75,7 +79,9 @@ export default function Usuarios() {
       await api.patch('/usuarios/trocar-senha', { senhaAtual, novaSenha });
       toast.success('Senha alterada com sucesso!');
       setShowTrocarSenha(false); setSenhaAtual(''); setNovaSenha('');
-    } catch {}
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Erro ao trocar senha');
+    }
   }
 
   function abrirPermissoes(u) {
