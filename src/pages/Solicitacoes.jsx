@@ -278,7 +278,9 @@ export default function Solicitacoes() {
       try { await api.patch('/solicitacoes/marcar-realizado', { ids: idsSaldo, observacoes: observacoesFinais }); } catch {}
     }
 
-    const cabecalho = ['Motorista','Liberado','Vale','Placa','Tipo','Banco','Agência','Conta','PIX','Observação'];
+    const temFluxoLbm = exportBase.some(s => ehTipoFluxo(s.tipo?.nome) && s.motorista?.frota === 'lbm');
+
+    const cabecalho = ['Motorista','Liberado','Vale','Placa','Tipo','Banco','Agência','Conta',...(temFluxoLbm ? ['PIX'] : []),'Observação'];
 
     const linhas = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
@@ -294,33 +296,31 @@ export default function Solicitacoes() {
         { v: m?.banco || '', s: estiloCelula },
         { v: m?.agencia || '', s: estiloCelula },
         { v: m?.conta || '', s: estiloCelula },
-        { v: (fluxo && ehLbm) ? limparPix(m?.pix) : '', s: estiloCelula },
+        ...(temFluxoLbm ? [{ v: (fluxo && ehLbm) ? limparPix(m?.pix) : '', s: estiloCelula }] : []),
         { v: observacoesFinais[s.id] || s.observacao || '', s: estiloCelula },
       ];
     });
 
     const totalLiberado = linhas.reduce((s, x) => s + Number(x[1].v || 0), 0);
-    linhas.push([
-      { v: '', s: estiloCelula },
-      { v: totalLiberado, t: 'n', s: { ...estiloCelula, font: { bold: true }, numFmt: '"R$"\\ #,##0.00' } },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-      { v: '', s: estiloCelula },
-    ]);
+    const totalCols = cabecalho.length;
+    linhas.push(Array.from({ length: totalCols }, (_, i) =>
+      i === 1
+        ? { v: totalLiberado, t: 'n', s: { ...estiloCelula, font: { bold: true }, numFmt: '"R$"\\ #,##0.00' } }
+        : { v: '', s: estiloCelula }
+    ));
 
     const ws = XLSX.utils.aoa_to_sheet([
       cabecalho.map(c => ({ v: c, s: estiloCabecalho })),
       ...linhas
     ]);
 
-    ws['!cols'] = [
+    const colWidths = [
       { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
-      { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 60 },
+      { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 12 },
+      ...(temFluxoLbm ? [{ wch: 18 }] : []),
+      { wch: 60 },
+    ];
+    ws['!cols'] = colWidths;
     ];
 
     const wb = XLSX.utils.book_new();
