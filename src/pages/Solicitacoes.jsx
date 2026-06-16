@@ -276,7 +276,7 @@ export default function Solicitacoes() {
       try { await api.patch('/solicitacoes/marcar-realizado', { ids: idsSaldo, observacoes: observacoesFinais }); } catch {}
     }
 
-    const cabecalho = ['Motorista','Liberado','Vale','Placa','Banco','Agência','Conta','Tipo','Observação','PIX'];
+    const cabecalho = ['Motorista','Liberado','Vale','Placa','Banco','Agência','Conta','Tipo','PIX','Observação'];
 
     const linhas = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
@@ -292,8 +292,8 @@ export default function Solicitacoes() {
         { v: fluxo ? '' : (m?.agencia || ''), s: estiloCelula },
         { v: fluxo ? '' : (m?.conta || ''), s: estiloCelula },
         { v: s.tipo?.nome || '', s: estiloCelula },
-        { v: observacoesFinais[s.id] || s.observacao || '', s: estiloCelula },
         { v: (fluxo && ehLbm) ? limparPix(m?.pix) : '', s: estiloCelula },
+        { v: observacoesFinais[s.id] || s.observacao || '', s: estiloCelula },
       ];
     });
 
@@ -318,7 +318,7 @@ export default function Solicitacoes() {
 
     ws['!cols'] = [
       { wch: 35 }, { wch: 12 }, { wch: 15 }, { wch: 12 },
-      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 60 }, { wch: 18 },
+      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 60 },
     ];
 
     const wb = XLSX.utils.book_new();
