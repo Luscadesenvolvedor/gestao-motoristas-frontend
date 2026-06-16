@@ -55,6 +55,7 @@ function limparPix(pix) {
 
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
+  const isAdminOrFinanceiro = isAdmin || usuario?.papel === 'financeiro';
   const [lista, setLista] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
   const [tipos, setTipos] = useState([]);
@@ -358,7 +359,7 @@ export default function Solicitacoes() {
   const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
   const btn = (bg, color='#fff') => ({ padding:'8px 16px', background:bg, color, border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' });
   const previewObs = montarObservacao(form);
-  const podeExcluir = usuario?.papel === 'admin' || usuario?.papel === 'financeiro';
+  const podeExcluir = isAdminOrFinanceiro;
   const todosSelecionados = selecionados.length === listaFiltrada.length && listaFiltrada.length > 0;
   const ocultarLiberadoPendente = filtroRapido === 'saldos';
 
@@ -600,7 +601,7 @@ export default function Solicitacoes() {
             onChange={e => aplicarDataEmMassa(e.target.value)}
             title="Aplicar data de pagamento"
             style={{ padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-          {isAdmin && (
+          {isAdminOrFinanceiro && (
             <button onClick={pagarEmMassa} style={{ padding:'6px 14px', background:'#16a34a', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
               ✓ Pagar
             </button>
@@ -616,7 +617,7 @@ export default function Solicitacoes() {
                 <th style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', width:40 }}>
                   <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
                 </th>
-                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Status','Ações',...(isAdminOrFinanceiro?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -645,7 +646,7 @@ export default function Solicitacoes() {
     <td style={{ padding:'10px 14px' }}>
       {saldo ? (
         '—'
-      ) : isAdmin && s.status !== 'pago' ? (
+      ) : isAdminOrFinanceiro && s.status !== 'pago' ? (
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
           <span style={{ fontSize:12, color:'#6b7280' }}>{fmt(s.liberado||0)}</span>
           <input type="number" placeholder="+ valor" onBlur={e=>{ if(e.target.value) { atualizarLiberado(s.id,e.target.value); e.target.value=''; }}}
@@ -668,7 +669,7 @@ export default function Solicitacoes() {
                         </button>
                       )}
                     </td>
-                    {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+                    {isAdminOrFinanceiro && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
                   </tr>
                 );
               })}
