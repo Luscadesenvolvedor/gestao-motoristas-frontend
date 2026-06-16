@@ -287,7 +287,7 @@ export default function Solicitacoes() {
       const ehLbm = s.motorista?.frota === 'lbm';
       return [
         { v: (s.motorista?.nome || '').toUpperCase(), s: estiloCelula },
-        { v: liberadoFinal, s: estiloCelula },
+        { v: liberadoFinal, t: 'n', s: { ...estiloCelula, numFmt: '"R$"\\ #,##0.00' } },
         { v: s.tipoVale?.nome || '', s: estiloCelula },
         { v: s.placa || '', s: estiloCelula },
         { v: s.tipo?.nome || '', s: estiloCelula },
@@ -299,7 +299,7 @@ export default function Solicitacoes() {
     const totalLiberado = linhas.reduce((s, x) => s + Number(x[1].v || 0), 0);
     linhas.push([
       { v: '', s: estiloCelula },
-      { v: totalLiberado, s: { ...estiloCelula, font: { bold: true } } },
+      { v: totalLiberado, t: 'n', s: { ...estiloCelula, font: { bold: true }, numFmt: '"R$"\\ #,##0.00' } },
       { v: '', s: estiloCelula },
       { v: '', s: estiloCelula },
       { v: '', s: estiloCelula },
