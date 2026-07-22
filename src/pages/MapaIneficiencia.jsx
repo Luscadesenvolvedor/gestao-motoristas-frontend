@@ -48,11 +48,12 @@ export default function MapaIneficiencia() {
     return lista.filter(i => i.mesDesconto?.startsWith(anoFiltro));
   }, [lista, anoFiltro]);
 
-  const totalNegativo   = listaFiltrada.reduce((s, i) => s + Number(i.valor), 0);
-  const totalDescontado = listaFiltrada.reduce((s, i) => s + Number(i.valorDescontado), 0);
+  // Cards usam lista completa (sem filtro de ano)
+  const totalNegativo   = lista.reduce((s, i) => s + Number(i.valor), 0);
+  const totalDescontado = lista.reduce((s, i) => s + Number(i.valorDescontado), 0);
   const saldoPendente   = totalNegativo - totalDescontado;
 
-  // Agrupado por mês (apenas mês abreviado no eixo X)
+  // Agrupado por mês (apenas mês abreviado no eixo X) — usa listaFiltrada
   const porMes = listaFiltrada.reduce((acc, i) => {
     const mes = i.mesDesconto || 'Sem mês';
     if (!acc[mes]) acc[mes] = { mes, label: labelMes(mes), descontado: 0 };
@@ -63,7 +64,7 @@ export default function MapaIneficiencia() {
   const dadosMes = Object.values(porMes).sort((a, b) => a.mes.localeCompare(b.mes));
 
   function contarTipo(termo) {
-    return listaFiltrada.filter(i => i.tipoDesconto?.nome?.toLowerCase().includes(termo.toLowerCase())).length;
+    return lista.filter(i => i.tipoDesconto?.nome?.toLowerCase().includes(termo.toLowerCase())).length;
   }
 
   const cards = [
@@ -81,26 +82,9 @@ export default function MapaIneficiencia() {
 
   return (
     <div>
-      {/* Cabeçalho + filtro de ano */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e' }}>Mapa de Ineficiência</h2>
-          <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Visão geral dos descontos e pendências</p>
-        </div>
-        {anos.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button onClick={() => setAnoFiltro('todos')}
-              style={{ padding: '6px 16px', borderRadius: 20, border: '1px solid ' + (anoFiltro === 'todos' ? '#EB3238' : '#d1d5db'), background: anoFiltro === 'todos' ? '#EB3238' : '#fff', color: anoFiltro === 'todos' ? '#fff' : '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-              Todos
-            </button>
-            {anos.map(ano => (
-              <button key={ano} onClick={() => setAnoFiltro(ano)}
-                style={{ padding: '6px 16px', borderRadius: 20, border: '1px solid ' + (anoFiltro === ano ? '#EB3238' : '#d1d5db'), background: anoFiltro === ano ? '#EB3238' : '#fff', color: anoFiltro === ano ? '#fff' : '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                {ano}
-              </button>
-            ))}
-          </div>
-        )}
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e' }}>Mapa de Ineficiência</h2>
+        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Visão geral dos descontos e pendências</p>
       </div>
 
       {loading ? (
@@ -141,8 +125,22 @@ export default function MapaIneficiencia() {
           {/* Gráfico por mês */}
           {dadosMes.length > 0 && (
             <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', padding: '20px 24px', marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a2e', marginBottom: 20 }}>
-                Evolução por Mês de Desconto {anoFiltro !== 'todos' ? `— ${anoFiltro}` : ''}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a2e' }}>Evolução por Mês de Desconto</span>
+                {anos.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => setAnoFiltro('todos')}
+                      style={{ padding: '4px 14px', borderRadius: 20, border: '1px solid ' + (anoFiltro === 'todos' ? '#EB3238' : '#d1d5db'), background: anoFiltro === 'todos' ? '#EB3238' : '#fff', color: anoFiltro === 'todos' ? '#fff' : '#374151', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                      Todos
+                    </button>
+                    {anos.map(ano => (
+                      <button key={ano} onClick={() => setAnoFiltro(ano)}
+                        style={{ padding: '4px 14px', borderRadius: 20, border: '1px solid ' + (anoFiltro === ano ? '#EB3238' : '#d1d5db'), background: anoFiltro === ano ? '#EB3238' : '#fff', color: anoFiltro === ano ? '#fff' : '#374151', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                        {ano}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={dadosMes} barCategoryGap="30%" barGap={4}>
