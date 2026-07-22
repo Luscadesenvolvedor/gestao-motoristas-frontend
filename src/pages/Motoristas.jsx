@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import StickyScrollTable from '../components/StickyScrollTable';
 
 const CATEGORIAS = ['frota', 'dedicado_usiminas', 'dedicado_arcelormittal', 'patio', 'tirador_ferias'];
 const CATEGORIAS_LABEL = { frota: 'Frota', dedicado_usiminas: 'Ded. Usiminas', dedicado_arcelormittal: 'Ded. ArcelorMittal', patio: 'Pátio', tirador_ferias: 'Tirador Férias' };
 const FROTAS = ['buzin', 'lbm', 'meli_buzin', 'meli_lbm'];
 const FROTAS_LABEL = { buzin: 'BUZIN', lbm: 'LBM', meli_buzin: 'MELI BUZIN', meli_lbm: 'MELI LBM' };
 
-const vazio = { nome:'', cpf:'', contato:'', banco:'', agencia:'', conta:'', pix:'', destinatario:'', frota:'buzin', status:'ativo', categoria:'frota' };
+const vazio = { nome:'', cpf:'', contato:'', banco:'', agencia:'', conta:'', pix:'', destinatario:'', frota:'buzin', status:'ativo', categoria:'frota', dataDesligamento:'', descricao:'' };
 
 function formatarCPF(valor) {
   return valor.replace(/\D/g, '').slice(0, 11)
@@ -25,6 +26,56 @@ function formatarContato(valor) {
   return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3,7)}-${nums.slice(7)}`;
 }
 
+function ModalHistorico({ motoristaNome, motoristaId, onClose }) {
+  const [historico, setHistorico] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get(`/motoristas/${motoristaId}/historico`)
+      .then(r => setHistorico(r.data))
+      .catch(() => toast.error('Erro ao carregar histórico'))
+      .finally(() => setLoading(false));
+  }, [motoristaId]);
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#fff', borderRadius:12, padding:24, width:'100%', maxWidth:560, maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <div>
+            <h3 style={{ fontSize:15, fontWeight:600, margin:0 }}>Histórico de alterações</h3>
+            <p style={{ fontSize:12, color:'#6b7280', margin:'2px 0 0' }}>{motoristaNome}</p>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9ca3af', lineHeight:1 }}>×</button>
+        </div>
+        <div style={{ overflowY:'auto', flex:1 }}>
+          {loading && <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center', padding:20 }}>Carregando...</p>}
+          {!loading && historico.length === 0 && <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center', padding:20 }}>Nenhum histórico encontrado.</p>}
+          {!loading && historico.map((h, i) => (
+            <div key={h.id} style={{ borderBottom: i < historico.length-1 ? '1px solid #f3f4f6' : 'none', padding:'10px 0' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{
+                    padding:'2px 8px', borderRadius:20, fontSize:10, fontWeight:600, textTransform:'uppercase',
+                    background: h.acao==='criou' ? '#dcfce7' : h.acao==='editou' ? '#dbeafe' : '#fee2e2',
+                    color: h.acao==='criou' ? '#166534' : h.acao==='editou' ? '#1d4ed8' : '#991b1b'
+                  }}>{h.acao}</span>
+                  <span style={{ fontSize:12, fontWeight:500 }}>{h.usuario?.nome || '—'}</span>
+                </div>
+                <span style={{ fontSize:11, color:'#9ca3af' }}>
+                  {new Date(h.criadoEm).toLocaleString('pt-BR')}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop:12, textAlign:'right' }}>
+          <button onClick={onClose} style={{ padding:'7px 18px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Motoristas() {
   const { pode, isAdmin } = useAuth();
   const [motoristas, setMotoristas] = useState([]);
@@ -36,15 +87,18 @@ export default function Motoristas() {
   const [filtroFrota, setFiltroFrota] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [historicoModal, setHistoricoModal] = useState(null); // { id, nome }
 
   const carregar = useCallback(async (termo = busca) => {
-    const { data } = await api.get('/motoristas', { params: {
-      busca: termo,
-      status: mostrarDesligados ? 'desligado' : 'ativo',
-      frota: filtroFrota || undefined,
-      categoria: filtroCategoria || undefined
-    }});
-    setMotoristas(data);
+    try {
+      const { data } = await api.get('/motoristas', { params: {
+        busca: termo,
+        status: mostrarDesligados ? 'desligado' : 'ativo',
+        frota: filtroFrota || undefined,
+        categoria: filtroCategoria || undefined
+      }});
+      setMotoristas(data);
+    } catch {}
   }, [busca, mostrarDesligados, filtroFrota, filtroCategoria]);
 
   useEffect(() => { carregar(); }, [mostrarDesligados, filtroFrota, filtroCategoria]);
@@ -91,6 +145,14 @@ export default function Motoristas() {
 
   return (
     <div>
+      {historicoModal && (
+        <ModalHistorico
+          motoristaNome={historicoModal.nome}
+          motoristaId={historicoModal.id}
+          onClose={() => setHistoricoModal(null)}
+        />
+      )}
+
       {confirmDelete && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
@@ -141,16 +203,23 @@ export default function Motoristas() {
                 </div>
                 <div>
                   <label style={labelStyle}>Status</label>
-                  <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={inputStyle}>
+                  <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value,dataDesligamento:e.target.value==='desligado'?f.dataDesligamento||new Date().toISOString().split('T')[0]:''}))} style={inputStyle}>
                     <option value="ativo">Ativo</option>
                     <option value="desligado">Desligado</option>
                   </select>
                 </div>
+                {form.status === 'desligado' && (
+                  <div>
+                    <label style={labelStyle}>Data de desligamento</label>
+                    <input type="date" value={form.dataDesligamento||''} onChange={e=>setForm(f=>({...f,dataDesligamento:e.target.value}))} required style={inputStyle}/>
+                  </div>
+                )}
                 <div>
                   <label style={labelStyle}>Categoria</label>
                   <select value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))} style={inputStyle}>
                     {CATEGORIAS.map(x=><option key={x} value={x}>{CATEGORIAS_LABEL[x]}</option>)}
                   </select>
+                  <input value={form.descricao||''} onChange={e=>setForm(f=>({...f,descricao:e.target.value}))} placeholder="Descrição (ex: MELI)" style={{ ...inputStyle, marginTop:4, fontSize:12 }}/>
                 </div>
               </div>
               <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
@@ -162,9 +231,9 @@ export default function Motoristas() {
         </div>
       )}
 
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
+      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb' }}>
         <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-          <input placeholder="Buscar motorista..." value={busca} onChange={e => setBusca(e.target.value)}
+          <input placeholder="Buscar por nome..." value={busca} onChange={e => setBusca(e.target.value)}
             style={{ padding:'8px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, width:220 }} />
           <select value={filtroFrota} onChange={e=>setFiltroFrota(e.target.value)}
             style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
@@ -185,7 +254,7 @@ export default function Motoristas() {
             Limpar
           </button>
         </div>
-        <div style={{ overflowX:'auto' }}>
+        <StickyScrollTable deps={[motoristas]}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
@@ -201,11 +270,19 @@ export default function Motoristas() {
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.cpf}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.contato}</td>
                   <td style={{ padding:'10px 14px', fontSize:12 }}>{FROTAS_LABEL[m.frota] || m.frota?.toUpperCase()}</td>
-                  <td style={{ padding:'10px 14px' }}>{CATEGORIAS_LABEL[m.categoria]}</td>
+                  <td style={{ padding:'10px 14px' }}>
+                    <div>{CATEGORIAS_LABEL[m.categoria]}</div>
+                    {m.descricao && <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>{m.descricao}</div>}
+                  </td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:m.status==='ativo'?'#dcfce7':'#fee2e2', color:m.status==='ativo'?'#166534':'#991b1b' }}>
                       {m.status}
                     </span>
+                    {m.status==='desligado' && m.dataDesligamento && (
+                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:3 }}>
+                        {new Date(m.dataDesligamento).toLocaleDateString('pt-BR')}
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
                     {canEdit && (
@@ -216,8 +293,20 @@ export default function Motoristas() {
                     )}
                   </td>
                   {isAdmin && (
-                    <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>
-                      {m.auditorias?.[0] ? `${m.auditorias[0].usuario.nome} — ${new Date(m.auditorias[0].criadoEm).toLocaleString('pt-BR')}` : '—'}
+                    <td style={{ padding:'10px 14px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <span style={{ fontSize:11, color:'#9ca3af' }}>
+                          {m.auditorias?.[0]
+                            ? `${m.auditorias[0].acao} — ${m.auditorias[0].usuario?.nome} — ${new Date(m.auditorias[0].criadoEm).toLocaleString('pt-BR')}`
+                            : '—'}
+                        </span>
+                        <button
+                          onClick={() => setHistoricoModal({ id: m.id, nome: m.nome })}
+                          title="Ver histórico completo"
+                          style={{ padding:'2px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:11, cursor:'pointer', background:'#f9fafb', color:'#6b7280', whiteSpace:'nowrap' }}>
+                          Ver mais
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -227,7 +316,7 @@ export default function Motoristas() {
               )}
             </tbody>
           </table>
-        </div>
+        </StickyScrollTable>
       </div>
     </div>
   );

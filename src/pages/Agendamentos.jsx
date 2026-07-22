@@ -35,17 +35,19 @@ export default function Agendamentos() {
   useEffect(() => { carregar(); }, [mesAtual, perfilVisto]);
 
   async function carregar() {
-    if (isAdmin) {
-      const [r1, r2] = await Promise.all([
-        api.get('/agendamentos', { params: { perfil: 1, mes: mesAtual } }),
-        api.get('/agendamentos', { params: { perfil: 2, mes: mesAtual } })
-      ]);
-      setLista(r1.data);
-      setListaP2(r2.data);
-    } else {
-      const { data } = await api.get('/agendamentos', { params: { mes: mesAtual } });
-      setLista(data);
-    }
+    try {
+      if (isAdmin) {
+        const [r1, r2] = await Promise.all([
+          api.get('/agendamentos', { params: { perfil: 1, mes: mesAtual } }),
+          api.get('/agendamentos', { params: { perfil: 2, mes: mesAtual } })
+        ]);
+        setLista(r1.data);
+        setListaP2(r2.data);
+      } else {
+        const { data } = await api.get('/agendamentos', { params: { mes: mesAtual } });
+        setLista(data);
+      }
+    } catch {}
   }
 
   function diasDoMes() {

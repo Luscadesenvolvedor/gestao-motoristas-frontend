@@ -12,10 +12,22 @@ export default function Folgas() {
   const [showForm, setShowForm] = useState(false);
   const canEdit = pode('folgas', 'escrita');
 
-  useEffect(() => {
+  function carregar() {
     api.get('/folgas').then(r => setLista(r.data));
+  }
+
+  useEffect(() => {
+    carregar();
     api.get('/motoristas').then(r => setMotoristas(r.data));
   }, []);
+
+  async function excluir(id) {
+    if (!confirm('Excluir esta folga?')) return;
+    try {
+      await api.delete(`/folgas/${id}`);
+      carregar();
+    } catch { toast.error('Erro ao excluir folga'); }
+  }
 
   async function salvar(e) {
     e.preventDefault();
@@ -24,7 +36,7 @@ export default function Folgas() {
       toast.success('Folga registrada');
       setShowForm(false);
       setForm({ motoristaId:'', periodo:'', quantidadeDias:'' });
-      api.get('/folgas').then(r => setLista(r.data));
+      carregar();
     } catch {}
   }
 
@@ -82,7 +94,7 @@ export default function Folgas() {
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
           <thead>
             <tr style={{ background:'#f9fafb' }}>
-              {['Motorista','Período','Dias','Valor','→ Solicitação',...(isAdmin?['Alteração']:[])].map(h=>(
+              {['Motorista','Período','Dias','Valor',...(isAdmin?['Alteração','']:[])].map(h=>(
                 <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
               ))}
             </tr>
@@ -94,18 +106,11 @@ export default function Folgas() {
                 <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.periodo}</td>
                 <td style={{ padding:'10px 14px' }}>{f.quantidadeDias}</td>
                 <td style={{ padding:'10px 14px', color:'#EB3238', fontWeight:500 }}>{valor(f.quantidadeDias)}</td>
-                <td style={{ padding:'10px 14px' }}>
-                  <input type="checkbox" checked={f.enviado} onChange={e=>api.patch(`/folgas/${f.id}/enviado`,{enviado:e.target.checked}).then(()=>api.get('/folgas').then(r=>setLista(r.data)))}
-                    style={{ accentColor:'#EB3238' }}/>
-                </td>
-                {isAdmin && (
-                  <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>
-                    {f.auditorias?.[0]?`${f.auditorias[0].usuario.nome} — ${new Date(f.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}
-                  </td>
-                )}
+                {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{f.auditorias?.[0]?`${f.auditorias[0].usuario?.nome} — ${new Date(f.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+                {isAdmin && <td style={{ padding:'10px 14px' }}><button onClick={()=>excluir(f.id)} style={{ padding:'3px 10px', background:'#fff', border:'1px solid #EB3238', borderRadius:6, fontSize:12, color:'#EB3238', cursor:'pointer' }}>Excluir</button></td>}
               </tr>
             ))}
-            {lista.length===0 && <tr><td colSpan={6} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma folga</td></tr>}
+            {lista.length===0 && <tr><td colSpan={isAdmin?6:4} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma folga</td></tr>}
           </tbody>
         </table>
       </div>

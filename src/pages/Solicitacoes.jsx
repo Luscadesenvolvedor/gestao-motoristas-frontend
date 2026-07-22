@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import StickyScrollTable from '../components/StickyScrollTable';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -42,6 +43,10 @@ function ehTipoSaldo(nomeTipo) {
   return (nomeTipo || '').toLowerCase().includes('saldo');
 }
 
+function ehTipoFolga(nomeTipo) {
+  return (nomeTipo || '').toLowerCase().includes('folga');
+}
+
 function ehTipoFluxo(nomeTipo) {
   const n = (nomeTipo || '').toLowerCase();
   return !n.includes('saldo') && !n.includes('folga');
@@ -53,9 +58,66 @@ function limparPix(pix) {
   return p.replace(/[^a-zA-Z0-9]/g, '');
 }
 
+
+function ModalHistoricoSol({ titulo, solicitacaoId, onClose }) {
+  const [historico, setHistorico] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.get(`/solicitacoes/${solicitacaoId}/historico`)
+      .then(r => setHistorico(r.data))
+      .catch(() => toast.error('Erro ao carregar histórico'))
+      .finally(() => setLoading(false));
+  }, [solicitacaoId]);
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#fff', borderRadius:12, padding:24, width:'100%', maxWidth:520, maxHeight:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <div>
+            <h3 style={{ fontSize:15, fontWeight:600, margin:0 }}>Histórico de alterações</h3>
+            <p style={{ fontSize:12, color:'#6b7280', margin:'2px 0 0' }}>{titulo}</p>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9ca3af', lineHeight:1 }}>×</button>
+        </div>
+        <div style={{ overflowY:'auto', flex:1 }}>
+          {loading && <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center', padding:20 }}>Carregando...</p>}
+          {!loading && historico.length === 0 && <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center', padding:20 }}>Nenhum histórico encontrado.</p>}
+          {!loading && historico.map((h, i) => {
+            const isPagou = h.acao === 'pagou';
+            const bgAcao = isPagou ? '#f0fdf4' : h.acao==='criou' ? '#f0fdf4' : h.acao==='editou' ? '#eff6ff' : '#fff7ed';
+            const corAcao = isPagou ? '#166534' : h.acao==='criou' ? '#166534' : h.acao==='editou' ? '#1d4ed8' : '#9a3412';
+            const bgBadge = isPagou ? '#dcfce7' : h.acao==='criou' ? '#dcfce7' : h.acao==='editou' ? '#dbeafe' : '#ffedd5';
+            return (
+              <div key={h.id} style={{ borderBottom: i < historico.length-1 ? '1px solid #f3f4f6' : 'none', padding:'10px 0', background: isPagou ? '#f0fdf4' : 'transparent', borderRadius: isPagou ? 8 : 0, paddingLeft: isPagou ? 10 : 0, paddingRight: isPagou ? 10 : 0 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ padding:'2px 8px', borderRadius:20, fontSize:10, fontWeight:600, textTransform:'uppercase', background: bgBadge, color: corAcao }}>{isPagou ? 'pagamento' : h.acao}</span>
+                    <span style={{ fontSize:12, fontWeight:500 }}>{h.usuario?.nome || '—'}</span>
+                  </div>
+                  <span style={{ fontSize:11, color:'#9ca3af' }}>{new Date(h.criadoEm).toLocaleString('pt-BR')}</span>
+                </div>
+                {isPagou && h.dadosNovos && (
+                  <div style={{ marginTop:6, fontSize:12, color:'#166534', display:'flex', gap:16 }}>
+                    <span>Lote: <strong>R$ {parseFloat(h.dadosNovos.lote||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></span>
+                    <span>Total liberado: <strong>R$ {parseFloat(h.dadosNovos.totalLiberado||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></span>
+                    <span>Data: <strong>{h.dadosNovos.data}</strong></span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop:12, textAlign:'right' }}>
+          <button onClick={onClose} style={{ padding:'7px 18px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Solicitacoes() {
   const { usuario, isAdmin, pode } = useAuth();
   const isAdminOrFinanceiro = isAdmin || usuario?.papel === 'financeiro';
+  const [historicoSol, setHistoricoSol] = useState(null);
   const [lista, setLista] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
   const [tipos, setTipos] = useState([]);
@@ -63,13 +125,13 @@ export default function Solicitacoes() {
   const [tiposRef, setTiposRef] = useState([]);
   const [form, setForm] = useState(vazio);
   const [showForm, setShowForm] = useState(false);
-  const [novoTipo, setNovoTipo] = useState('');
-  const [showNovoTipo, setShowNovoTipo] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const [novoVale, setNovoVale] = useState('');
   const [showNovoVale, setShowNovoVale] = useState(false);
   const [novoRef, setNovoRef] = useState('');
   const [showNovoRef, setShowNovoRef] = useState(false);
   const [alertas, setAlertas] = useState({});
+  const [alertasMotorista, setAlertasMotorista] = useState({});
   const [pixMotorista, setPixMotorista] = useState('');
   const [contaMotorista, setContaMotorista] = useState('');
   const [filtroMotorista, setFiltroMotorista] = useState('');
@@ -81,26 +143,39 @@ export default function Solicitacoes() {
   const [filtroRapido, setFiltroRapido] = useState('');
   const [filtroFrota, setFiltroFrota] = useState('');
   const [selecionados, setSelecionados] = useState([]);
+  const [dataMassa, setDataMassa] = useState('');
 
   useEffect(() => { carregar(); carregarSelects(); }, []);
+
 
   async function carregar() {
     const { data } = await api.get('/solicitacoes');
     setLista(data.solicitacoes);
-    setSelecionados([]);
+    const novosIds = new Set(data.solicitacoes.map(s => s.id));
+    setSelecionados(prev => prev.filter(id => novosIds.has(id)));
+    // Buscar alertas dos motoristas
+    const mIds = [...new Set(data.solicitacoes.map(s => s.motoristaId).filter(Boolean))];
+    if (mIds.length) {
+      try {
+        const { data: al } = await api.get('/ferias/alertas-bulk', { params: { ids: mIds.join(',') } });
+        setAlertasMotorista(al);
+      } catch {}
+    }
   }
 
   async function carregarSelects() {
-    const [m, t, v, r] = await Promise.all([
-      api.get('/motoristas'),
-      api.get('/tipos/solicitacao'),
-      api.get('/tipos/vale'),
-      api.get('/tipos/ref'),
-    ]);
-    setMotoristas(m.data);
-    setTipos(t.data);
-    setTiposVale(v.data);
-    setTiposRef(r.data);
+    try {
+      const [m, t, v, r] = await Promise.all([
+        api.get('/motoristas'),
+        api.get('/tipos/solicitacao'),
+        api.get('/tipos/vale'),
+        api.get('/tipos/ref'),
+      ]);
+      setMotoristas(m.data);
+      setTipos(t.data);
+      setTiposVale(v.data);
+      setTiposRef(r.data);
+    } catch {}
   }
 
   async function verificarStatus(motoristaId) {
@@ -125,7 +200,6 @@ export default function Solicitacoes() {
     const data = formAtual.data ? (() => { const [a,m,d] = formAtual.data.split('-'); return `${d}/${m}`; })() : '';
     const partes = [];
     if (vale) partes.push(vale);
-    if (tipo) partes.push(tipo);
     if (ref) partes.push(`Ref: ${ref}`);
     if (saldo) partes.push(`Solicitado por: ${usuario?.nome || ''}`);
     if (pagamento) partes.push(pagamento);
@@ -135,6 +209,8 @@ export default function Solicitacoes() {
 
   async function salvar(e) {
     e.preventDefault();
+    if (salvando) return;
+    setSalvando(true);
     try {
       const observacao = montarObservacao(form);
       const { data } = await api.post('/solicitacoes', { ...form, observacao });
@@ -144,7 +220,9 @@ export default function Solicitacoes() {
       if (data.alertaAbandono) toast.error('🚪 Este motorista ABANDONOU o serviço!', { duration: 6000 });
       toast.success('Solicitação criada');
       setForm({...vazio, data: dataHoje()}); setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); carregar();
-    } catch {}
+    } catch {} finally {
+      setSalvando(false);
+    }
   }
 
   async function excluir(id) {
@@ -165,11 +243,6 @@ export default function Solicitacoes() {
     } catch {}
   }
 
-  async function salvarNovoTipo() {
-    if (!novoTipo.trim()) return;
-    await api.post('/tipos/solicitacao', { nome: novoTipo.toUpperCase() });
-    toast.success('Tipo adicionado'); setNovoTipo(''); setShowNovoTipo(false); carregarSelects();
-  }
 
   async function salvarNovoVale() {
     if (!novoVale.trim()) return;
@@ -212,6 +285,13 @@ export default function Solicitacoes() {
     if (!confirm(`Marcar ${ids.length} registro(s) como PAGO?`)) return;
     const { data } = await api.patch('/solicitacoes/pagar-bulk', { ids });
     toast.success(`${data.atualizados} registro(s) marcado(s) como pago!`);
+    setSelecionados([]);
+    setDataMassa('');
+    carregar();
+  }
+
+  async function togglePrioridade(id) {
+    await api.patch(`/solicitacoes/${id}/prioridade`);
     carregar();
   }
 
@@ -241,7 +321,7 @@ export default function Solicitacoes() {
   }
 
   const FILTROS_RAPIDOS = [
-    { key:'fluxos', label:'Fluxos Diários', nomes:['reembolso','vale pessoal','diarias','diária','diárias'] },
+    { key:'fluxos', label:'Fluxos Diários', nomes:['fluxo'] },
     { key:'saldos', label:'Saldos', nomes:['saldo'] },
     { key:'folgas', label:'Folgas', nomes:['folga'] },
   ];
@@ -249,13 +329,9 @@ export default function Solicitacoes() {
   const listaFiltrada = lista.filter(s => {
     if (filtroFrota && s.motorista?.frota !== filtroFrota) return false;
     if (filtroRapido) {
+      const nomeAtual = (s.tipo?.nome || '').toLowerCase();
       const fr = FILTROS_RAPIDOS.find(f => f.key === filtroRapido);
-      if (fr) {
-        const nomeAtual = (s.tipo?.nome || '').toLowerCase();
-        const nomeVale = (s.tipoVale?.nome || '').toLowerCase();
-        const nomeRef = (s.tipoRef?.nome || '').toLowerCase();
-        if (!fr.nomes.some(n => nomeAtual.includes(n) || nomeVale.includes(n) || nomeRef.includes(n))) return false;
-      }
+      if (fr && !fr.nomes.some(n => nomeAtual.includes(n))) return false;
     }
     if (filtroMotorista && s.motoristaId !== filtroMotorista) return false;
     if (filtroTipo && s.tipoId !== filtroTipo) return false;
@@ -268,7 +344,7 @@ export default function Solicitacoes() {
       if (d.getFullYear() !== ano || d.getMonth() + 1 !== mes) return false;
     }
     return true;
-  });
+  }).sort((a, b) => (b.prioridade ? 1 : 0) - (a.prioridade ? 1 : 0));
 
   const base = selecionados.length > 0
     ? listaFiltrada.filter(s => selecionados.includes(s.id))
@@ -289,11 +365,24 @@ export default function Solicitacoes() {
       if (ehTipoSaldo(s.tipo?.nome)) {
         let obs = s.observacao || '';
         obs = obs.replace(/ - Realizado por: .*/i, '');
-        if (s.dataPagamento) {
-          const [a,m,d] = s.dataPagamento.split('T')[0].split('-');
+        const dataRef = s.dataPagamento || s.data;
+        if (dataRef) {
+          const [a,m,d] = dataRef.split('T')[0].split('-');
           obs = obs.replace(/\d{2}\/\d{2}$/, `${d}/${m}`);
         }
         obs = `${obs} - Realizado por: ${usuario?.nome || ''}`;
+        observacoesFinais[s.id] = obs;
+        idsSaldo.push(s.id);
+      } else if (ehTipoFolga(s.tipo?.nome)) {
+        let obs = s.observacao || '';
+        obs = obs.replace(/ - Realizado por: .*/i, '');
+        const dataRef = s.dataPagamento || s.data;
+        let dataPart = '';
+        if (dataRef) {
+          const [a,m,d] = dataRef.split('T')[0].split('-');
+          dataPart = ` ${d}/${m}`;
+        }
+        obs = `${obs} - Realizado por: ${usuario?.nome || ''}${dataPart}`;
         observacoesFinais[s.id] = obs;
         idsSaldo.push(s.id);
       }
@@ -307,9 +396,15 @@ export default function Solicitacoes() {
 
     const cabecalho = ['Motorista','Liberado','Vale','Placa','Tipo','Banco','Agência','Conta',...(temFluxoLbm ? ['PIX'] : []),'Observação'];
 
+    const toNum = v => parseFloat(String(v).replace(',', '.')) || 0;
     const linhas = exportBase.map(s => {
       const m = motoristas.find(x => x.id === s.motoristaId);
-      const liberadoFinal = ehTipoSaldo(s.tipo?.nome) ? Number(s.valor) : Number(s.liberado || 0);
+      const liberadoAcum = toNum(s.liberado);
+      const liberadoExp = toNum(s.liberadoExportado);
+      const delta = liberadoAcum - liberadoExp;
+      const liberadoFinal = ehTipoSaldo(s.tipo?.nome)
+        ? toNum(s.valor)
+        : delta > 0 ? delta : (liberadoAcum > 0 ? liberadoAcum : toNum(s.valor));
       const fluxo = ehTipoFluxo(s.tipo?.nome);
       const ehLbm = s.motorista?.frota === 'lbm';
       return [
@@ -351,7 +446,14 @@ export default function Solicitacoes() {
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitações');
     XLSX.writeFile(wb, `solicitacoes_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.xlsx`);
     toast.success('Excel exportado!');
-    if (idsSaldo.length > 0) carregar();
+    // Marcar liberadoExportado para itens com delta > 0
+    const idsParaMarcar = exportBase
+      .filter(s => !ehTipoSaldo(s.tipo?.nome) && (toNum(s.liberado) - toNum(s.liberadoExportado)) > 0)
+      .map(s => s.id);
+    if (idsParaMarcar.length > 0) {
+      try { await api.patch('/solicitacoes/marcar-exportado', { ids: idsParaMarcar }); } catch (err) { console.error('marcar-exportado error:', err?.response?.data || err.message); toast.error('Aviso: exportado mas não registrou lote'); }
+    }
+    if (idsSaldo.length > 0 || idsParaMarcar.length > 0) carregar();
   }
 
   const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -365,7 +467,19 @@ export default function Solicitacoes() {
 
   return (
     <div>
-      <div style={{ display:'flex', gap:10, marginBottom:16 }}>
+      <style>{`
+        .sol-table { font-size: 11px; }
+        .sol-table th, .sol-table td { padding: 6px 8px; }
+      `}</style>
+
+      {historicoSol && (
+        <ModalHistoricoSol
+          titulo={historicoSol.titulo}
+          solicitacaoId={historicoSol.id}
+          onClose={() => setHistoricoSol(null)}
+        />
+      )}
+            <div style={{ display:'flex', gap:10, marginBottom:16 }}>
         {FROTAS.map(f => {
          const total = lista.filter(s => s.motorista?.frota === f.key && s.status === 'pendente').length;
           const ativo = filtroFrota === f.key;
@@ -384,7 +498,7 @@ export default function Solicitacoes() {
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e', margin:0 }}>Solicitações</h2>
           <div style={{ display:'flex', gap:6 }}>
             {FILTROS_RAPIDOS.map(f => (
-              <button key={f.key} onClick={() => setFiltroRapido(filtroRapido === f.key ? '' : f.key)}
+              <button key={f.key} onClick={() => { setFiltroRapido(filtroRapido === f.key ? '' : f.key); setFiltroTipo(''); }}
                 style={{ padding:'4px 12px', border:'1px solid '+(filtroRapido===f.key?'#EB3238':'#d1d5db'), borderRadius:20, fontSize:12, cursor:'pointer', background:filtroRapido===f.key?'#EB3238':'#fff', color:filtroRapido===f.key?'#fff':'#374151', fontWeight:filtroRapido===f.key?500:400 }}>
                 {f.label}
               </button>
@@ -429,26 +543,10 @@ export default function Solicitacoes() {
                 <div style={{ display:'flex', gap:8 }}>
                   <select value={form.tipoId} onChange={e=>setForm(f=>({...f,tipoId:e.target.value}))} required style={{ flex:1, padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
                     <option value="">Selecionar...</option>
-                    {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+                    {tipos.filter(t => /fluxo|saldo|folga/i.test(t.nome)).map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
-                  <button type="button" onClick={()=>setShowNovoTipo(v=>!v)} style={{ padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:12, cursor:'pointer', background:'#fff' }}>+ Novo</button>
                 </div>
-                {showNovoTipo && (
-                  <>
-                    <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                      <input value={novoTipo} onChange={e=>setNovoTipo(e.target.value)} placeholder="Nome do novo tipo" style={{ flex:1, padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
-                      <button type="button" onClick={salvarNovoTipo} style={{ padding:'6px 12px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Salvar</button>
-                    </div>
-                    <div style={{ marginTop:8, display:'flex', flexWrap:'wrap', gap:6 }}>
-                      {tipos.map(t => (
-                        <span key={t.id} style={{ display:'flex', alignItems:'center', gap:4, background:'#f3f4f6', borderRadius:20, padding:'3px 10px', fontSize:12 }}>
-                          {t.nome}
-                          <button type="button" onClick={()=>excluirTipo('solicitacao', t.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'#EB3238', fontSize:14, lineHeight:1, padding:0 }}>×</button>
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                )}
+
               </div>
               <div>
                 <label style={lbl}>Motorista</label>
@@ -536,7 +634,7 @@ export default function Solicitacoes() {
             </div>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:16 }}>
               <button type="button" onClick={()=>{ setShowForm(false); setAlertas({}); setPixMotorista(''); setContaMotorista(''); }} style={btn('#e5e7eb','#374151')}>Cancelar</button>
-              <button type="submit" style={btn('#EB3238')}>Salvar</button>
+              <button type="submit" disabled={salvando} style={{...btn('#EB3238'), opacity: salvando ? 0.6 : 1, cursor: salvando ? 'not-allowed' : 'pointer'}}>{salvando ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>
         </div>
@@ -552,7 +650,15 @@ export default function Solicitacoes() {
         </div>
         <div>
           <label style={lbl}>Tipo</label>
-          <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
+          <select value={filtroTipo} onChange={e => {
+              const id = e.target.value;
+              setFiltroTipo(id);
+              if (!id) { setFiltroRapido(''); return; }
+              const nome = (tipos.find(t => t.id === id)?.nome || '').toLowerCase();
+              if (nome.includes('saldo')) setFiltroRapido('saldos');
+              else if (nome.includes('folga')) setFiltroRapido('folgas');
+              else setFiltroRapido('fluxos');
+            }} style={{ padding:'7px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}>
             <option value="">Todos</option>
             {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
           </select>
@@ -598,7 +704,8 @@ export default function Solicitacoes() {
             {selecionados.length > 0 ? `${selecionados.length} selecionados` : 'Todos filtrados'}:
           </span>
           <input type="date"
-            onChange={e => aplicarDataEmMassa(e.target.value)}
+            value={dataMassa}
+            onChange={e => { setDataMassa(e.target.value); aplicarDataEmMassa(e.target.value); }}
             title="Aplicar data de pagamento"
             style={{ padding:'6px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13 }}/>
           {isAdminOrFinanceiro && (
@@ -610,15 +717,15 @@ export default function Solicitacoes() {
       </div>
 
       <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+        <StickyScrollTable deps={[lista]}>
+          <table className="sol-table" style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
                 <th style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', width:40 }}>
                   <input type="checkbox" checked={todosSelecionados} onChange={toggleTodos} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
                 </th>
-                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Status','Ações',...(isAdminOrFinanceiro?['Alteração']:[])].map(h=>(
-                  <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                {['Motorista','Frota','Tipo','Vale','Ref','Placa','Valor',...(ocultarLiberadoPendente?[]:['Liberado','Pendente']),'Dt Solicitação','Dt Pagamento','Status','Ações',...(isAdminOrFinanceiro?['Alteração']:[])].map(h=>(
+                  <th key={h} className={h==='Vale'?'sol-col-vale':h==='Ref'?'sol-col-ref':h==='Placa'?'sol-col-placa':h==='Dt Solicitação'?'sol-col-dtsol':h==='Alteração'?'sol-col-alter':''} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -628,18 +735,26 @@ export default function Solicitacoes() {
                 const sel = selecionados.includes(s.id);
                 const saldo = ehTipoSaldo(s.tipo?.nome);
                 return (
-                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : '#fff' }}>
+                  <tr key={s.id} style={{ borderBottom:'1px solid #f3f4f6', background: sel ? '#fff8f8' : s.prioridade ? '#fef9c3' : '#fff', borderLeft: s.prioridade ? '4px solid #f59e0b' : '4px solid transparent' }}>
                     <td style={{ padding:'10px 14px' }}>
                       <input type="checkbox" checked={sel} onChange={()=>toggleSelecionado(s.id)} style={{ accentColor:'#EB3238', width:16, height:16, cursor:'pointer' }}/>
                     </td>
-                    <td style={{ padding:'10px 14px', fontWeight:500 }}>{s.motorista?.nome}</td>
+                    <td style={{ padding:'10px 14px', fontWeight:500 }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                        {s.motorista?.nome}
+                        {alertasMotorista[s.motoristaId]?.emFerias && <span style={{ fontSize:10, padding:'1px 6px', background:'#ede9fe', color:'#6d28d9', borderRadius:20, fontWeight:500, width:'fit-content' }}>🏖️ Férias</span>}
+                        {alertasMotorista[s.motoristaId]?.emAtestado && <span style={{ fontSize:10, padding:'1px 6px', background:'#fef3c7', color:'#92400e', borderRadius:20, fontWeight:500, width:'fit-content' }}>🏥 Atestado</span>}
+                        {alertasMotorista[s.motoristaId]?.emAfastamento && <span style={{ fontSize:10, padding:'1px 6px', background:'#fee2e2', color:'#991b1b', borderRadius:20, fontWeight:500, width:'fit-content' }}>⚠️ Afastado</span>}
+                        {alertasMotorista[s.motoristaId]?.abandonou && <span style={{ fontSize:10, padding:'1px 6px', background:'#fef2f2', color:'#7f1d1d', borderRadius:20, fontWeight:500, width:'fit-content' }}>🚪 Abandono</span>}
+                      </div>
+                    </td>
                     <td style={{ padding:'10px 14px' }}>
                       {frota && <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:frota.bg, color:frota.cor }}>{frota.label}</span>}
                     </td>
                     <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipo?.nome}</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
-                    <td style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
+                    <td className="sol-col-vale" style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoVale?.nome || '—'}</td>
+                    <td className="sol-col-ref" style={{ padding:'10px 14px', color:'#6b7280' }}>{s.tipoRef?.nome || '—'}</td>
+                    <td className="sol-col-placa" style={{ padding:'10px 14px', color:'#6b7280' }}>{s.placa||'—'}</td>
                     <td style={{ padding:'10px 14px' }}>{fmt(s.valor)}</td>
                     {!ocultarLiberadoPendente && (
   <>
@@ -659,24 +774,40 @@ export default function Solicitacoes() {
     </td>
   </>
 )}
+                    <td className="sol-col-dtsol" style={{ padding:'10px 14px', fontSize:12, color:'#6b7280', whiteSpace:'nowrap' }}>{s.data ? s.data.split('T')[0].split('-').reverse().join('/') : '—'}</td>
+                    <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280', whiteSpace:'nowrap' }}>{s.dataPagamento ? s.dataPagamento.split('T')[0].split('-').reverse().join('/') : '—'}</td>
                     <td style={{ padding:'10px 14px' }}>
                       <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.status==='pago'?'#dcfce7':'#fef3c7', color:s.status==='pago'?'#166534':'#92400e' }}>{s.status}</span>
                     </td>
-                    <td style={{ padding:'10px 14px', display:'flex', gap:6 }}>
+                    <td style={{ padding:'10px 14px', display:'flex', gap:6, alignItems:'center' }}>
+                      <button onClick={()=>togglePrioridade(s.id)} title={s.prioridade ? 'Remover prioridade' : 'Marcar como prioritário'}
+                        style={{ padding:'4px 8px', border:'1px solid '+(s.prioridade?'#f59e0b':'#d1d5db'), borderRadius:6, fontSize:13, cursor:'pointer', background:s.prioridade?'#fef3c7':'#fff', color:s.prioridade?'#92400e':'#9ca3af' }}>
+                        {s.prioridade ? '⚡' : '⚡'}
+                      </button>
                       {podeExcluir && (
                         <button onClick={()=>excluir(s.id)} style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
                           Excluir
                         </button>
                       )}
                     </td>
-                    {isAdminOrFinanceiro && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>{s.auditorias?.[0]?`${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+                    {isAdminOrFinanceiro && (
+                      <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span>{s.auditorias?.[0]?`${s.auditorias[0].acao} — ${s.auditorias[0].usuario.nome} — ${new Date(s.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</span>
+                          <button onClick={()=>setHistoricoSol({ id:s.id, titulo:`${s.motorista?.nome||''} — ${s.tipo?.nome||''}` })}
+                            style={{ padding:'2px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:11, cursor:'pointer', background:'#f9fafb', color:'#6b7280', whiteSpace:'nowrap' }}>
+                            Ver mais
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {listaFiltrada.length===0 && <tr><td colSpan={14} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhuma solicitação encontrada</td></tr>}
             </tbody>
           </table>
-        </div>
+        </StickyScrollTable>
       </div>
     </div>
   );

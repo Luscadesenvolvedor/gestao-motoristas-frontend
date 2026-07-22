@@ -34,16 +34,18 @@ export default function Ferias() {
   useEffect(() => { carregarTudo(); }, []);
 
   async function carregarTudo() {
-    const [m, f, a, ab] = await Promise.all([
-      api.get('/motoristas'),
-      api.get('/ferias'),
-      api.get('/ferias/afastamentos'),
-      api.get('/ferias/abandonos'),
-    ]);
-    setMotoristas(m.data);
-    setLista(f.data);
-    setAfastamentos(a.data);
-    setAbandonos(ab.data);
+    try {
+      const [m, f, a, ab] = await Promise.all([
+        api.get('/motoristas'),
+        api.get('/ferias'),
+        api.get('/ferias/afastamentos'),
+        api.get('/ferias/abandonos'),
+      ]);
+      setMotoristas(m.data);
+      setLista(f.data);
+      setAfastamentos(a.data);
+      setAbandonos(ab.data);
+    } catch {}
   }
 
   async function salvarFerias(e) {

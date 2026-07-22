@@ -36,6 +36,13 @@ export function AuthProvider({ children }) {
   }
 
   const pode = (recurso, tipo = 'leitura') => {
+    // Admin sempre tem acesso total
+    if (usuario?.papel === 'admin') return true;
+    // Permissões customizadas só valem se tiverem conteúdo real
+    const perms = usuario?.permissoes;
+    if (perms && perms.leitura?.length > 0) {
+      return perms[tipo]?.includes(recurso) ?? false;
+    }
     const mapa = {
       usuarios:   { leitura: ['admin'], escrita: ['admin'] },
       motoristas: { leitura: ['admin','guiche','acertador','dgp','financeiro'], escrita: ['admin','guiche','acertador','dgp','financeiro'] },
@@ -45,6 +52,7 @@ export function AuthProvider({ children }) {
       ferias:     { leitura: ['admin','guiche','acertador','dgp','financeiro'], escrita: ['admin','dgp'] },
       agendamentos:{ leitura: ['admin','guiche'], escrita: ['admin','guiche'] },
       financeiro: { leitura: ['admin','acertador'], escrita: ['admin','acertador'] },
+      levantamentos: { leitura: ['admin','guiche','acertador','dgp','financeiro','levantamentos'], escrita: ['admin','financeiro'] },
     };
     return mapa[recurso]?.[tipo]?.includes(usuario?.papel) ?? false;
   };
