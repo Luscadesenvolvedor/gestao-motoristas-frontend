@@ -136,16 +136,30 @@ export default function Financeiro() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
+      // Função para encontrar chave do row de forma flexível (sem acento, sem case)
+      function normalizar(s) {
+        return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+      }
+      function getCol(row, ...termos) {
+        const chaves = Object.keys(row);
+        for (const termo of termos) {
+          const termNorm = normalizar(termo);
+          const chave = chaves.find(k => normalizar(k) === termNorm || normalizar(k).includes(termNorm));
+          if (chave !== undefined) return row[chave];
+        }
+        return '';
+      }
+
       let ok = 0, pulados = 0, falhou = 0, erros = [];
       for (const row of rows) {
         try {
-          const nomeMot = String(row['MOTORISTAS'] || row['Motoristas'] || row['motoristas'] || '').trim();
-          const nomeTipo = String(row['TIPO'] || row['Tipo'] || row['tipo'] || '').trim();
-          const valorRaw = row['VALOR'] ?? row['Valor'] ?? row['valor'] ?? '';
-          const desconRaw = row['DESCONTADO'] ?? row['Descontado'] ?? row['descontado'] ?? '';
-          const vale = String(row['VALE'] || row['Vale'] || row['vale'] || '').trim();
-          const acerto = String(row['DATA'] || row['Data'] || row['data'] || '').trim();
-          const mes = String(row['MÊS DO DESCONTO'] || row['MES DO DESCONTO'] || row['Mês do Desconto'] || row['mes_desconto'] || '').trim();
+          const nomeMot = String(getCol(row, 'motoristas', 'motorista') || '').trim();
+          const nomeTipo = String(getCol(row, 'tipo') || '').trim();
+          const valorRaw = getCol(row, 'valor') ?? '';
+          const desconRaw = getCol(row, 'descontado') ?? '';
+          const vale = String(getCol(row, 'vale') || '').trim();
+          const acerto = String(getCol(row, 'data') || '').trim();
+          const mes = String(getCol(row, 'mes do desconto', 'mes desconto', 'mes_desconto') || '').trim();
 
           if (!nomeMot) { falhou++; erros.push('Linha sem motorista'); continue; }
 
@@ -177,7 +191,9 @@ export default function Financeiro() {
             pulados++;
           } else {
             falhou++;
-            erros.push(err?.response?.data?.error || 'Erro ao importar linha');
+            const detalhe = err?.response?.data?.error || err?.message || 'Erro desconhecido';
+            const status = err?.response?.status || 'sem resposta';
+            erros.push(`[${status}] ${detalhe} (mot: ${nomeMot})`);
           }
         }
       }
@@ -190,7 +206,8 @@ export default function Financeiro() {
         toast(`${pulados} vale(s) já existiam e foram ignorados`, { icon: '⚠️' });
       }
       if (falhou > 0) {
-        toast.error(`${falhou} linha(s) com erro: ${erros.slice(0,3).join('; ')}${erros.length > 3 ? '...' : ''}`);
+        console.error('Erros de importação:', erros);
+        toast.error(`${falhou} erro(s): ${erros.slice(0,2).join(' | ')}${erros.length > 2 ? ` (+${erros.length-2})` : ''}`, { duration: 8000 });
       }
     } catch (err) {
       toast.error('Erro ao ler arquivo Excel');
