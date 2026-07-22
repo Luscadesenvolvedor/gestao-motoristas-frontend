@@ -108,11 +108,16 @@ export default function Ferias() {
     return `${d} dia${d!==1?'s':''}`;
   };
 
+  const [mostrarEncerradas, setMostrarEncerradas] = useState(false);
+
   const listaFiltrada = lista.filter(f => {
     if (filtroMotorista && f.motoristaId !== filtroMotorista) return false;
     if (filtroTipo && f.tipo !== filtroTipo) return false;
     return true;
   });
+
+  const feriasAtivas     = listaFiltrada.filter(f => emFerias(f));
+  const feriasEncerradas = listaFiltrada.filter(f => !emFerias(f));
 
   const afastFiltrados = afastamentos.filter(a => {
     if (filtroMotorista && a.motoristaId !== filtroMotorista) return false;
@@ -291,50 +296,84 @@ export default function Ferias() {
         </div>
       )}
 
-      {tab === 'ferias' && (
-        <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
-          <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
-            {listaFiltrada.length} registro{listaFiltrada.length!==1?'s':''}
-          </div>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-            <thead>
-              <tr style={{ background:'#f9fafb' }}>
-                {['Motorista','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
-                  <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {listaFiltrada.map(f=>(
-                <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
-                  <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
-                  <td style={{ padding:'10px 14px' }}>
-                    <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:f.tipo==='ferias'?'#fff0f0':'#fef3c7', color:f.tipo==='ferias'?'#EB3238':'#92400e' }}>
-                      {f.tipo === 'ferias' ? '🏖️ Férias' : '🏥 Atestado'}
-                    </span>
-                  </td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{fmtData(f.inicio)}</td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.fim ? fmtData(f.fim) : '—'}</td>
-                  <td style={{ padding:'10px 14px' }}>{calcDias(f.inicio, f.fim)}</td>
-                  <td style={{ padding:'10px 14px' }}>
-                    <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:emFerias(f)?'#dcfce7':'#f3f4f6', color:emFerias(f)?'#166534':'#6b7280' }}>
-                      {emFerias(f) ? 'Ativo' : 'Encerrado'}
-                    </span>
-                  </td>
-                  <td style={{ padding:'10px 14px', color:'#6b7280', fontSize:12 }}>{f.observacao || '—'}</td>
-                  <td style={{ padding:'10px 14px' }}>
-                    {canEdit && (
-                      <button onClick={()=>excluir('ferias', f.id)} style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>Excluir</button>
-                    )}
-                  </td>
-                  {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{f.auditorias?.[0]?`${f.auditorias[0].usuario?.nome} — ${new Date(f.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
-                </tr>
-              ))}
-              {listaFiltrada.length===0 && <tr><td colSpan={9} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum registro encontrado</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {tab === 'ferias' && (() => {
+        const cols = ['Motorista','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])];
+        const renderLinhas = (itens) => itens.map(f=>(
+          <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
+            <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
+            <td style={{ padding:'10px 14px' }}>
+              <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:f.tipo==='ferias'?'#fff0f0':'#fef3c7', color:f.tipo==='ferias'?'#EB3238':'#92400e' }}>
+                {f.tipo === 'ferias' ? '🏖️ Férias' : '🏥 Atestado'}
+              </span>
+            </td>
+            <td style={{ padding:'10px 14px', color:'#6b7280' }}>{fmtData(f.inicio)}</td>
+            <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.fim ? fmtData(f.fim) : '—'}</td>
+            <td style={{ padding:'10px 14px' }}>{calcDias(f.inicio, f.fim)}</td>
+            <td style={{ padding:'10px 14px' }}>
+              <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:emFerias(f)?'#dcfce7':'#f3f4f6', color:emFerias(f)?'#166534':'#6b7280' }}>
+                {emFerias(f) ? 'Ativo' : 'Encerrado'}
+              </span>
+            </td>
+            <td style={{ padding:'10px 14px', color:'#6b7280', fontSize:12 }}>{f.observacao || '—'}</td>
+            <td style={{ padding:'10px 14px' }}>
+              {canEdit && (
+                <button onClick={()=>excluir('ferias', f.id)} style={{ padding:'4px 10px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>Excluir</button>
+              )}
+            </td>
+            {isAdmin && <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af' }}>{f.auditorias?.[0]?`${f.auditorias[0].usuario?.nome} — ${new Date(f.auditorias[0].criadoEm).toLocaleString('pt-BR')}`:'—'}</td>}
+          </tr>
+        ));
+        return (
+          <>
+            {/* Ativos */}
+            <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden', marginBottom:12 }}>
+              <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', fontSize:12, color:'#6b7280' }}>
+                {feriasAtivas.length} registro{feriasAtivas.length!==1?'s':''}
+              </div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                <thead>
+                  <tr style={{ background:'#f9fafb' }}>
+                    {cols.map(h=>(
+                      <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {renderLinhas(feriasAtivas)}
+                  {feriasAtivas.length===0 && <tr><td colSpan={cols.length} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum registro ativo</td></tr>}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Encerrados — recolhidos por padrão */}
+            {feriasEncerradas.length > 0 && (
+              <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
+                <div onClick={()=>setMostrarEncerradas(v=>!v)}
+                  style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', cursor:'pointer', background:'#f9fafb' }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:'#6b7280' }}>
+                    Encerrados ({feriasEncerradas.length})
+                  </span>
+                  <span style={{ fontSize:16, color:'#9ca3af', transform: mostrarEncerradas?'rotate(180deg)':'rotate(0deg)', transition:'transform 0.2s' }}>▾</span>
+                </div>
+                {mostrarEncerradas && (
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                    <thead>
+                      <tr style={{ background:'#f9fafb' }}>
+                        {cols.map(h=>(
+                          <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {renderLinhas(feriasEncerradas)}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {tab === 'afastamentos' && (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
