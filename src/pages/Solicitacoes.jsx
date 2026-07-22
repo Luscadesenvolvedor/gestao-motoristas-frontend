@@ -153,12 +153,18 @@ export default function Solicitacoes() {
     setLista(data.solicitacoes);
     const novosIds = new Set(data.solicitacoes.map(s => s.id));
     setSelecionados(prev => prev.filter(id => novosIds.has(id)));
-    // Buscar alertas dos motoristas
+    // Buscar alertas dos motoristas em lotes de 30
     const mIds = [...new Set(data.solicitacoes.map(s => s.motoristaId).filter(Boolean))];
     if (mIds.length) {
       try {
-        const { data: al } = await api.post('/ferias/alertas-bulk', { ids: mIds });
-        setAlertasMotorista(al);
+        const LOTE = 30;
+        const resultados = {};
+        for (let i = 0; i < mIds.length; i += LOTE) {
+          const lote = mIds.slice(i, i + LOTE);
+          const { data: al } = await api.get('/ferias/alertas-bulk', { params: { ids: lote.join(',') } });
+          Object.assign(resultados, al);
+        }
+        setAlertasMotorista(resultados);
       } catch {}
     }
   }

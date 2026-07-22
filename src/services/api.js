@@ -21,7 +21,7 @@ api.interceptors.response.use(
       toast.error('Acesso negado para este perfil');
     } else if (status === 429) {
       toast.error('Muitas requisições. Aguarde alguns segundos e tente novamente.');
-    } else if (err.response) {
+    } else if (err.response && status !== 404) {
       toast.error(msg);
     } else if (err.request) {
       toast.error('Sem resposta do servidor. Verifique sua conexão.');
