@@ -2,7 +2,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
-import toast from 'react-hot-toast';
 
 const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
@@ -17,39 +16,19 @@ export default function MapaIneficiencia() {
   const [lista, setLista]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [anoFiltro, setAnoFiltro] = useState('todos');
-  const [expandidos, setExpandidos] = useState({});
 
-  async function carregar() {
-    setLoading(true);
-    try {
-      const { data } = await api.get('/financeiro');
-      setLista(data);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    async function carregar() {
+      setLoading(true);
+      try {
+        const { data } = await api.get('/financeiro');
+        setLista(data);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-
-  useEffect(() => { carregar(); }, []);
-
-  // Salva um campo individual sem alterar os outros
-  async function salvarCampo(item, campo, valor) {
-    try {
-      await api.put(`/financeiro/${item.id}`, {
-        motoristaId:     item.motoristaId,
-        tipoDescontoId:  item.tipoDescontoId,
-        valor:           item.valor,
-        valorDescontado: item.valorDescontado,
-        numeroAcerto:    item.numeroAcerto,
-        numeroVale:      item.numeroVale,
-        mesDesconto:     item.mesDesconto,
-        observacao:      item.observacao,
-        [campo]: valor || null,
-      });
-      await carregar();
-    } catch {
-      toast.error('Erro ao salvar');
-    }
-  }
+    carregar();
+  }, []);
 
   const anos = useMemo(() => {
     const set = new Set();
@@ -80,14 +59,6 @@ export default function MapaIneficiencia() {
     return lista.filter(i => i.tipoDesconto?.nome?.toLowerCase().includes(termo.toLowerCase())).length;
   }
 
-  // Agrupado por motorista para a tabela
-  const agrupado = lista.reduce((acc, i) => {
-    const id = i.motoristaId;
-    if (!acc[id]) acc[id] = { nome: i.motorista?.nome || '—', itens: [] };
-    acc[id].itens.push(i);
-    return acc;
-  }, {});
-
   const cards = [
     { label: 'Total Negativo',   valor: totalNegativo,   cor: '#EB3238', icone: 'ti-trending-down',    bg: '#fff5f5' },
     { label: 'Valor Descontado', valor: totalDescontado, cor: '#16a34a', icone: 'ti-circle-check',     bg: '#f0fdf4' },
@@ -101,8 +72,6 @@ export default function MapaIneficiencia() {
     { label: 'Avarias',          count: contarTipo('avaria'),   cor: '#ea580c', icone: 'ti-tool',     bg: '#fff7ed' },
   ];
 
-  const inpStyle = { padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 12, width: '100%', boxSizing: 'border-box' };
-
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -114,7 +83,6 @@ export default function MapaIneficiencia() {
         <div style={{ textAlign: 'center', color: '#9ca3af', padding: 60 }}>Carregando...</div>
       ) : (
         <>
-          {/* Cards de totais */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
             {cards.map(c => (
               <div key={c.label} style={{ background: c.bg, border: `1px solid ${c.cor}22`, borderRadius: 14, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -129,7 +97,6 @@ export default function MapaIneficiencia() {
             ))}
           </div>
 
-          {/* Cards de contagem por tipo */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
             {cardsContagem.map(c => (
               <div key={c.label} style={{ background: c.bg, border: `1px solid ${c.cor}22`, borderRadius: 14, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -145,7 +112,6 @@ export default function MapaIneficiencia() {
             ))}
           </div>
 
-          {/* Gráfico por mês */}
           {dadosMes.length > 0 && (
             <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', padding: '20px 24px', marginBottom: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -177,106 +143,6 @@ export default function MapaIneficiencia() {
               </ResponsiveContainer>
             </div>
           )}
-
-          {/* Tabela por motorista com campos editáveis */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {Object.entries(agrupado).map(([motoristaId, grupo]) => {
-              const expandido = expandidos[motoristaId];
-              const totalV = grupo.itens.reduce((s, i) => s + Number(i.valor), 0);
-              const totalD = grupo.itens.reduce((s, i) => s + Number(i.valorDescontado), 0);
-              const saldo  = totalV - totalD;
-
-              return (
-                <div key={motoristaId} style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
-                  <div onClick={() => setExpandidos(e => ({ ...e, [motoristaId]: !e[motoristaId] }))}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a2e' }}>{grupo.nome}</span>
-                      <span style={{ fontSize: 11, color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: 20 }}>{grupo.itens.length} registro(s)</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase' }}>Valor</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{fmt(totalV)}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase' }}>Descontado</div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: '#16a34a' }}>{fmt(totalD)}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase' }}>Saldo</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: saldo > 0 ? '#d97706' : '#16a34a' }}>{fmt(saldo)}</div>
-                      </div>
-                      <span style={{ fontSize: 18, color: '#EB3238', transform: expandido ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
-                    </div>
-                  </div>
-
-                  {expandido && (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                        <thead>
-                          <tr style={{ background: '#f9fafb' }}>
-                            {['Tipo', 'Valor', 'Nº Acerto', 'Nº Vale', 'Mês Desconto', 'Obs'].map(h => (
-                              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {grupo.itens.map(item => (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '8px 12px', color: '#6b7280', whiteSpace: 'nowrap' }}>{item.tipoDesconto?.nome}</td>
-                              <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>{fmt(item.valor)}</td>
-                              <td style={{ padding: '6px 12px', minWidth: 110 }}>
-                                <input
-                                  style={inpStyle}
-                                  defaultValue={item.numeroAcerto || ''}
-                                  onBlur={e => {
-                                    if (e.target.value !== (item.numeroAcerto || ''))
-                                      salvarCampo(item, 'numeroAcerto', e.target.value);
-                                  }}
-                                />
-                              </td>
-                              <td style={{ padding: '6px 12px', minWidth: 100 }}>
-                                <input
-                                  style={inpStyle}
-                                  defaultValue={item.numeroVale || ''}
-                                  onBlur={e => {
-                                    if (e.target.value !== (item.numeroVale || ''))
-                                      salvarCampo(item, 'numeroVale', e.target.value);
-                                  }}
-                                />
-                              </td>
-                              <td style={{ padding: '6px 12px', minWidth: 140 }}>
-                                <input
-                                  type="month"
-                                  style={inpStyle}
-                                  defaultValue={item.mesDesconto || ''}
-                                  onBlur={e => {
-                                    if (e.target.value !== (item.mesDesconto || ''))
-                                      salvarCampo(item, 'mesDesconto', e.target.value);
-                                  }}
-                                />
-                              </td>
-                              <td style={{ padding: '6px 12px', minWidth: 160 }}>
-                                <input
-                                  style={inpStyle}
-                                  defaultValue={item.observacao || ''}
-                                  onBlur={e => {
-                                    if (e.target.value !== (item.observacao || ''))
-                                      salvarCampo(item, 'observacao', e.target.value);
-                                  }}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </>
       )}
     </div>

@@ -92,6 +92,25 @@ export default function Financeiro() {
     carregar();
   }
 
+  async function salvarCampo(item, campo, valor) {
+    try {
+      await api.put(`/financeiro/${item.id}`, {
+        motoristaId:     item.motoristaId,
+        tipoDescontoId:  item.tipoDescontoId,
+        valor:           item.valor,
+        valorDescontado: item.valorDescontado,
+        numeroAcerto:    item.numeroAcerto,
+        numeroVale:      item.numeroVale,
+        mesDesconto:     item.mesDesconto,
+        observacao:      item.observacao,
+        [campo]: valor || null,
+      });
+      carregar();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Erro ao salvar');
+    }
+  }
+
   async function excluirItem(id) {
     if (!confirm('Excluir este registro?')) return;
     try {
@@ -381,10 +400,22 @@ export default function Financeiro() {
                               onBlur={e => atualizarDescontado(item.id, e.target.value)}
                               style={{ width:100, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
                           </td>
-                          <td style={{ padding:'8px 14px', fontFamily:'monospace', fontSize:12 }}>{item.numeroAcerto}</td>
-                          <td style={{ padding:'8px 14px', fontFamily:'monospace', fontSize:12 }}>{item.numeroVale||'—'}</td>
-                          <td style={{ padding:'8px 14px', color:'#6b7280' }}>{item.mesDesconto||'—'}</td>
-                          <td style={{ padding:'8px 14px', color:'#6b7280', fontSize:12 }}>{item.observacao||'—'}</td>
+                          <td style={{ padding:'4px 8px' }}>
+                            <input defaultValue={item.numeroAcerto||''} onBlur={e => { if(e.target.value!==(item.numeroAcerto||'')) salvarCampo(item,'numeroAcerto',e.target.value); }}
+                              style={{ width:100, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, fontFamily:'monospace' }}/>
+                          </td>
+                          <td style={{ padding:'4px 8px' }}>
+                            <input defaultValue={item.numeroVale||''} onBlur={e => { if(e.target.value!==(item.numeroVale||'')) salvarCampo(item,'numeroVale',e.target.value); }}
+                              style={{ width:90, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, fontFamily:'monospace' }}/>
+                          </td>
+                          <td style={{ padding:'4px 8px' }}>
+                            <input type="month" defaultValue={item.mesDesconto||''} onBlur={e => { if(e.target.value!==(item.mesDesconto||'')) salvarCampo(item,'mesDesconto',e.target.value); }}
+                              style={{ width:130, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
+                          </td>
+                          <td style={{ padding:'4px 8px' }}>
+                            <input defaultValue={item.observacao||''} onBlur={e => { if(e.target.value!==(item.observacao||'')) salvarCampo(item,'observacao',e.target.value); }}
+                              style={{ width:150, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
+                          </td>
                           {isAdmin && (
                             <td style={{ padding:'8px 14px', fontSize:11, color:'#9ca3af' }}>
                               {item.auditorias?.[0] ? `${item.auditorias[0].usuario.nome} — ${new Date(item.auditorias[0].criadoEm).toLocaleString('pt-BR')}` : '—'}
