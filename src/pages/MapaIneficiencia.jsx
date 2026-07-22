@@ -56,6 +56,17 @@ export default function MapaIneficiencia() {
     { label: 'Saldo Pendente',   valor: saldoPendente,   cor: saldoPendente > 0 ? '#d97706' : '#16a34a', icone: saldoPendente > 0 ? 'ti-alert-triangle' : 'ti-circle-check', bg: saldoPendente > 0 ? '#fffbeb' : '#f0fdf4' },
   ];
 
+  function contarTipo(termo) {
+    return lista.filter(i => i.tipoDesconto?.nome?.toLowerCase().includes(termo.toLowerCase())).length;
+  }
+
+  const cardsContagem = [
+    { label: 'Multas',           count: contarTipo('multa'),    cor: '#dc2626', icone: 'ti-gavel',         bg: '#fff5f5' },
+    { label: 'Sinistros',        count: contarTipo('sinistro'),  cor: '#7c3aed', icone: 'ti-car-crash',     bg: '#f5f3ff' },
+    { label: 'Perda de Janelas', count: contarTipo('janela'),    cor: '#0284c7', icone: 'ti-window',        bg: '#f0f9ff' },
+    { label: 'Avarias',          count: contarTipo('avaria'),    cor: '#ea580c', icone: 'ti-tool',          bg: '#fff7ed' },
+  ];
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -78,6 +89,22 @@ export default function MapaIneficiencia() {
                   <span style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{c.label}</span>
                 </div>
                 <div style={{ fontSize: 28, fontWeight: 700, color: c.cor }}>{fmt(c.valor)}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cards de contagem por tipo */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+            {cardsContagem.map(c => (
+              <div key={c.label} style={{ background: c.bg, border: `1px solid ${c.cor}22`, borderRadius: 14, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: c.cor + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className={`ti ${c.icone}`} style={{ fontSize: 18, color: c.cor }}></i>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{c.label}</span>
+                </div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: c.cor }}>{c.count}</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>{c.count === 1 ? 'ocorrência' : 'ocorrências'}</div>
               </div>
             ))}
           </div>
