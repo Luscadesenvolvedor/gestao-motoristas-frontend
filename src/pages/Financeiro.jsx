@@ -8,6 +8,131 @@ import toast from 'react-hot-toast';
 
 const vazio = { motoristaId:'', tipoDescontoId:'', valor:'', valorDescontado:'', numeroAcerto:'', numeroVale:'', mesDesconto:'', observacao:'' };
 
+function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescontado, excluirItem }) {
+  const [showParcelas, setShowParcelas] = useState(false);
+  const [novaParcela, setNovaParcela]   = useState({ mes: '', valor: '' });
+  const [salvando, setSalvando]         = useState(false);
+  const temParcelas = item.parcelasDesconto?.length > 0;
+
+  async function adicionarParcela() {
+    if (!novaParcela.mes || !novaParcela.valor) return;
+    setSalvando(true);
+    try {
+      await api.post(`/financeiro/${item.id}/parcelas`, { mes: novaParcela.mes, valor: parseFloat(novaParcela.valor) });
+      setNovaParcela({ mes: '', valor: '' });
+      await carregar();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Erro ao adicionar parcela');
+    } finally { setSalvando(false); }
+  }
+
+  async function removerParcela(parcelaId) {
+    if (!confirm('Remover esta parcela?')) return;
+    try {
+      await api.delete(`/financeiro/${item.id}/parcelas/${parcelaId}`);
+      await carregar();
+    } catch { toast.error('Erro ao remover parcela'); }
+  }
+
+  const inp12 = { padding:'3px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 };
+
+  return (
+    <>
+      <tr style={{ borderBottom: showParcelas ? 'none' : '1px solid #f3f4f6' }}>
+        <td style={{ padding:'8px 14px', color:'#6b7280' }}>{item.tipoDesconto?.nome}</td>
+        <td style={{ padding:'8px 14px' }}>{fmt(item.valor)}</td>
+        <td style={{ padding:'8px 14px' }}>
+          {temParcelas ? (
+            <span style={{ fontSize:13, fontWeight:500, color:'#16a34a' }}>{fmt(item.valorDescontado)}</span>
+          ) : (
+            <input type="number" defaultValue={Number(item.valorDescontado)}
+              onBlur={e => atualizarDescontado(item.id, e.target.value)}
+              style={{ width:100, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
+          )}
+        </td>
+        <td style={{ padding:'4px 8px' }}>
+          <input defaultValue={item.numeroAcerto||''} onBlur={e => { if(e.target.value!==(item.numeroAcerto||'')) salvarCampo(item,'numeroAcerto',e.target.value); }}
+            style={{ width:100, ...inp12, fontFamily:'monospace' }}/>
+        </td>
+        <td style={{ padding:'4px 8px' }}>
+          <input defaultValue={item.numeroVale||''} onBlur={e => { if(e.target.value!==(item.numeroVale||'')) salvarCampo(item,'numeroVale',e.target.value); }}
+            style={{ width:90, ...inp12, fontFamily:'monospace' }}/>
+        </td>
+        <td style={{ padding:'4px 8px' }}>
+          <input type="month" defaultValue={item.mesDesconto||''} onBlur={e => { if(e.target.value!==(item.mesDesconto||'')) salvarCampo(item,'mesDesconto',e.target.value); }}
+            style={{ width:130, ...inp12 }}/>
+        </td>
+        <td style={{ padding:'4px 8px' }}>
+          <input defaultValue={item.observacao||''} onBlur={e => { if(e.target.value!==(item.observacao||'')) salvarCampo(item,'observacao',e.target.value); }}
+            style={{ width:140, ...inp12 }}/>
+        </td>
+        {isAdmin && (
+          <td style={{ padding:'8px 14px', fontSize:11, color:'#9ca3af' }}>
+            {item.auditorias?.[0] ? `${item.auditorias[0].usuario.nome} — ${new Date(item.auditorias[0].criadoEm).toLocaleString('pt-BR')}` : '—'}
+          </td>
+        )}
+        <td style={{ padding:'8px 14px' }}>
+          <div style={{ display:'flex', gap:6 }}>
+            <button onClick={() => setShowParcelas(v => !v)}
+              title="Descontos parciais"
+              style={{ padding:'3px 8px', border:'1px solid #3b82f6', borderRadius:6, fontSize:11, cursor:'pointer', background: showParcelas ? '#3b82f6' : '#fff', color: showParcelas ? '#fff' : '#3b82f6' }}>
+              {temParcelas ? `${item.parcelasDesconto.length}x` : '+'} Parcelas
+            </button>
+            {isAdmin && (
+              <button onClick={() => excluirItem(item.id)}
+                style={{ padding:'3px 8px', border:'1px solid #EB3238', borderRadius:6, fontSize:11, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+                Excluir
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+
+      {showParcelas && (
+        <tr style={{ borderBottom:'1px solid #f3f4f6', background:'#f8faff' }}>
+          <td colSpan={isAdmin ? 9 : 8} style={{ padding:'10px 20px' }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'#3b82f6', marginBottom:8 }}>Descontos Parciais</div>
+
+            {item.parcelasDesconto?.length > 0 && (
+              <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:10 }}>
+                {item.parcelasDesconto.map(p => (
+                  <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12 }}>
+                    <span style={{ color:'#6b7280', minWidth:70 }}>{p.mes}</span>
+                    <span style={{ fontWeight:600, color:'#16a34a', minWidth:100 }}>
+                      R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits:2 })}
+                    </span>
+                    <button onClick={() => removerParcela(p.id)}
+                      style={{ padding:'2px 8px', border:'1px solid #EB3238', borderRadius:5, fontSize:11, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
+                      Remover
+                    </button>
+                  </div>
+                ))}
+                <div style={{ fontSize:11, color:'#6b7280', marginTop:4 }}>
+                  Total descontado: <strong style={{ color:'#16a34a' }}>R$ {Number(item.valorDescontado).toLocaleString('pt-BR', { minimumFractionDigits:2 })}</strong>
+                  {' '}· Saldo: <strong style={{ color: Number(item.valor) - Number(item.valorDescontado) > 0 ? '#d97706' : '#16a34a' }}>
+                    R$ {(Number(item.valor) - Number(item.valorDescontado)).toLocaleString('pt-BR', { minimumFractionDigits:2 })}
+                  </strong>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <input type="month" value={novaParcela.mes} onChange={e => setNovaParcela(v => ({...v, mes: e.target.value}))}
+                style={{ ...inp12, padding:'5px 8px' }} placeholder="Mês"/>
+              <input type="number" value={novaParcela.valor} onChange={e => setNovaParcela(v => ({...v, valor: e.target.value}))}
+                style={{ ...inp12, padding:'5px 8px', width:110 }} placeholder="Valor (R$)"/>
+              <button onClick={adicionarParcela} disabled={salvando || !novaParcela.mes || !novaParcela.valor}
+                style={{ padding:'5px 14px', background:'#3b82f6', color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:500, cursor:'pointer', opacity: (!novaParcela.mes || !novaParcela.valor) ? 0.5 : 1 }}>
+                {salvando ? '...' : 'Adicionar'}
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
 export default function Financeiro() {
   const { isAdmin, usuario } = useAuth();
   const [lista, setLista] = useState([]);
@@ -362,6 +487,17 @@ export default function Financeiro() {
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                   <span style={{ fontSize:14, fontWeight:600, color:'#1a1a2e' }}>{grupo.nome}</span>
                   <span style={{ fontSize:11, color:'#6b7280', background:'#f3f4f6', padding:'2px 8px', borderRadius:20 }}>{grupo.itens.length} registro(s)</span>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      setForm({ ...vazio, motoristaId: motoristaId });
+                      setEditId(null);
+                      setShowForm(true);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    style={{ padding:'2px 10px', fontSize:11, fontWeight:500, background:'#EB3238', color:'#fff', border:'none', borderRadius:6, cursor:'pointer' }}>
+                    + Novo
+                  </button>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:20 }}>
                   <div style={{ textAlign:'right' }}>
@@ -385,52 +521,13 @@ export default function Financeiro() {
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                     <thead>
                       <tr style={{ background:'#f9fafb' }}>
-                        {['Tipo','Valor','Descontado','Nº Acerto','Nº Vale','Mês','Obs',...(isAdmin?['Alteração','']:[])].map(h=>(
+                        {['Tipo','Valor','Descontado','Nº Acerto','Nº Vale','Mês','Obs',...(isAdmin?['Alteração']:[]),'Ações'].map(h=>(
                           <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {grupo.itens.map(item => (
-                        <tr key={item.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
-                          <td style={{ padding:'8px 14px', color:'#6b7280' }}>{item.tipoDesconto?.nome}</td>
-                          <td style={{ padding:'8px 14px' }}>{fmt(item.valor)}</td>
-                          <td style={{ padding:'8px 14px' }}>
-                            <input type="number" defaultValue={Number(item.valorDescontado)}
-                              onBlur={e => atualizarDescontado(item.id, e.target.value)}
-                              style={{ width:100, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
-                          </td>
-                          <td style={{ padding:'4px 8px' }}>
-                            <input defaultValue={item.numeroAcerto||''} onBlur={e => { if(e.target.value!==(item.numeroAcerto||'')) salvarCampo(item,'numeroAcerto',e.target.value); }}
-                              style={{ width:100, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, fontFamily:'monospace' }}/>
-                          </td>
-                          <td style={{ padding:'4px 8px' }}>
-                            <input defaultValue={item.numeroVale||''} onBlur={e => { if(e.target.value!==(item.numeroVale||'')) salvarCampo(item,'numeroVale',e.target.value); }}
-                              style={{ width:90, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, fontFamily:'monospace' }}/>
-                          </td>
-                          <td style={{ padding:'4px 8px' }}>
-                            <input type="month" defaultValue={item.mesDesconto||''} onBlur={e => { if(e.target.value!==(item.mesDesconto||'')) salvarCampo(item,'mesDesconto',e.target.value); }}
-                              style={{ width:130, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
-                          </td>
-                          <td style={{ padding:'4px 8px' }}>
-                            <input defaultValue={item.observacao||''} onBlur={e => { if(e.target.value!==(item.observacao||'')) salvarCampo(item,'observacao',e.target.value); }}
-                              style={{ width:150, padding:'4px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12 }}/>
-                          </td>
-                          {isAdmin && (
-                            <td style={{ padding:'8px 14px', fontSize:11, color:'#9ca3af' }}>
-                              {item.auditorias?.[0] ? `${item.auditorias[0].usuario.nome} — ${new Date(item.auditorias[0].criadoEm).toLocaleString('pt-BR')}` : '—'}
-                            </td>
-                          )}
-                          {isAdmin && (
-                            <td style={{ padding:'8px 14px' }}>
-                              <button onClick={() => excluirItem(item.id)}
-                                style={{ padding:'4px 12px', border:'1px solid #EB3238', borderRadius:6, fontSize:12, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
-                                Excluir
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
+                      {grupo.itens.map(item => (<ParcelaRow key={item.id} item={item} isAdmin={isAdmin} fmt={fmt} carregar={carregar} salvarCampo={salvarCampo} atualizarDescontado={atualizarDescontado} excluirItem={excluirItem} />))}
                     </tbody>
                   </table>
                 </StickyScrollTable>
