@@ -101,7 +101,16 @@ export default function Ferias() {
   }
 
   const hoje = new Date();
-  const emFerias = f => new Date(f.inicio) <= hoje && (!f.fim || new Date(f.fim) >= hoje);
+  const emFerias   = f => new Date(f.inicio) <= hoje && (!f.fim || new Date(f.fim) >= hoje);
+  const isPendente = f => new Date(f.inicio) > hoje;
+  const isEncerrado = f => !emFerias(f) && !isPendente(f);
+
+  function statusFerias(f) {
+    if (emFerias(f))   return { label: 'Ativo',    bg: '#dcfce7', cor: '#166534' };
+    if (isPendente(f)) return { label: 'Pendente', bg: '#fef9c3', cor: '#854d0e' };
+    return               { label: 'Encerrado', bg: '#f3f4f6', cor: '#6b7280' };
+  }
+
   const calcDias = (inicio, fim) => {
     if (!inicio || !fim) return '—';
     const d = Math.ceil((new Date(fim) - new Date(inicio)) / (1000*60*60*24)) + 1;
@@ -116,8 +125,8 @@ export default function Ferias() {
     return true;
   });
 
-  const feriasAtivas     = listaFiltrada.filter(f => emFerias(f));
-  const feriasEncerradas = listaFiltrada.filter(f => !emFerias(f));
+  const feriasAtivas     = listaFiltrada.filter(f => emFerias(f) || isPendente(f));
+  const feriasEncerradas = listaFiltrada.filter(f => isEncerrado(f));
 
   const afastFiltrados = afastamentos.filter(a => {
     if (filtroMotorista && a.motoristaId !== filtroMotorista) return false;
@@ -310,9 +319,9 @@ export default function Ferias() {
             <td style={{ padding:'10px 14px', color:'#6b7280' }}>{f.fim ? fmtData(f.fim) : '—'}</td>
             <td style={{ padding:'10px 14px' }}>{calcDias(f.inicio, f.fim)}</td>
             <td style={{ padding:'10px 14px' }}>
-              <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:emFerias(f)?'#dcfce7':'#f3f4f6', color:emFerias(f)?'#166534':'#6b7280' }}>
-                {emFerias(f) ? 'Ativo' : 'Encerrado'}
-              </span>
+              {(() => { const s = statusFerias(f); return (
+                <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:s.bg, color:s.cor }}>{s.label}</span>
+              ); })()}
             </td>
             <td style={{ padding:'10px 14px', color:'#6b7280', fontSize:12 }}>{f.observacao || '—'}</td>
             <td style={{ padding:'10px 14px' }}>
