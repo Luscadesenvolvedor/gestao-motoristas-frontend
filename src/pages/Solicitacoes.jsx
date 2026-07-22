@@ -157,7 +157,7 @@ export default function Solicitacoes() {
     const mIds = [...new Set(data.solicitacoes.map(s => s.motoristaId).filter(Boolean))];
     if (mIds.length) {
       try {
-        const { data: al } = await api.get('/ferias/alertas-bulk', { params: { ids: mIds.join(',') } });
+        const { data: al } = await api.post('/ferias/alertas-bulk', { ids: mIds });
         setAlertasMotorista(al);
       } catch {}
     }
