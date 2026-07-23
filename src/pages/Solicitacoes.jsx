@@ -15,7 +15,6 @@ const vazio = { motoristaId:'', tipoId:'', tipoValeId:'', tipoRefId:'', data: da
 const FROTAS = [
   { key:'buzin', label:'BUZIN', cor:'#EB3238', bg:'#fff0f0' },
   { key:'lbm',   label:'LBM',   cor:'#1a1a2e', bg:'#f0f0ff' },
-  { key:'meli',  label:'MELI',  cor:'#d97706', bg:'#fffbeb' },
 ];
 
 const estiloCabecalho = {
@@ -158,12 +157,13 @@ export default function Solicitacoes() {
     if (mIds.length) {
       try {
         const LOTE = 30;
+        const lotes = [];
+        for (let i = 0; i < mIds.length; i += LOTE) lotes.push(mIds.slice(i, i + LOTE));
+        const respostas = await Promise.all(
+          lotes.map(lote => api.get('/ferias/alertas-bulk', { params: { ids: lote.join(',') } }))
+        );
         const resultados = {};
-        for (let i = 0; i < mIds.length; i += LOTE) {
-          const lote = mIds.slice(i, i + LOTE);
-          const { data: al } = await api.get('/ferias/alertas-bulk', { params: { ids: lote.join(',') } });
-          Object.assign(resultados, al);
-        }
+        respostas.forEach(({ data: al }) => Object.assign(resultados, al));
         setAlertasMotorista(resultados);
       } catch {}
     }

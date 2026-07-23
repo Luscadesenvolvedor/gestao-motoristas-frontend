@@ -45,7 +45,10 @@ export default function MapaIneficiencia() {
 
   const totalNegativo   = lista.reduce((s, i) => s + Number(i.valor), 0);
   const totalDescontado = lista.reduce((s, i) => s + Number(i.valorDescontado), 0);
-  const saldoPendente   = totalNegativo - totalDescontado;
+  const totalAbonado    = lista.filter(i => i.abonado).reduce((s, i) => s + Number(i.valor), 0);
+  const saldoPendente   = lista
+    .filter(i => !i.abonado)
+    .reduce((s, i) => s + Math.max(0, Number(i.valor) - Number(i.valorDescontado)), 0);
 
   const porMes = listaFiltrada.reduce((acc, i) => {
     const mes = i.mesDesconto || 'Sem mês';
@@ -63,6 +66,7 @@ export default function MapaIneficiencia() {
     { label: 'Total Negativo',   valor: totalNegativo,   cor: '#EB3238', icone: 'ti-trending-down',    bg: '#fff5f5' },
     { label: 'Valor Descontado', valor: totalDescontado, cor: '#16a34a', icone: 'ti-circle-check',     bg: '#f0fdf4' },
     { label: 'Saldo Pendente',   valor: saldoPendente,   cor: saldoPendente > 0 ? '#d97706' : '#16a34a', icone: saldoPendente > 0 ? 'ti-alert-triangle' : 'ti-circle-check', bg: saldoPendente > 0 ? '#fffbeb' : '#f0fdf4' },
+    { label: 'Abonados',         valor: totalAbonado,    cor: '#0891b2', icone: 'ti-rosette-discount',  bg: '#f0f9ff' },
   ];
 
   const cardsContagem = [
@@ -83,7 +87,7 @@ export default function MapaIneficiencia() {
         <div style={{ textAlign: 'center', color: '#9ca3af', padding: 60 }}>Carregando...</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
             {cards.map(c => (
               <div key={c.label} style={{ background: c.bg, border: `1px solid ${c.cor}22`, borderRadius: 14, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

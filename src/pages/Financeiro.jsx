@@ -12,7 +12,22 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
   const [showParcelas, setShowParcelas] = useState(false);
   const [novaParcela, setNovaParcela]   = useState({ mes: '', valor: '' });
   const [salvando, setSalvando]         = useState(false);
+  const [showAbonar, setShowAbonar]     = useState(false);
+  const [nomeAbono, setNomeAbono]       = useState('');
   const temParcelas = item.parcelasDesconto?.length > 0;
+
+  async function confirmarAbono() {
+    if (!nomeAbono.trim()) return;
+    try {
+      await api.patch(`/financeiro/${item.id}/abonar`, { abonadoPor: nomeAbono.trim() });
+      toast.success(`Abonado por ${nomeAbono.trim()}`);
+      setShowAbonar(false);
+      setNomeAbono('');
+      await carregar();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Erro ao abonar');
+    }
+  }
 
   async function adicionarParcela() {
     if (!novaParcela.mes || !novaParcela.valor) return;
@@ -38,11 +53,16 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
 
   return (
     <>
-      <tr style={{ borderBottom: showParcelas ? 'none' : '1px solid #f3f4f6' }}>
+      <tr style={{ borderBottom: (showParcelas || showAbonar) ? 'none' : '1px solid #f3f4f6', background: item.abonado ? '#f0fdf4' : undefined }}>
         <td style={{ padding:'8px 14px', color:'#6b7280' }}>{item.tipoDesconto?.nome}</td>
         <td style={{ padding:'8px 14px' }}>{fmt(item.valor)}</td>
         <td style={{ padding:'8px 14px' }}>
-          {temParcelas ? (
+          {item.abonado ? (
+            <div>
+              <span style={{ fontSize:13, fontWeight:500, color:'#16a34a' }}>{fmt(item.valorDescontado)}</span>
+              <div style={{ fontSize:10, color:'#16a34a', marginTop:2 }}>✓ Abonado{item.abonadoPor ? ` por ${item.abonadoPor}` : ''}</div>
+            </div>
+          ) : temParcelas ? (
             <span style={{ fontSize:13, fontWeight:500, color:'#16a34a' }}>{fmt(item.valorDescontado)}</span>
           ) : (
             <input type="number" defaultValue={Number(item.valorDescontado)}
@@ -72,12 +92,20 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
           </td>
         )}
         <td style={{ padding:'8px 14px' }}>
-          <div style={{ display:'flex', gap:6 }}>
-            <button onClick={() => setShowParcelas(v => !v)}
-              title="Descontos parciais"
-              style={{ padding:'3px 8px', border:'1px solid #3b82f6', borderRadius:6, fontSize:11, cursor:'pointer', background: showParcelas ? '#3b82f6' : '#fff', color: showParcelas ? '#fff' : '#3b82f6' }}>
-              {temParcelas ? `${item.parcelasDesconto.length}x` : '+'} Parcelas
-            </button>
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+            {!item.abonado && (
+              <button onClick={() => setShowParcelas(v => !v)}
+                title="Descontos parciais"
+                style={{ padding:'3px 8px', border:'1px solid #3b82f6', borderRadius:6, fontSize:11, cursor:'pointer', background: showParcelas ? '#3b82f6' : '#fff', color: showParcelas ? '#fff' : '#3b82f6' }}>
+                {temParcelas ? `${item.parcelasDesconto.length}x` : '+'} Parcelas
+              </button>
+            )}
+            {!item.abonado && (
+              <button onClick={() => setShowAbonar(v => !v)}
+                style={{ padding:'3px 8px', border:'1px solid #16a34a', borderRadius:6, fontSize:11, cursor:'pointer', background: showAbonar ? '#16a34a' : '#fff', color: showAbonar ? '#fff' : '#16a34a' }}>
+                Abonar
+              </button>
+            )}
             {isAdmin && (
               <button onClick={() => excluirItem(item.id)}
                 style={{ padding:'3px 8px', border:'1px solid #EB3238', borderRadius:6, fontSize:11, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
@@ -87,6 +115,34 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
           </div>
         </td>
       </tr>
+
+      {showAbonar && !item.abonado && (
+        <tr style={{ borderBottom: showParcelas ? 'none' : '1px solid #f3f4f6', background:'#f0fdf4' }}>
+          <td colSpan={isAdmin ? 9 : 8} style={{ padding:'10px 20px' }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'#16a34a', marginBottom:8 }}>
+              Abonar — valor total ({fmt(item.valor)}) será considerado quitado
+            </div>
+            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+              <input
+                value={nomeAbono}
+                onChange={e => setNomeAbono(e.target.value)}
+                placeholder="Nome de quem está abonando..."
+                style={{ padding:'5px 10px', border:'1px solid #86efac', borderRadius:6, fontSize:12, width:260 }}
+                onKeyDown={e => e.key === 'Enter' && confirmarAbono()}
+                autoFocus
+              />
+              <button onClick={confirmarAbono} disabled={!nomeAbono.trim()}
+                style={{ padding:'5px 16px', background:'#16a34a', color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:500, cursor:'pointer', opacity: nomeAbono.trim() ? 1 : 0.5 }}>
+                Confirmar Abono
+              </button>
+              <button onClick={() => { setShowAbonar(false); setNomeAbono(''); }}
+                style={{ padding:'5px 12px', background:'#fff', color:'#6b7280', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, cursor:'pointer' }}>
+                Cancelar
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
 
       {showParcelas && (
         <tr style={{ borderBottom:'1px solid #f3f4f6', background:'#f8faff' }}>

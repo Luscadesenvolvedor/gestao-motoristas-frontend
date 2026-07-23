@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-const vazio = { nome:'', email:'', senha:'', papel:'guiche' };
+const vazio = { nome:'', email:'', senha:'', papel:'guiche', setor:'acerto' };
 const PAPEIS = ['admin','guiche','acertador','dgp','financeiro','levantamentos'];
 const PILL_CORES = { admin:'#EB3238', guiche:'#0891b2', acertador:'#d97706', dgp:'#dc2626', financeiro:'#16a34a', levantamentos:'#7c3aed' };
 
@@ -57,7 +57,7 @@ export default function Usuarios() {
   async function salvar(e) {
     e.preventDefault();
     try {
-      const payload = { nome: form.nome, email: form.email, papel: form.papel, senha: form.senha };
+      const payload = { nome: form.nome, email: form.email, papel: form.papel, senha: form.senha, setor: form.setor };
       if (editId) { await api.put(`/usuarios/${editId}`, payload); toast.success('Usuário atualizado'); }
       else { await api.post('/usuarios', payload); toast.success('Usuário criado'); }
       setForm(vazio); setEditId(null); setShowForm(false); carregar();
@@ -206,6 +206,13 @@ export default function Usuarios() {
                 <label style={lbl}>Papel</label>
                 <select value={form.papel} onChange={e=>setForm(f=>({...f,papel:e.target.value}))} style={inp}>
                   {PAPEIS.map(p=><option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Setor</label>
+                <select value={form.setor||'acerto'} onChange={e=>setForm(f=>({...f,setor:e.target.value}))} style={inp}>
+                  <option value="acerto">Acerto de Contas</option>
+                  <option value="abastecimento">Abastecimento</option>
                 </select>
               </div>
             </div>

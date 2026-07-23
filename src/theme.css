@@ -1,0 +1,65 @@
+/* ================================================================
+   DARK MODE
+   Técnica: invert(1) hue-rotate(180deg) no conteúdo principal.
+   - Branco   → preto  (fundo cards)
+   - Preto    → branco (textos)
+   - Vermelho → continua vermelho (hue 0° + 180° = 180°, invertido = 0°)
+   - Gráficos: double-invert para restaurar cores originais
+   ================================================================ */
+
+[data-theme="escuro"] #main-content {
+  filter: invert(1) hue-rotate(180deg);
+  background: #000 !important;
+}
+
+/* Restaura gráficos Recharts para cores originais */
+[data-theme="escuro"] #main-content .recharts-wrapper,
+[data-theme="escuro"] #main-content .recharts-surface,
+[data-theme="escuro"] #main-content .recharts-legend-wrapper {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Restaura imagens */
+[data-theme="escuro"] #main-content img {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* ================================================================
+   TAMANHO DE FONTE (zoom no conteúdo)
+   ================================================================ */
+
+[data-font="pequena"] #main-content {
+  zoom: 0.88;
+}
+
+[data-font="media"] #main-content {
+  zoom: 1;
+}
+
+[data-font="grande"] #main-content {
+  zoom: 1.13;
+}
+
+/* ================================================================
+   DENSIDADE DE TABELA
+   ================================================================ */
+
+[data-density="compacta"] #main-content table td,
+[data-density="compacta"] #main-content table th {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+[data-density="confortavel"] #main-content table td,
+[data-density="confortavel"] #main-content table th {
+  padding: 14px 16px !important;
+}
+
+/* ================================================================
+   SCROLLBAR ELEGANTE
+   ================================================================ */
+
+#main-content::-webkit-scrollbar { width: 6px; height: 6px; }
+#main-content::-webkit-scrollbar-track { background: transparent; }
+#main-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 3px; }
+[data-theme="escuro"] #main-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); }

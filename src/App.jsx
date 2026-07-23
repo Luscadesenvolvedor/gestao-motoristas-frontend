@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import Usuarios from './pages/Usuarios';
@@ -15,6 +16,14 @@ import Indicadores from './pages/Indicadores';
 import ValesFixos from './pages/ValesFixos';
 import Levantamentos from './pages/Levantamentos';
 import MapaIneficiencia from './pages/MapaIneficiencia';
+import Configuracoes from './pages/Configuracoes';
+import NotasAbastecimento from './pages/abastecimento/Notas';
+import RelatoriosAbastecimento from './pages/abastecimento/Relatorios';
+import FornecedoresAbastecimento from './pages/abastecimento/Fornecedores';
+import FaturasAbastecimento from './pages/abastecimento/Faturas';
+import LaVagens from './pages/abastecimento/Lavagens';
+import FornecedoresLavagem from './pages/abastecimento/FornecedoresLavagem';
+import './theme.css';
 import { Component } from 'react';
 
 class ErrorBoundary extends Component {
@@ -45,8 +54,29 @@ function Privada({ children, recurso }) {
 
 function AppRoutes() {
   const { usuario, pode } = useAuth();
+  const { settings } = useSettings();
   const primeiraRota = () => {
     if (!usuario) return '/login';
+    // Setor abastecimento → redireciona para faturas
+    if (usuario.setor === 'abastecimento') return '/ab-faturas';
+    // Respeita aba inicial definida nas configurações
+    if (settings.abaPadrao) {
+      const mapa = {
+        solicitacoes:      'solicitacoes',
+        motoristas:        'motoristas',
+        folgas:            'folgas',
+        ferias:            'ferias',
+        agendamentos:      'agendamentos',
+        exclusoes:         'exclusoes',
+        financeiro:        'financeiro',
+        levantamentos:     'levantamentos',
+        indicadores:       'solicitacoes',
+        'mapa-ineficiencia': 'financeiro',
+        usuarios:          'usuarios',
+      };
+      const recurso = mapa[settings.abaPadrao];
+      if (recurso && pode(recurso, 'leitura')) return '/' + settings.abaPadrao;
+    }
     const rotas = [
       { path: '/usuarios',      recurso: 'usuarios' },
       { path: '/motoristas',    recurso: 'motoristas' },
@@ -78,6 +108,14 @@ function AppRoutes() {
         <Route path="vales-fixos"  element={<Privada recurso="solicitacoes"><ErrorBoundary><ValesFixos /></ErrorBoundary></Privada>} />
         <Route path="levantamentos"     element={<Privada recurso="levantamentos"><ErrorBoundary><Levantamentos /></ErrorBoundary></Privada>} />
         <Route path="mapa-ineficiencia" element={<Privada recurso="financeiro"><ErrorBoundary><MapaIneficiencia /></ErrorBoundary></Privada>} />
+        <Route path="configuracoes"           element={<Privada><ErrorBoundary><Configuracoes /></ErrorBoundary></Privada>} />
+        <Route path="notas-abastecimento"      element={<Privada><ErrorBoundary><NotasAbastecimento /></ErrorBoundary></Privada>} />
+        <Route path="relatorios-abastecimento"  element={<Privada><ErrorBoundary><RelatoriosAbastecimento /></ErrorBoundary></Privada>} />
+        <Route path="ab-fornecedores"           element={<Privada><ErrorBoundary><FornecedoresAbastecimento /></ErrorBoundary></Privada>} />
+        <Route path="ab-faturas"                element={<Privada><ErrorBoundary><FaturasAbastecimento /></ErrorBoundary></Privada>} />
+        <Route path="ab-relatorios"             element={<Privada><ErrorBoundary><RelatoriosAbastecimento /></ErrorBoundary></Privada>} />
+        <Route path="ab-lavagens"               element={<Privada><ErrorBoundary><LaVagens /></ErrorBoundary></Privada>} />
+        <Route path="ab-forn-lavagem"           element={<Privada><ErrorBoundary><FornecedoresLavagem /></ErrorBoundary></Privada>} />
       </Route>
     </Routes>
   );
@@ -87,8 +125,10 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Toaster position="top-right" />
-        <AppRoutes />
+        <SettingsProvider>
+          <Toaster position="top-right" />
+          <AppRoutes />
+        </SettingsProvider>
       </BrowserRouter>
     </AuthProvider>
   );
