@@ -26,18 +26,16 @@ const fmtMesCurto = s => {
   return new Date(Number(ano), Number(mes) - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.','');
 };
 
-const TooltipGrafico = ({ active, payload, label }) => {
+const TooltipGrafico = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   return (
     <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, padding:'12px 16px', fontSize:12, boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}>
-      <div style={{ fontWeight:700, marginBottom:6, color:'#1a1a2e' }}>{fmtMesStr(label)}</div>
-      <div style={{ color:'#1d4ed8' }}>Média real: <strong>{fmtN(d?.mediaReal)} km/L</strong></div>
-      <div style={{ color:'#6b7280' }}>Média sug.: <strong>{fmtN(d?.mediaSug)} km/L</strong></div>
-      <div style={{ color: corPerc(d?.perc || 0) }}>% Atingido: <strong>{fmtN(d?.perc,1)}%</strong></div>
-      <div style={{ color:'#374151', marginTop:4 }}>Distância: <strong>{fmtN(d?.totalKm,0)} km</strong></div>
-      <div style={{ color:'#374151' }}>Total gasto: <strong>{fmtR(d?.totalGasto)}</strong></div>
-      <div style={{ marginTop:6, fontSize:11, color:'#9ca3af' }}>Clique para ver detalhes</div>
+      <div style={{ fontWeight:700, marginBottom:6, color:'#1a1a2e' }}>{fmtMesStr(d?.mes)}</div>
+      <div style={{ color:'#EB3238' }}>Total gasto: <strong>{fmtR(d?.totalGasto)}</strong></div>
+      <div style={{ color:'#374151' }}>Distância: <strong>{fmtN(d?.totalKm,0)} km</strong></div>
+      <div style={{ color:'#374151' }}>Litros diesel: <strong>{fmtN(d?.totalLitros)} L</strong></div>
+      {d?.mediaReal > 0 && <div style={{ color:'#1d4ed8' }}>Média real: <strong>{fmtN(d?.mediaReal)} km/L</strong></div>}
     </div>
   );
 };
@@ -59,8 +57,10 @@ export default function MediasConsumo() {
   // ── filtros do relatório ──
   const [motorista, setMotorista]   = useState('');
   const [mesSel,    setMesSel]      = useState('');
-  const [motoristas, setMotoristas] = useState([]);
-  const [meses,      setMeses]      = useState([]);
+  const [motoristas,   setMotoristas]   = useState([]);
+  const [meses,        setMeses]        = useState([]);
+  const [resumoChart,  setResumoChart]  = useState([]);
+  const [loadingChart, setLoadingChart] = useState(false);
 
   // ── dados carregados do banco ──
   const [registros,  setRegistros]  = useState([]);
@@ -79,16 +79,38 @@ export default function MediasConsumo() {
 
   useEffect(() => { carregarImportacoes(); }, [carregarImportacoes]);
 
-  /* ── buscar motoristas e meses quando importação muda ── */
+  /* ── buscar motoristas, meses e resumo geral quando importação muda ── */
   useEffect(() => {
-    if (!importacaoId) { setMotoristas([]); setMeses([]); setMotorista(''); setMesSel(''); return; }
+    if (!importacaoId) {
+      setMotoristas([]); setMeses([]); setMotorista(''); setMesSel('');
+      setResumoChart([]); setRegistros([]);
+      return;
+    }
     api.get('/medias-consumo/motoristas', { params: { importacaoId } })
       .then(r => { setMotoristas(r.data); setMotorista(''); setMesSel(''); setRegistros([]); })
       .catch(() => {});
     api.get('/medias-consumo/meses', { params: { importacaoId } })
       .then(r => setMeses(r.data))
       .catch(() => {});
+    // Carrega resumo geral (todos motoristas)
+    setLoadingChart(true);
+    api.get('/medias-consumo/resumo-mensal', { params: { importacaoId } })
+      .then(r => setResumoChart(r.data))
+      .catch(() => {})
+      .finally(() => setLoadingChart(false));
   }, [importacaoId]);
+
+  /* ── atualizar gráfico quando motorista muda ── */
+  useEffect(() => {
+    if (!importacaoId) return;
+    setLoadingChart(true);
+    const params = { importacaoId };
+    if (motorista) params.motorista = motorista;
+    api.get('/medias-consumo/resumo-mensal', { params })
+      .then(r => setResumoChart(r.data))
+      .catch(() => {})
+      .finally(() => setLoadingChart(false));
+  }, [importacaoId, motorista]);
 
   /* ── buscar registros quando motorista muda ── */
   useEffect(() => {
@@ -343,37 +365,32 @@ export default function MediasConsumo() {
       )}
 
       {/* ── GRÁFICO MENSAL ── */}
-      {!loadingReg && !mesSel && resumoMensal.length > 0 && (
+      {!mesSel && resumoChart.length > 0 && (
         <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 20px 8px', marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
             <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
-            <span style={{ fontWeight:600, fontSize:14, color:'#1a1a2e' }}>Média de consumo por mês (km/L)</span>
-            <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af' }}>Clique em uma barra para detalhar</span>
+            <span style={{ fontWeight:600, fontSize:14, color:'#1a1a2e' }}>
+              Total gasto por mês {motorista ? `— ${motorista.split(' ').slice(0,2).join(' ')}` : '— Geral (todos motoristas)'}
+            </span>
+            {motorista && <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af' }}>Clique em uma barra para detalhar</span>}
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <ComposedChart
-              data={resumoMensal.map(m => ({ ...m, chave: m.chave, label: fmtMesCurto(m.chave) }))}
-              onClick={e => e?.activePayload?.[0] && setMesSel(e.activePayload[0].payload.chave)}
-              style={{ cursor:'pointer' }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis dataKey="label" tick={{ fontSize:12, fill:'#6b7280' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={36} />
-              <Tooltip content={<TooltipGrafico />} />
-              <Legend wrapperStyle={{ fontSize:12, paddingTop:8 }} />
-              <Bar dataKey="mediaReal" name="Média Real (km/L)" radius={[4,4,0,0]} maxBarSize={48}>
-                {resumoMensal.map(m => (
-                  <Cell key={m.chave} fill={corPerc(m.perc)} fillOpacity={0.85} />
-                ))}
-              </Bar>
-              <Line dataKey="mediaSug" name="Média Sugerida" type="monotone" stroke="#94a3b8" strokeWidth={2} dot={{ r:3, fill:'#94a3b8' }} strokeDasharray="5 3" />
-            </ComposedChart>
-          </ResponsiveContainer>
-          <div style={{ display:'flex', gap:16, justifyContent:'center', fontSize:11, color:'#6b7280', marginTop:4, marginBottom:8 }}>
-            <span><span style={{ display:'inline-block', width:10, height:10, borderRadius:2, background:'#16a34a', marginRight:4 }}></span>≥ 100%</span>
-            <span><span style={{ display:'inline-block', width:10, height:10, borderRadius:2, background:'#d97706', marginRight:4 }}></span>≥ 85%</span>
-            <span><span style={{ display:'inline-block', width:10, height:10, borderRadius:2, background:'#dc2626', marginRight:4 }}></span>&lt; 85%</span>
-          </div>
+          {loadingChart && <div style={{ textAlign:'center', padding:20, fontSize:12, color:'#9ca3af' }}>Carregando...</div>}
+          {!loadingChart && (
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart
+                data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
+                onClick={e => motorista && e?.activePayload?.[0] && setMesSel(e.activePayload[0].payload.mes)}
+                style={{ cursor: motorista ? 'pointer' : 'default' }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                <XAxis dataKey="label" tick={{ fontSize:12, fill:'#6b7280' }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={52} />
+                <Tooltip content={<TooltipGrafico />} />
+                <Bar dataKey="totalGasto" name="Total Gasto (R$)" radius={[4,4,0,0]} maxBarSize={52} fill="#EB3238" fillOpacity={0.85} />
+                <Line dataKey="mediaReal" name="Média Real (km/L)" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r:3 }} yAxisId={0} hide={!motorista} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
         </div>
       )}
 
