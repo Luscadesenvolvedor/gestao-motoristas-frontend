@@ -52,7 +52,8 @@ export default function MediasConsumo() {
   // ── estado Excel local (antes de salvar) ──
   const [preview,     setPreview]     = useState(null); // { nomeArquivo, registros[] }
   const [salvando,    setSalvando]    = useState(false);
-  const fileRef = useRef();
+  const fileRef  = useRef();
+  const rowRefs  = useRef({});
 
   // ── filtros do relatório ──
   const [motorista, setMotorista]   = useState('');
@@ -255,6 +256,15 @@ export default function MediasConsumo() {
     return { totalKm, totalLit, totalGasto, mediaReal, mediaSug, perc, custoKm };
   }, [detalhe]);
 
+  function toggleMes(chave) {
+    const abrindo = mesSel !== chave;
+    setMesSel(abrindo ? chave : '');
+    setTimeout(() => {
+      const el = rowRefs.current[chave];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, abrindo ? 50 : 0);
+  }
+
   const imp = importacoes.find(i => i.id === importacaoId);
 
   /* ─────────── render ─────────── */
@@ -413,7 +423,9 @@ export default function MediasConsumo() {
                   const sm  = aberto ? summaryMes : null;
                   return (
                     <>
-                      <tr key={m.chave} onClick={() => setMesSel(aberto ? '' : m.chave)}
+                      <tr key={m.chave}
+                        ref={el => rowRefs.current[m.chave] = el}
+                        onClick={() => toggleMes(m.chave)}
                         style={{ cursor:'pointer', background: aberto ? '#eff6ff' : '' }}
                         onMouseEnter={e => { if (!aberto) e.currentTarget.style.background='#f0f9ff'; }}
                         onMouseLeave={e => { if (!aberto) e.currentTarget.style.background=''; }}>
