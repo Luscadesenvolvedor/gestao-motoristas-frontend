@@ -35,6 +35,7 @@ export default function MediasConsumo() {
   const [motorista, setMotorista]   = useState('');
   const [mesSel,    setMesSel]      = useState('');
   const [motoristas, setMotoristas] = useState([]);
+  const [meses,      setMeses]      = useState([]);
 
   // ── dados carregados do banco ──
   const [registros,  setRegistros]  = useState([]);
@@ -53,23 +54,29 @@ export default function MediasConsumo() {
 
   useEffect(() => { carregarImportacoes(); }, [carregarImportacoes]);
 
-  /* ── buscar motoristas quando importação muda ── */
+  /* ── buscar motoristas e meses quando importação muda ── */
   useEffect(() => {
-    if (!importacaoId) { setMotoristas([]); setMotorista(''); return; }
+    if (!importacaoId) { setMotoristas([]); setMeses([]); setMotorista(''); setMesSel(''); return; }
     api.get('/medias-consumo/motoristas', { params: { importacaoId } })
       .then(r => { setMotoristas(r.data); setMotorista(''); setMesSel(''); setRegistros([]); })
+      .catch(() => {});
+    api.get('/medias-consumo/meses', { params: { importacaoId } })
+      .then(r => setMeses(r.data))
       .catch(() => {});
   }, [importacaoId]);
 
   /* ── buscar registros quando motorista ou mês muda ── */
   useEffect(() => {
-    if (!importacaoId || !motorista) { setRegistros([]); return; }
+    if (!importacaoId || (!motorista && !mesSel)) { setRegistros([]); return; }
     setLoadingReg(true);
-    api.get('/medias-consumo', { params: { importacaoId, motorista } })
+    const params = { importacaoId };
+    if (motorista) params.motorista = motorista;
+    if (mesSel) { params.mes = mesSel.split('-')[1]; params.ano = mesSel.split('-')[0]; }
+    api.get('/medias-consumo', { params })
       .then(r => setRegistros(r.data))
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoadingReg(false));
-  }, [importacaoId, motorista]);
+  }, [importacaoId, motorista, mesSel]);
 
   /* ── ler Excel localmente ── */
   async function handleFile(e) {
@@ -273,27 +280,25 @@ export default function MediasConsumo() {
       </div>
 
       {/* ── Filtros ── */}
-      {motoristas.length > 0 && (
+      {(motoristas.length > 0 || meses.length > 0) && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 280px' }}>
+          <div style={{ flex: '1 1 260px' }}>
             <label style={lbl}>Motorista</label>
             <select value={motorista} onChange={e => { setMotorista(e.target.value); setMesSel(''); }} style={inp}>
-              <option value="">Selecionar motorista…</option>
+              <option value="">Todos os motoristas</option>
               {motoristas.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          {motorista && (
-            <div style={{ flex: '0 1 200px' }}>
-              <label style={lbl}>Mês (detalhe)</label>
-              <select value={mesSel} onChange={e => setMesSel(e.target.value)} style={inp}>
-                <option value="">Todos os meses</option>
-                {[...new Set(registros.map(r => r.data?.slice(0,7)).filter(Boolean))].sort().map(m => (
-                  <option key={m} value={m}>{fmtMesStr(m)}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {motorista && (
+          <div style={{ flex: '1 1 180px' }}>
+            <label style={lbl}>Mês</label>
+            <select value={mesSel} onChange={e => setMesSel(e.target.value)} style={inp}>
+              <option value="">Todos os meses</option>
+              {meses.map(m => (
+                <option key={m} value={m}>{fmtMesStr(m)}</option>
+              ))}
+            </select>
+          </div>
+          {(motorista || mesSel) && (
             <button onClick={() => { setMotorista(''); setMesSel(''); }}
               style={{ padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', fontSize: 12, color: '#6b7280', cursor: 'pointer' }}>
               Limpar
@@ -311,11 +316,11 @@ export default function MediasConsumo() {
         </div>
       )}
 
-      {/* ── Aguardando seleção de motorista ── */}
-      {importacaoId && !motorista && motoristas.length > 0 && (
+      {/* ── Aguardando seleção ── */}
+      {importacaoId && !motorista && !mesSel && motoristas.length > 0 && (
         <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb' }}>
-          <i className="ti ti-user-search" style={{ fontSize: 40, display: 'block', marginBottom: 8 }}></i>
-          Selecione um motorista para ver o relatório
+          <i className="ti ti-filter" style={{ fontSize: 40, display: 'block', marginBottom: 8 }}></i>
+          Selecione um motorista ou mês para ver o relatório
         </div>
       )}
 
@@ -325,12 +330,12 @@ export default function MediasConsumo() {
       )}
 
       {/* ── RESUMO MENSAL ── */}
-      {!loadingReg && motorista && !mesSel && resumoMensal.length > 0 && (
+      {!loadingReg && !mesSel && resumoMensal.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="ti ti-chart-line" style={{ color: '#EB3238', fontSize: 16 }}></i>
             <span style={{ fontWeight: 600, fontSize: 14, color: '#1a1a2e' }}>
-              {motorista.split(' ').slice(0,3).join(' ')} — resumo mensal
+              {motorista ? motorista.split(' ').slice(0,3).join(' ') : 'Todos os motoristas'} — resumo mensal
             </span>
             <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>Clique em um mês para detalhar</span>
           </div>
@@ -396,7 +401,7 @@ export default function MediasConsumo() {
       )}
 
       {/* ── DETALHE MÊS ── */}
-      {!loadingReg && motorista && mesSel && summaryMes && (
+      {!loadingReg && mesSel && summaryMes && (
         <div>
           <button onClick={() => setMesSel('')}
             style={{ display:'flex', alignItems:'center', gap:6, marginBottom:16, padding:'7px 14px', border:'1px solid #e5e7eb', borderRadius:8, background:'#fff', fontSize:12, color:'#374151', cursor:'pointer' }}>
