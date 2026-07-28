@@ -22,8 +22,9 @@ const menusAcerto = [
 const menusAbastecimento = [
   { path: 'ab-faturas',      label: 'Faturas',             icon: 'ti-file-invoice',   recurso: null },
   { path: 'ab-lavagens',     label: 'Lavagens',            icon: 'ti-wash',           recurso: null },
-  { path: 'ab-forn-lavagem', label: 'Fornec. Lavagem',     icon: 'ti-building-store', recurso: null },
-  { path: 'ab-relatorios',   label: 'Relatórios',          icon: 'ti-chart-bar',      recurso: null },
+  { path: 'ab-forn-lavagem',     label: 'Fornec. Lavagem',     icon: 'ti-building-store', recurso: null },
+  { path: 'ab-medias-consumo',   label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: null },
+  { path: 'ab-relatorios',       label: 'Relatórios',          icon: 'ti-chart-bar',      recurso: null },
 ];
 
 // Item fixo no rodapé da sidebar (sem restrição de recurso)
