@@ -2,6 +2,10 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine
+} from 'recharts';
 
 /* ── helpers ── */
 function excelDateToISO(serial) {
@@ -16,6 +20,27 @@ const fmtDt = s => s ? new Date(s + 'T12:00:00').toLocaleDateString('pt-BR') : '
 const fmtN = (v, d = 2) => v != null && v !== '' ? Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
 const fmtR = v => v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
 const corPerc = p => p >= 100 ? '#16a34a' : p >= 85 ? '#d97706' : '#dc2626';
+
+const fmtMesCurto = s => {
+  const [ano, mes] = s.split('-');
+  return new Date(Number(ano), Number(mes) - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.','');
+};
+
+const TooltipGrafico = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  return (
+    <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, padding:'12px 16px', fontSize:12, boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}>
+      <div style={{ fontWeight:700, marginBottom:6, color:'#1a1a2e' }}>{fmtMesStr(label)}</div>
+      <div style={{ color:'#1d4ed8' }}>Média real: <strong>{fmtN(d?.mediaReal)} km/L</strong></div>
+      <div style={{ color:'#6b7280' }}>Média sug.: <strong>{fmtN(d?.mediaSug)} km/L</strong></div>
+      <div style={{ color: corPerc(d?.perc || 0) }}>% Atingido: <strong>{fmtN(d?.perc,1)}%</strong></div>
+      <div style={{ color:'#374151', marginTop:4 }}>Distância: <strong>{fmtN(d?.totalKm,0)} km</strong></div>
+      <div style={{ color:'#374151' }}>Total gasto: <strong>{fmtR(d?.totalGasto)}</strong></div>
+      <div style={{ marginTop:6, fontSize:11, color:'#9ca3af' }}>Clique para ver detalhes</div>
+    </div>
+  );
+};
 
 const inp = { width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', cursor: 'pointer', boxSizing: 'border-box' };
 const lbl = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 5 };
@@ -327,6 +352,41 @@ export default function MediasConsumo() {
       {/* ── Carregando ── */}
       {loadingReg && (
         <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Carregando dados...</div>
+      )}
+
+      {/* ── GRÁFICO MENSAL ── */}
+      {!loadingReg && !mesSel && resumoMensal.length > 0 && (
+        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 20px 8px', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+            <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
+            <span style={{ fontWeight:600, fontSize:14, color:'#1a1a2e' }}>Média de consumo por mês (km/L)</span>
+            <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af' }}>Clique em uma barra para detalhar</span>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart
+              data={resumoMensal.map(m => ({ ...m, chave: m.chave, label: fmtMesCurto(m.chave) }))}
+              onClick={e => e?.activePayload?.[0] && setMesSel(e.activePayload[0].payload.chave)}
+              style={{ cursor:'pointer' }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+              <XAxis dataKey="label" tick={{ fontSize:12, fill:'#6b7280' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={36} />
+              <Tooltip content={<TooltipGrafico />} />
+              <Legend wrapperStyle={{ fontSize:12, paddingTop:8 }} />
+              <Bar dataKey="mediaReal" name="Média Real (km/L)" radius={[4,4,0,0]} maxBarSize={48}>
+                {resumoMensal.map(m => (
+                  <Cell key={m.chave} fill={corPerc(m.perc)} fillOpacity={0.85} />
+                ))}
+              </Bar>
+              <Line dataKey="mediaSug" name="Média Sugerida" type="monotone" stroke="#94a3b8" strokeWidth={2} dot={{ r:3, fill:'#94a3b8' }} strokeDasharray="5 3" />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div style={{ display:'flex', gap:16, justifyContent:'center', fontSize:11, color:'#6b7280', marginTop:4, marginBottom:8 }}>
+            <span><span style={{ display:'inline-block', width:10, height:10, borderRadius:2, background:'#16a34a', marginRight:4 }}></span>≥ 100%</span>
+            <span><span style={{ display:'inline-block', width:10, height:10, borderRadius:2, background:'#d97706', marginRight:4 }}></span>≥ 85%</span>
+            <span><span style={{ display:'inline-block', width:10, height:10, borderRadius:2, background:'#dc2626', marginRight:4 }}></span>&lt; 85%</span>
+          </div>
+        </div>
       )}
 
       {/* ── RESUMO MENSAL ── */}
