@@ -1,5 +1,5 @@
 {
-  "buildCommand": "rm -rf node_modules && npm ci && npm run build",
+  "buildCommand": "rm -f package-lock.json && npm install && npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
