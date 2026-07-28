@@ -388,7 +388,7 @@ export default function MediasConsumo() {
       )}
 
       {/* ── RESUMO MENSAL ── */}
-      {!loadingReg && !mesSel && resumoMensal.length > 0 && (
+      {!loadingReg && resumoMensal.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="ti ti-chart-line" style={{ color: '#EB3238', fontSize: 16 }}></i>
@@ -408,9 +408,10 @@ export default function MediasConsumo() {
               </thead>
               <tbody>
                 {resumoMensal.map(m => (
-                  <tr key={m.chave} onClick={() => setMesSel(m.chave)} style={{ cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background='#f0f9ff'}
-                    onMouseLeave={e => e.currentTarget.style.background=''}>
+                  <tr key={m.chave} onClick={() => setMesSel(mesSel === m.chave ? '' : m.chave)}
+                    style={{ cursor:'pointer', background: mesSel === m.chave ? '#eff6ff' : '' }}
+                    onMouseEnter={e => { if (mesSel !== m.chave) e.currentTarget.style.background='#f0f9ff'; }}
+                    onMouseLeave={e => { if (mesSel !== m.chave) e.currentTarget.style.background=''; }}>
                     <td style={{ padding:'12px 16px', borderBottom:'1px solid #f3f4f6', fontWeight:600, color:'#1a1a2e' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <i className="ti ti-calendar" style={{ fontSize:13, color:'#EB3238' }}></i>
@@ -461,10 +462,6 @@ export default function MediasConsumo() {
       {/* ── DETALHE MÊS ── */}
       {!loadingReg && mesSel && summaryMes && (
         <div>
-          <button onClick={() => setMesSel('')}
-            style={{ display:'flex', alignItems:'center', gap:6, marginBottom:16, padding:'7px 14px', border:'1px solid #e5e7eb', borderRadius:8, background:'#fff', fontSize:12, color:'#374151', cursor:'pointer' }}>
-            <i className="ti ti-arrow-left"></i> Voltar ao resumo
-          </button>
           <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginBottom:20 }}>
             {[
               ['Distância', `${fmtN(summaryMes.totalKm,0)} km`],
