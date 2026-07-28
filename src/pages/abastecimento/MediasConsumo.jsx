@@ -90,18 +90,15 @@ export default function MediasConsumo() {
       .catch(() => {});
   }, [importacaoId]);
 
-  /* ── buscar registros quando motorista ou mês muda ── */
+  /* ── buscar registros quando motorista muda ── */
   useEffect(() => {
-    if (!importacaoId || (!motorista && !mesSel)) { setRegistros([]); return; }
+    if (!importacaoId || !motorista) { setRegistros([]); setMesSel(''); return; }
     setLoadingReg(true);
-    const params = { importacaoId };
-    if (motorista) params.motorista = motorista;
-    if (mesSel) { params.mes = mesSel.split('-')[1]; params.ano = mesSel.split('-')[0]; }
-    api.get('/medias-consumo', { params })
+    api.get('/medias-consumo', { params: { importacaoId, motorista } })
       .then(r => setRegistros(r.data))
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoadingReg(false));
-  }, [importacaoId, motorista, mesSel]);
+  }, [importacaoId, motorista]);
 
   /* ── ler Excel localmente ── */
   async function handleFile(e) {
@@ -305,25 +302,16 @@ export default function MediasConsumo() {
       </div>
 
       {/* ── Filtros ── */}
-      {(motoristas.length > 0 || meses.length > 0) && (
+      {motoristas.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 260px' }}>
+          <div style={{ flex: '1 1 300px' }}>
             <label style={lbl}>Motorista</label>
             <select value={motorista} onChange={e => { setMotorista(e.target.value); setMesSel(''); }} style={inp}>
-              <option value="">Todos os motoristas</option>
+              <option value="">Selecionar motorista…</option>
               {motoristas.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          <div style={{ flex: '1 1 180px' }}>
-            <label style={lbl}>Mês</label>
-            <select value={mesSel} onChange={e => setMesSel(e.target.value)} style={inp}>
-              <option value="">Todos os meses</option>
-              {meses.map(m => (
-                <option key={m} value={m}>{fmtMesStr(m)}</option>
-              ))}
-            </select>
-          </div>
-          {(motorista || mesSel) && (
+          {motorista && (
             <button onClick={() => { setMotorista(''); setMesSel(''); }}
               style={{ padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', fontSize: 12, color: '#6b7280', cursor: 'pointer' }}>
               Limpar
@@ -342,7 +330,7 @@ export default function MediasConsumo() {
       )}
 
       {/* ── Aguardando seleção ── */}
-      {importacaoId && !motorista && !mesSel && motoristas.length > 0 && (
+      {importacaoId && !motorista && motoristas.length > 0 && (
         <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb' }}>
           <i className="ti ti-filter" style={{ fontSize: 40, display: 'block', marginBottom: 8 }}></i>
           Selecione um motorista ou mês para ver o relatório
