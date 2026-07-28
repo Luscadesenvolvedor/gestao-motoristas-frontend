@@ -351,13 +351,6 @@ export default function MediasConsumo() {
         </div>
       )}
 
-      {/* ── Aguardando seleção ── */}
-      {importacaoId && !motorista && motoristas.length > 0 && (
-        <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb' }}>
-          <i className="ti ti-filter" style={{ fontSize: 40, display: 'block', marginBottom: 8 }}></i>
-          Selecione um motorista ou mês para ver o relatório
-        </div>
-      )}
 
       {/* ── Carregando ── */}
       {loadingReg && (
