@@ -407,30 +407,94 @@ export default function MediasConsumo() {
                 </tr>
               </thead>
               <tbody>
-                {resumoMensal.map(m => (
-                  <tr key={m.chave} onClick={() => setMesSel(mesSel === m.chave ? '' : m.chave)}
-                    style={{ cursor:'pointer', background: mesSel === m.chave ? '#eff6ff' : '' }}
-                    onMouseEnter={e => { if (mesSel !== m.chave) e.currentTarget.style.background='#f0f9ff'; }}
-                    onMouseLeave={e => { if (mesSel !== m.chave) e.currentTarget.style.background=''; }}>
-                    <td style={{ padding:'12px 16px', borderBottom:'1px solid #f3f4f6', fontWeight:600, color:'#1a1a2e' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <i className="ti ti-calendar" style={{ fontSize:13, color:'#EB3238' }}></i>
-                        {fmtMesStr(m.chave)}
-                      </div>
-                    </td>
-                    <td style={{ padding:'12px 16px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)} km</td>
-                    <td style={{ padding:'12px 16px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalLit)} L</td>
-                    <td style={{ padding:'12px 16px', textAlign:'right', borderBottom:'1px solid #f3f4f6', fontWeight:600, color:'#1a1a2e' }}>{fmtN(m.mediaReal)}</td>
-                    <td style={{ padding:'12px 16px', textAlign:'right', borderBottom:'1px solid #f3f4f6', color:'#6b7280' }}>{fmtN(m.mediaSug)}</td>
-                    <td style={{ padding:'12px 16px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>
-                      <span style={{ fontWeight:700, color:corPerc(m.perc) }}>{fmtN(m.perc,1)}%</span>
-                      <div style={{ marginTop:4, height:4, borderRadius:2, background:'#e5e7eb', width:80, marginLeft:'auto' }}>
-                        <div style={{ height:'100%', borderRadius:2, background:corPerc(m.perc), width:`${Math.min(m.perc,100)}%` }}></div>
-                      </div>
-                    </td>
-                    <td style={{ padding:'12px 16px', textAlign:'right', borderBottom:'1px solid #f3f4f6', fontWeight:600 }}>{fmtR(m.totalGasto)}</td>
-                  </tr>
-                ))}
+                {resumoMensal.map(m => {
+                  const aberto = mesSel === m.chave;
+                  const det = aberto ? detalhe : [];
+                  const sm  = aberto ? summaryMes : null;
+                  return (
+                    <>
+                      <tr key={m.chave} onClick={() => setMesSel(aberto ? '' : m.chave)}
+                        style={{ cursor:'pointer', background: aberto ? '#eff6ff' : '' }}
+                        onMouseEnter={e => { if (!aberto) e.currentTarget.style.background='#f0f9ff'; }}
+                        onMouseLeave={e => { if (!aberto) e.currentTarget.style.background=''; }}>
+                        <td style={{ padding:'12px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6', fontWeight:600, color:'#1a1a2e' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                            <i className={`ti ${aberto ? 'ti-chevron-down' : 'ti-chevron-right'}`} style={{ fontSize:12, color:'#EB3238' }}></i>
+                            {fmtMesStr(m.chave)}
+                          </div>
+                        </td>
+                        <td style={{ padding:'12px 16px', textAlign:'right', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)} km</td>
+                        <td style={{ padding:'12px 16px', textAlign:'right', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{fmtN(m.totalLit)} L</td>
+                        <td style={{ padding:'12px 16px', textAlign:'right', borderBottom: aberto ? 'none' : '1px solid #f3f4f6', fontWeight:600, color:'#1a1a2e' }}>{fmtN(m.mediaReal)}</td>
+                        <td style={{ padding:'12px 16px', textAlign:'right', borderBottom: aberto ? 'none' : '1px solid #f3f4f6', color:'#6b7280' }}>{fmtN(m.mediaSug)}</td>
+                        <td style={{ padding:'12px 16px', textAlign:'right', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
+                          <span style={{ fontWeight:700, color:corPerc(m.perc) }}>{fmtN(m.perc,1)}%</span>
+                          <div style={{ marginTop:4, height:4, borderRadius:2, background:'#e5e7eb', width:80, marginLeft:'auto' }}>
+                            <div style={{ height:'100%', borderRadius:2, background:corPerc(m.perc), width:`${Math.min(m.perc,100)}%` }}></div>
+                          </div>
+                        </td>
+                        <td style={{ padding:'12px 16px', textAlign:'right', borderBottom: aberto ? 'none' : '1px solid #f3f4f6', fontWeight:600 }}>{fmtR(m.totalGasto)}</td>
+                      </tr>
+                      {aberto && sm && (
+                        <tr key={`${m.chave}-det`}>
+                          <td colSpan={7} style={{ padding:'0 0 8px', background:'#f8fafc', borderBottom:'2px solid #e5e7eb' }}>
+                            {/* KPIs */}
+                            <div style={{ display:'flex', flexWrap:'wrap', gap:10, padding:'14px 16px 10px' }}>
+                              {[
+                                ['Distância', `${fmtN(sm.totalKm,0)} km`],
+                                ['Litros Diesel', `${fmtN(sm.totalLit)} L`],
+                                ['Média Real', `${fmtN(sm.mediaReal)} km/L`, corPerc(sm.perc)],
+                                ['Média Sugerida', `${fmtN(sm.mediaSug)} km/L`],
+                                ['% Atingido', `${fmtN(sm.perc,1)}%`, corPerc(sm.perc)],
+                                ['Custo/km', `R$ ${fmtN(sm.custoKm,4)}`],
+                                ['Total Gasto', fmtR(sm.totalGasto)],
+                              ].map(([lbl,val,cor='#1a1a2e']) => (
+                                <div key={lbl} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:8, padding:'10px 14px', minWidth:110 }}>
+                                  <div style={{ fontSize:10, color:'#6b7280', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:4 }}>{lbl}</div>
+                                  <div style={{ fontSize:18, fontWeight:700, color:cor }}>{val}</div>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Tabela detalhe */}
+                            <div style={{ overflowX:'auto', padding:'0 8px 8px' }}>
+                              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12, background:'#fff', borderRadius:8, overflow:'hidden' }}>
+                                <thead>
+                                  <tr style={{ background:'#f1f5f9' }}>
+                                    {['Data','Placa','Produto','Litros','Distância','Média Real','Média Sug','%','Vlr Total','Posto'].map(h => (
+                                      <th key={h} style={{ padding:'8px 10px', textAlign:['Litros','Distância','Média Real','Média Sug','%','Vlr Total'].includes(h)?'right':'left', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', whiteSpace:'nowrap', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {det.map((r,i) => {
+                                    const isDiesel = String(r.produto||'').toLowerCase().includes('diesel');
+                                    const perc = r.mediaSugerida>0?(r.mediaRealizada/r.mediaSugerida)*100:null;
+                                    return (
+                                      <tr key={i} style={{ background:i%2===0?'#fff':'#f9fafb' }}>
+                                        <td style={{ padding:'7px 10px', whiteSpace:'nowrap', borderBottom:'1px solid #f3f4f6' }}>{fmtDt(r.data?.slice(0,10))}</td>
+                                        <td style={{ padding:'7px 10px', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{r.placa}</td>
+                                        <td style={{ padding:'7px 10px', borderBottom:'1px solid #f3f4f6' }}>
+                                          <span style={{ padding:'2px 6px', borderRadius:4, fontSize:10, fontWeight:600, background:isDiesel?'#eff6ff':'#f0fdf4', color:isDiesel?'#1d4ed8':'#15803d' }}>{isDiesel?'Diesel':'Arla'}</span>
+                                        </td>
+                                        <td style={{ padding:'7px 10px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(r.litros)}</td>
+                                        <td style={{ padding:'7px 10px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{r.distancia?`${fmtN(r.distancia,0)} km`:'—'}</td>
+                                        <td style={{ padding:'7px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{isDiesel&&r.mediaRealizada?fmtN(r.mediaRealizada):'—'}</td>
+                                        <td style={{ padding:'7px 10px', textAlign:'right', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{isDiesel&&r.mediaSugerida?fmtN(r.mediaSugerida):'—'}</td>
+                                        <td style={{ padding:'7px 10px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{perc!==null&&isDiesel?<span style={{ fontWeight:700, color:corPerc(perc) }}>{fmtN(perc,0)}%</span>:'—'}</td>
+                                        <td style={{ padding:'7px 10px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{fmtR(r.vlrTotal)}</td>
+                                        <td style={{ padding:'7px 10px', color:'#6b7280', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', borderBottom:'1px solid #f3f4f6' }}>{r.posto}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
               {resumoMensal.length > 1 && (() => {
                 const tk=resumoMensal.reduce((s,m)=>s+m.totalKm,0);
@@ -459,71 +523,6 @@ export default function MediasConsumo() {
         </div>
       )}
 
-      {/* ── DETALHE MÊS ── */}
-      {!loadingReg && mesSel && summaryMes && (
-        <div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:12, marginBottom:20 }}>
-            {[
-              ['Distância', `${fmtN(summaryMes.totalKm,0)} km`],
-              ['Litros Diesel', `${fmtN(summaryMes.totalLit)} L`],
-              ['Média Real', `${fmtN(summaryMes.mediaReal)} km/L`, corPerc(summaryMes.perc)],
-              ['Média Sugerida', `${fmtN(summaryMes.mediaSug)} km/L`],
-              ['% Atingido', `${fmtN(summaryMes.perc,1)}%`, corPerc(summaryMes.perc)],
-              ['Custo por km', `R$ ${fmtN(summaryMes.custoKm,4)}`],
-              ['Total Gasto', fmtR(summaryMes.totalGasto)],
-            ].map(([label,value,cor='#1a1a2e']) => (
-              <div key={label} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'16px 20px', minWidth:130 }}>
-                <div style={{ fontSize:11, color:'#6b7280', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:6 }}>{label}</div>
-                <div style={{ fontSize:22, fontWeight:700, color:cor }}>{value}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8 }}>
-              <i className="ti ti-list-details" style={{ color:'#EB3238', fontSize:15 }}></i>
-              <span style={{ fontWeight:600, fontSize:13 }}>Abastecimentos — {fmtMesStr(mesSel)}</span>
-              <span style={{ marginLeft:'auto', fontSize:12, color:'#9ca3af' }}>{detalhe.length} registros</span>
-            </div>
-            <div style={{ overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                <thead>
-                  <tr style={{ background:'#f8fafc' }}>
-                    {['Data','Placa','Produto','Litros','Distância','Média Real','Média Sug','%','Vlr Total','Posto'].map(h => (
-                      <th key={h} style={{ padding:'9px 12px', textAlign:['Litros','Distância','Média Real','Média Sug','%','Vlr Total'].includes(h)?'right':'left', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {detalhe.map((r,i) => {
-                    const isDiesel = String(r.produto||'').toLowerCase().includes('diesel');
-                    const perc = r.mediaSugerida>0?(r.mediaRealizada/r.mediaSugerida)*100:null;
-                    return (
-                      <tr key={i} style={{ background:i%2===0?'#fff':'#fafafa' }}>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{fmtDt(r.data?.slice(0,10))}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', fontWeight:600 }}>{r.placa}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6' }}>
-                          <span style={{ padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:600, background:isDiesel?'#eff6ff':'#f0fdf4', color:isDiesel?'#1d4ed8':'#15803d' }}>
-                            {isDiesel?'Diesel':'Arla'}
-                          </span>
-                        </td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', textAlign:'right' }}>{fmtN(r.litros)}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', textAlign:'right' }}>{r.distancia?`${fmtN(r.distancia,0)} km`:'—'}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', textAlign:'right', fontWeight:600 }}>{isDiesel&&r.mediaRealizada?fmtN(r.mediaRealizada):'—'}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', textAlign:'right', color:'#6b7280' }}>{isDiesel&&r.mediaSugerida?fmtN(r.mediaSugerida):'—'}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', textAlign:'right' }}>
-                          {perc!==null&&isDiesel?<span style={{ fontWeight:700, color:corPerc(perc) }}>{fmtN(perc,0)}%</span>:'—'}
-                        </td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', textAlign:'right', fontWeight:600 }}>{fmtR(r.vlrTotal)}</td>
-                        <td style={{ padding:'9px 12px', borderBottom:'1px solid #f3f4f6', color:'#6b7280', maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.posto}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
