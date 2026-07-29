@@ -372,161 +372,175 @@ export default function MediasConsumo() {
     }, abrindo ? 50 : 0);
   }
 
+  // KPIs agregados de todos os meses do resumoChart
+  const kpis = useMemo(() => {
+    if (!resumoChart.length) return null;
+    const totalGasto   = resumoChart.reduce((s, m) => s + m.totalGasto, 0);
+    const totalKm      = resumoChart.reduce((s, m) => s + m.totalKm, 0);
+    const totalLitros  = resumoChart.reduce((s, m) => s + m.totalLitros, 0);
+    const totalArla    = resumoChart.reduce((s, m) => s + (m.totalArla || 0), 0);
+    const mediaReal    = totalLitros > 0 ? totalKm / totalLitros : 0;
+    const custoKm      = totalKm > 0 ? totalGasto / totalKm : 0;
+    return { totalGasto, totalKm, totalLitros, totalArla, mediaReal, custoKm };
+  }, [resumoChart]);
+
   const imp = importacoes.find(i => i.id === importacaoId);
 
   /* ─────────── render ─────────── */
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Médias de Consumo</h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Relatório de consumo por placa • filtro mensal</p>
+      {/* ── BARRA SUPERIOR: título + import + frota + placa ── */}
+      <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+          {/* título */}
+          <div style={{ flex:1 }}>
+            <h2 style={{ fontSize:17, fontWeight:700, color:'#1a1a2e', margin:0 }}>Médias de Consumo</h2>
+            <p style={{ fontSize:11, color:'#9ca3af', margin:0 }}>Dashboard de consumo por frota</p>
+          </div>
+
+          {/* frota pills */}
+          {!loadingImps && importacoes.length > 0 && (() => {
+            const frotasDisponiveis = [...new Set(importacoes.map(i => i.frota || 'Geral'))].sort();
+            return (
+              <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                <span style={{ fontSize:11, color:'#9ca3af', marginRight:2 }}>Frota:</span>
+                <button onClick={() => setFrotaSel('')}
+                  style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:!frotaSel?'#EB3238':'#e5e7eb', background:!frotaSel?'#EB3238':'#f9fafb', color:!frotaSel?'#fff':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  Todos
+                </button>
+                {frotasDisponiveis.map(f => (
+                  <button key={f} onClick={() => setFrotaSel(frotaSel===f?'':f)}
+                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:frotaSel===f?'#EB3238':'#e5e7eb', background:frotaSel===f?'#EB3238':'#f9fafb', color:frotaSel===f?'#fff':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* placa select compacto */}
+          {placas.length > 0 && (
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:11, color:'#9ca3af' }}>Placa:</span>
+              <select value={placa} onChange={e => { setPlaca(e.target.value); setMesSel(''); }}
+                style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', cursor:'pointer', outline:'none' }}>
+                <option value="">Todas</option>
+                {placas.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              {placa && (
+                <button onClick={() => { setPlaca(''); setMesSel(''); }}
+                  style={{ padding:'4px 8px', border:'none', borderRadius:6, background:'#fee2e2', color:'#dc2626', fontSize:11, cursor:'pointer' }}>
+                  <i className="ti ti-x"></i>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* import + importacao select */}
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
+            <button onClick={() => fileRef.current?.click()}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' }}>
+              <i className="ti ti-upload" style={{ fontSize:13 }}></i> Importar
+            </button>
+            {importacoes.length > 0 && (() => {
+              const importacoesFiltradas = frotaSel ? importacoes.filter(i => (i.frota||'Geral')===frotaSel) : importacoes;
+              return (
+                <>
+                  <select value={importacoesFiltradas.find(i=>i.id===importacaoId)?importacaoId:(importacoesFiltradas[0]?.id||'')}
+                    onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setMesSel(''); }}
+                    style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:200, cursor:'pointer', outline:'none' }}>
+                    {importacoesFiltradas.map(im => (
+                      <option key={im.id} value={im.id}>
+                        {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
+                      </option>
+                    ))}
+                  </select>
+                  {importacaoId && (
+                    <button onClick={() => excluirImportacao(importacaoId)}
+                      style={{ padding:'5px 8px', border:'1px solid #fee2e2', borderRadius:7, background:'#fff5f5', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                      <i className="ti ti-trash"></i>
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
       </div>
 
       {/* ── Preview Excel (antes de salvar) ── */}
       {preview && (
-        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: preview.frota ? 0 : 14 }}>
-            <i className="ti ti-file-spreadsheet" style={{ fontSize: 24, color: '#d97706' }}></i>
+        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:16, marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:preview.frota?0:12 }}>
+            <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#d97706' }}></i>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#92400e' }}>{preview.nomeArquivo}</div>
-              <div style={{ fontSize: 12, color: '#b45309' }}>{preview.registros.length.toLocaleString('pt-BR')} registros lidos</div>
+              <div style={{ fontWeight:600, fontSize:13, color:'#92400e' }}>{preview.nomeArquivo}</div>
+              <div style={{ fontSize:11, color:'#b45309' }}>{preview.registros.length.toLocaleString('pt-BR')} registros lidos</div>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
-              <button onClick={() => setPreview(null)}
-                style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, cursor: 'pointer' }}>
-                Cancelar
-              </button>
-              <button onClick={salvarImportacao} disabled={salvando || !preview.frota}
-                title={!preview.frota ? 'Selecione a frota antes de salvar' : ''}
-                style={{ padding: '8px 20px', border: 'none', borderRadius: 8, background: preview.frota ? '#16a34a' : '#9ca3af', color: '#fff', fontSize: 13, fontWeight: 600, cursor: preview.frota ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <i className="ti ti-device-floppy"></i>
-                {salvando ? `Salvando... ${progresso}%` : 'Salvar no banco'}
+            <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+              <button onClick={() => setPreview(null)} style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer' }}>Cancelar</button>
+              <button onClick={salvarImportacao} disabled={salvando||!preview.frota}
+                style={{ padding:'7px 16px', border:'none', borderRadius:8, background:preview.frota?'#16a34a':'#9ca3af', color:'#fff', fontSize:12, fontWeight:600, cursor:preview.frota?'pointer':'not-allowed' }}>
+                {salvando?`Salvando... ${progresso}%`:'Salvar no banco'}
               </button>
             </div>
           </div>
-          {/* Seletor de frota */}
           {!preview.frota && (
-            <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 10 }}>
-                <i className="ti ti-truck" style={{ marginRight: 6 }}></i>
-                Qual é a frota deste arquivo?
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {FROTAS.map(f => (
-                  <button key={f} onClick={() => setPreview(p => ({ ...p, frota: f }))}
-                    style={{ padding: '8px 28px', border: '2px solid #d97706', borderRadius: 20, background: '#fff', color: '#92400e', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                    {f}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontSize:12, color:'#92400e', alignSelf:'center' }}>Frota:</span>
+              {FROTAS.map(f => (
+                <button key={f} onClick={() => setPreview(p=>({...p,frota:f}))}
+                  style={{ padding:'6px 20px', border:'2px solid #d97706', borderRadius:20, background:'#fff', color:'#92400e', fontSize:13, fontWeight:700, cursor:'pointer' }}>{f}</button>
+              ))}
             </div>
           )}
           {preview.frota && (
-            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#b45309' }}>Frota selecionada:</span>
-              <span style={{ padding: '4px 12px', background: '#d97706', color: '#fff', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{preview.frota}</span>
-              <button onClick={() => setPreview(p => ({ ...p, frota: '' }))}
-                style={{ fontSize: 11, color: '#b45309', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                Trocar
-              </button>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:11, color:'#b45309' }}>Frota:</span>
+              <span style={{ padding:'3px 10px', background:'#d97706', color:'#fff', borderRadius:20, fontSize:11, fontWeight:700 }}>{preview.frota}</span>
+              <button onClick={() => setPreview(p=>({...p,frota:''}))} style={{ fontSize:11, color:'#b45309', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Trocar</button>
             </div>
           )}
         </div>
       )}
-
-      {/* ── Painel de importações ── */}
-      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: importacoes.length > 0 ? 14 : 0 }}>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
-          <button onClick={() => fileRef.current?.click()}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', background: '#EB3238', color: '#fff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            <i className="ti ti-upload"></i> Importar Excel
-          </button>
-
-          {loadingImps ? (
-            <span style={{ fontSize: 13, color: '#9ca3af' }}>Carregando...</span>
-          ) : importacoes.length === 0 ? (
-            <span style={{ fontSize: 13, color: '#9ca3af' }}>Nenhuma importação — carregue um arquivo Excel</span>
-          ) : null}
-        </div>
-
-        {/* Filtro rápido de frota + dropdown */}
-        {!loadingImps && importacoes.length > 0 && (() => {
-          const frotasDisponiveis = [...new Set(importacoes.map(i => i.frota || 'Geral'))].sort();
-          const importacoesFiltradas = frotaSel ? importacoes.filter(i => (i.frota || 'Geral') === frotaSel) : importacoes;
-          return (
-            <div>
-              {/* Filtro rápido */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                <button onClick={() => { setFrotaSel(''); }}
-                  style={{ padding: '6px 14px', borderRadius: 20, border: '2px solid', borderColor: !frotaSel ? '#EB3238' : '#e5e7eb', background: !frotaSel ? '#EB3238' : '#fff', color: !frotaSel ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  Todos
-                </button>
-                {frotasDisponiveis.map(f => (
-                  <button key={f} onClick={() => { setFrotaSel(frotaSel === f ? '' : f); }}
-                    style={{ padding: '6px 14px', borderRadius: 20, border: '2px solid', borderColor: frotaSel === f ? '#EB3238' : '#e5e7eb', background: frotaSel === f ? '#EB3238' : '#fff', color: frotaSel === f ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                    {f}
-                  </button>
-                ))}
-              </div>
-              {/* Dropdown de importações filtradas */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <select
-                  value={importacoesFiltradas.find(i => i.id === importacaoId) ? importacaoId : (importacoesFiltradas[0]?.id || '')}
-                  onChange={e => { setImportacaoId(e.target.value); setMotorista(''); setMesSel(''); }}
-                  style={{ ...inp, maxWidth: 440 }}>
-                  {importacoesFiltradas.length === 0 && <option value="">Nenhuma importação para {frotaSel}</option>}
-                  {importacoesFiltradas.map(im => (
-                    <option key={im.id} value={im.id}>
-                      [{im.frota || 'Geral'}] {im.nomeArquivo} — {im.totalRegistros?.toLocaleString('pt-BR')} reg. — {fmtDt(im.criadoEm?.slice(0,10))}
-                    </option>
-                  ))}
-                </select>
-                {importacaoId && (
-                  <button onClick={() => excluirImportacao(importacaoId)}
-                    style={{ padding: '8px 12px', border: '1px solid #fee2e2', borderRadius: 8, background: '#fff5f5', color: '#dc2626', fontSize: 12, cursor: 'pointer' }}>
-                    <i className="ti ti-trash"></i>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* ── Filtros ── */}
-      {placas.length > 0 && (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 300px' }}>
-            <label style={lbl}>Placa</label>
-            <select value={placa} onChange={e => { setPlaca(e.target.value); setMesSel(''); }} style={inp}>
-              <option value="">Selecionar placa…</option>
-              {placas.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          {placa && (
-            <button onClick={() => { setPlaca(''); setMesSel(''); }}
-              style={{ padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', fontSize: 12, color: '#6b7280', cursor: 'pointer' }}>
-              Limpar
-            </button>
-          )}
-        </div>
-      )}
-
 
       {/* ── Sem importações ── */}
       {!loadingImps && importacoes.length === 0 && !preview && (
-        <div style={{ textAlign: 'center', padding: 80, color: '#9ca3af', background: '#fff', borderRadius: 12, border: '1px dashed #d1d5db' }}>
-          <i className="ti ti-file-spreadsheet" style={{ fontSize: 48, display: 'block', marginBottom: 12, color: '#d1d5db' }}></i>
-          <div style={{ fontWeight: 500, marginBottom: 4 }}>Nenhum dado importado</div>
-          <div style={{ fontSize: 12 }}>Clique em "Importar Excel" para carregar o relatório de abastecimento</div>
+        <div style={{ textAlign:'center', padding:60, color:'#9ca3af', background:'#fff', borderRadius:12, border:'1px dashed #d1d5db' }}>
+          <i className="ti ti-file-spreadsheet" style={{ fontSize:40, display:'block', marginBottom:10, color:'#d1d5db' }}></i>
+          <div style={{ fontWeight:500, marginBottom:4 }}>Nenhum dado importado</div>
+          <div style={{ fontSize:12 }}>Clique em "Importar" para carregar o relatório de abastecimento</div>
         </div>
       )}
 
+      {/* ── KPI CARDS ── */}
+      {kpis && (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
+          {[
+            { label:'Total Gasto', value: fmtR(kpis.totalGasto), icon:'ti-currency-real', color:'#EB3238', bg:'#fef2f2' },
+            { label:'Km Rodados', value: `${fmtN(kpis.totalKm,0)} km`, icon:'ti-road', color:'#1d4ed8', bg:'#eff6ff' },
+            { label:'Litros Diesel', value: `${fmtN(kpis.totalLitros)} L`, icon:'ti-droplet', color:'#0f766e', bg:'#f0fdfa' },
+            { label:'Litros Arla', value: `${fmtN(kpis.totalArla)} L`, icon:'ti-droplet-half-2', color:'#7c3aed', bg:'#f5f3ff' },
+            { label:'Média Real', value: `${fmtN(kpis.mediaReal)} km/L`, icon:'ti-gauge', color:'#d97706', bg:'#fffbeb' },
+            { label:'Custo/km', value: `R$ ${fmtN(kpis.custoKm,3)}`, icon:'ti-coin', color:'#374151', bg:'#f9fafb' },
+          ].map(card => (
+            <div key={card.label} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                <div style={{ width:28, height:28, borderRadius:7, background:card.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <i className={`ti ${card.icon}`} style={{ fontSize:14, color:card.color }}></i>
+                </div>
+                <span style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>{card.label}</span>
+              </div>
+              <div style={{ fontSize:18, fontWeight:800, color:card.color }}>{card.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Carregando ── */}
       {loadingReg && (
-        <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Carregando dados...</div>
+        <div style={{ textAlign:'center', padding:30, color:'#9ca3af' }}>Carregando dados...</div>
       )}
 
       {/* ── GRÁFICO MENSAL ── */}
