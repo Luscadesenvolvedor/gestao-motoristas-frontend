@@ -174,44 +174,48 @@ export default function MediasConsumo() {
   }
 
   /* ── salvar no banco ── */
+  const [progresso, setProgresso] = useState(0); // 0-100
+
   async function salvarImportacao() {
     if (!preview) return;
     setSalvando(true);
-    const toastId = toast.loading(`Salvando ${preview.registros.length.toLocaleString('pt-BR')} registros...`);
+    setProgresso(0);
+    const total = preview.registros.length;
+    const CHUNK = 3000; // registros por requisição
+    const chunks = [];
+    for (let i = 0; i < total; i += CHUNK) chunks.push(preview.registros.slice(i, i + CHUNK));
+
+    const toastId = toast.loading(`Salvando 0 / ${total.toLocaleString('pt-BR')} registros...`);
     try {
-      // Enviar em lotes de 1000 para não estourar o limite da requisição
-      const LOTE = 1000;
-      const lotes = [];
-      for (let i = 0; i < preview.registros.length; i += LOTE) {
-        lotes.push(preview.registros.slice(i, i + LOTE));
+      // 1º chunk → cria a importação
+      const { data: primeira } = await api.post('/medias-consumo/importar', {
+        nomeArquivo: preview.nomeArquivo,
+        registros:   chunks[0],
+        frota:       preview.frota || 'BAÚ',
+      });
+      const importacaoIdNova = primeira.importacaoId;
+      let salvos = chunks[0].length;
+      setProgresso(Math.round((salvos / total) * 100));
+      toast.loading(`Salvando ${salvos.toLocaleString('pt-BR')} / ${total.toLocaleString('pt-BR')}...`, { id: toastId });
+
+      // chunks restantes → append
+      for (let i = 1; i < chunks.length; i++) {
+        await api.post(`/medias-consumo/importacoes/${importacaoIdNova}/registros`, {
+          registros: chunks[i],
+        });
+        salvos += chunks[i].length;
+        setProgresso(Math.round((salvos / total) * 100));
+        toast.loading(`Salvando ${salvos.toLocaleString('pt-BR')} / ${total.toLocaleString('pt-BR')}...`, { id: toastId });
       }
 
-      let importacaoIdNova = null;
-      for (let i = 0; i < lotes.length; i++) {
-        const payload = {
-          nomeArquivo: preview.nomeArquivo,
-          registros:   lotes[i],
-          // No primeiro lote cria a importação; nos demais seria append
-          // Simplificação: enviamos tudo de uma vez
-        };
-        if (i === 0) {
-          // Primeiro lote: cria a importação com TODOS os registros
-          const { data } = await api.post('/medias-consumo/importar', {
-            nomeArquivo: preview.nomeArquivo,
-            registros:   preview.registros,
-            frota:       preview.frota || 'Geral',
-          });
-          importacaoIdNova = data.importacaoId;
-          break; // Enviou tudo de uma vez
-        }
-      }
-
-      toast.success('Dados salvos com sucesso!', { id: toastId });
+      toast.success(`${total.toLocaleString('pt-BR')} registros salvos!`, { id: toastId });
       setPreview(null);
+      setProgresso(0);
       await carregarImportacoes();
       if (importacaoIdNova) setImportacaoId(importacaoIdNova);
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Erro ao salvar', { id: toastId });
+      setProgresso(0);
     } finally { setSalvando(false); }
   }
 
@@ -308,7 +312,7 @@ export default function MediasConsumo() {
                 title={!preview.frota ? 'Selecione a frota antes de salvar' : ''}
                 style={{ padding: '8px 20px', border: 'none', borderRadius: 8, background: preview.frota ? '#16a34a' : '#9ca3af', color: '#fff', fontSize: 13, fontWeight: 600, cursor: preview.frota ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ti ti-device-floppy"></i>
-                {salvando ? 'Salvando...' : 'Salvar no banco'}
+                {salvando ? `Salvando... ${progresso}%` : 'Salvar no banco'}
               </button>
             </div>
           </div>
