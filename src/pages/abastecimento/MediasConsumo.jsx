@@ -4,7 +4,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine
+  Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, LabelList
 } from 'recharts';
 
 /* ── helpers ── */
@@ -50,8 +50,11 @@ export default function MediasConsumo() {
   const [loadingImps,  setLoadingImps]  = useState(true);
 
   // ── estado Excel local (antes de salvar) ──
-  const [preview,     setPreview]     = useState(null); // { nomeArquivo, registros[] }
+  const [preview,     setPreview]     = useState(null); // { nomeArquivo, registros[], frota }
   const [salvando,    setSalvando]    = useState(false);
+  const [frotaSel,    setFrotaSel]    = useState('');   // filtro rápido de frota
+
+  const FROTAS = ['BAÚ', 'SIDER', 'GRANELEIRO', 'TANQUE', 'FRIGORÍFICO'];
   const fileRef  = useRef();
   const rowRefs  = useRef({});
 
@@ -66,6 +69,17 @@ export default function MediasConsumo() {
   // ── dados carregados do banco ──
   const [registros,  setRegistros]  = useState([]);
   const [loadingReg, setLoadingReg] = useState(false);
+
+  /* ── sincronizar importacaoId quando frotaSel muda ── */
+  useEffect(() => {
+    if (!importacoes.length) return;
+    const filtradas = frotaSel ? importacoes.filter(i => (i.frota || 'Geral') === frotaSel) : importacoes;
+    if (filtradas.length === 0) { setImportacaoId(''); return; }
+    if (!filtradas.find(i => i.id === importacaoId)) {
+      setImportacaoId(filtradas[0].id);
+      setMotorista(''); setMesSel('');
+    }
+  }, [frotaSel, importacoes]);
 
   /* ── buscar importações ao montar ── */
   const carregarImportacoes = useCallback(async () => {
@@ -153,7 +167,7 @@ export default function MediasConsumo() {
         percAtingido:   String(r[17] || ''),
         gap:            Number(r[18]) || null,
       }));
-      setPreview({ nomeArquivo: file.name, registros });
+      setPreview({ nomeArquivo: file.name, registros, frota: '' });
       toast.success(`${registros.length.toLocaleString('pt-BR')} registros lidos`);
     } catch (err) { toast.error('Erro ao ler o arquivo: ' + err.message); }
     e.target.value = '';
@@ -185,6 +199,7 @@ export default function MediasConsumo() {
           const { data } = await api.post('/medias-consumo/importar', {
             nomeArquivo: preview.nomeArquivo,
             registros:   preview.registros,
+            frota:       preview.frota || 'Geral',
           });
           importacaoIdNova = data.importacaoId;
           break; // Enviou tudo de uma vez
@@ -278,30 +293,62 @@ export default function MediasConsumo() {
       {/* ── Preview Excel (antes de salvar) ── */}
       {preview && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: preview.frota ? 0 : 14 }}>
             <i className="ti ti-file-spreadsheet" style={{ fontSize: 24, color: '#d97706' }}></i>
             <div>
               <div style={{ fontWeight: 600, fontSize: 14, color: '#92400e' }}>{preview.nomeArquivo}</div>
-              <div style={{ fontSize: 12, color: '#b45309' }}>{preview.registros.length.toLocaleString('pt-BR')} registros prontos para salvar</div>
+              <div style={{ fontSize: 12, color: '#b45309' }}>{preview.registros.length.toLocaleString('pt-BR')} registros lidos</div>
             </div>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
               <button onClick={() => setPreview(null)}
                 style={{ padding: '8px 16px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', fontSize: 13, cursor: 'pointer' }}>
                 Cancelar
               </button>
-              <button onClick={salvarImportacao} disabled={salvando}
-                style={{ padding: '8px 20px', border: 'none', borderRadius: 8, background: '#16a34a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={salvarImportacao} disabled={salvando || !preview.frota}
+                title={!preview.frota ? 'Selecione a frota antes de salvar' : ''}
+                style={{ padding: '8px 20px', border: 'none', borderRadius: 8, background: preview.frota ? '#16a34a' : '#9ca3af', color: '#fff', fontSize: 13, fontWeight: 600, cursor: preview.frota ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="ti ti-device-floppy"></i>
                 {salvando ? 'Salvando...' : 'Salvar no banco'}
               </button>
             </div>
           </div>
+          {/* Seletor de frota */}
+          {!preview.frota && (
+            <div style={{ marginTop: 4 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 10 }}>
+                <i className="ti ti-truck" style={{ marginRight: 6 }}></i>
+                Qual é a frota deste arquivo?
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {FROTAS.map(f => (
+                  <button key={f} onClick={() => setPreview(p => ({ ...p, frota: f }))}
+                    style={{ padding: '8px 18px', border: '2px solid #d97706', borderRadius: 20, background: '#fff', color: '#92400e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    {f}
+                  </button>
+                ))}
+                <button onClick={() => setPreview(p => ({ ...p, frota: 'Outros' }))}
+                  style={{ padding: '8px 18px', border: '2px solid #d97706', borderRadius: 20, background: '#fff', color: '#92400e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  Outros
+                </button>
+              </div>
+            </div>
+          )}
+          {preview.frota && (
+            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: '#b45309' }}>Frota selecionada:</span>
+              <span style={{ padding: '4px 12px', background: '#d97706', color: '#fff', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>{preview.frota}</span>
+              <button onClick={() => setPreview(p => ({ ...p, frota: '' }))}
+                style={{ fontSize: 11, color: '#b45309', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                Trocar
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── Painel de importações ── */}
       <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: importacoes.length > 0 ? 14 : 0 }}>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display: 'none' }} />
           <button onClick={() => fileRef.current?.click()}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', background: '#EB3238', color: '#fff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
@@ -312,25 +359,51 @@ export default function MediasConsumo() {
             <span style={{ fontSize: 13, color: '#9ca3af' }}>Carregando...</span>
           ) : importacoes.length === 0 ? (
             <span style={{ fontSize: 13, color: '#9ca3af' }}>Nenhuma importação — carregue um arquivo Excel</span>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, flexWrap: 'wrap' }}>
-              <select value={importacaoId} onChange={e => { setImportacaoId(e.target.value); setMotorista(''); setMesSel(''); }}
-                style={{ ...inp, maxWidth: 380 }}>
-                {importacoes.map(im => (
-                  <option key={im.id} value={im.id}>
-                    {im.nomeArquivo} — {im.totalRegistros?.toLocaleString('pt-BR')} reg. — {fmtDt(im.criadoEm?.slice(0,10))}
-                  </option>
-                ))}
-              </select>
-              {importacaoId && (
-                <button onClick={() => excluirImportacao(importacaoId)}
-                  style={{ padding: '8px 12px', border: '1px solid #fee2e2', borderRadius: 8, background: '#fff5f5', color: '#dc2626', fontSize: 12, cursor: 'pointer' }}>
-                  <i className="ti ti-trash"></i>
-                </button>
-              )}
-            </div>
-          )}
+          ) : null}
         </div>
+
+        {/* Filtro rápido de frota + dropdown */}
+        {!loadingImps && importacoes.length > 0 && (() => {
+          const frotasDisponiveis = [...new Set(importacoes.map(i => i.frota || 'Geral'))].sort();
+          const importacoesFiltradas = frotaSel ? importacoes.filter(i => (i.frota || 'Geral') === frotaSel) : importacoes;
+          return (
+            <div>
+              {/* Filtro rápido */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                <button onClick={() => { setFrotaSel(''); }}
+                  style={{ padding: '6px 14px', borderRadius: 20, border: '2px solid', borderColor: !frotaSel ? '#EB3238' : '#e5e7eb', background: !frotaSel ? '#EB3238' : '#fff', color: !frotaSel ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Todos
+                </button>
+                {frotasDisponiveis.map(f => (
+                  <button key={f} onClick={() => { setFrotaSel(frotaSel === f ? '' : f); }}
+                    style={{ padding: '6px 14px', borderRadius: 20, border: '2px solid', borderColor: frotaSel === f ? '#EB3238' : '#e5e7eb', background: frotaSel === f ? '#EB3238' : '#fff', color: frotaSel === f ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+              {/* Dropdown de importações filtradas */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <select
+                  value={importacoesFiltradas.find(i => i.id === importacaoId) ? importacaoId : (importacoesFiltradas[0]?.id || '')}
+                  onChange={e => { setImportacaoId(e.target.value); setMotorista(''); setMesSel(''); }}
+                  style={{ ...inp, maxWidth: 440 }}>
+                  {importacoesFiltradas.length === 0 && <option value="">Nenhuma importação para {frotaSel}</option>}
+                  {importacoesFiltradas.map(im => (
+                    <option key={im.id} value={im.id}>
+                      [{im.frota || 'Geral'}] {im.nomeArquivo} — {im.totalRegistros?.toLocaleString('pt-BR')} reg. — {fmtDt(im.criadoEm?.slice(0,10))}
+                    </option>
+                  ))}
+                </select>
+                {importacaoId && (
+                  <button onClick={() => excluirImportacao(importacaoId)}
+                    style={{ padding: '8px 12px', border: '1px solid #fee2e2', borderRadius: 8, background: '#fff5f5', color: '#dc2626', fontSize: 12, cursor: 'pointer' }}>
+                    <i className="ti ti-trash"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Filtros ── */}
@@ -389,7 +462,10 @@ export default function MediasConsumo() {
                 <XAxis dataKey="label" tick={{ fontSize:12, fill:'#6b7280' }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={52} />
                 <Tooltip content={<TooltipGrafico />} />
-                <Bar dataKey="totalGasto" name="Total Gasto (R$)" radius={[4,4,0,0]} maxBarSize={52} fill="#EB3238" fillOpacity={0.85} />
+                <Bar dataKey="totalGasto" name="Total Gasto (R$)" radius={[4,4,0,0]} maxBarSize={52} fill="#EB3238" fillOpacity={0.85}>
+                  <LabelList dataKey="totalGasto" position="top" style={{ fontSize:11, fontWeight:600, fill:'#374151' }}
+                    formatter={v => `R$${(v/1000).toFixed(1)}k`} />
+                </Bar>
                 <Line dataKey="mediaReal" name="Média Real (km/L)" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r:3 }} yAxisId={0} hide={!motorista} />
               </ComposedChart>
             </ResponsiveContainer>
