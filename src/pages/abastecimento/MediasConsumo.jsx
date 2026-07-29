@@ -623,34 +623,157 @@ export default function MediasConsumo() {
       )}
 
       {/* ── GRÁFICO MENSAL ── */}
-      {!mesSel && resumoChart.length > 0 && (
-        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 20px 8px', marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-            <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
-            <span style={{ fontWeight:600, fontSize:14, color:'#1a1a2e' }}>
-              Total gasto por mês {motorista ? `— ${motorista.split(' ').slice(0,2).join(' ')}` : '— Geral (todos motoristas)'}
-            </span>
-            {motorista && <span style={{ marginLeft:'auto', fontSize:11, color:'#9ca3af' }}>Clique em uma barra para detalhar</span>}
+      {resumoChart.length > 0 && (
+        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, marginBottom:16, overflow:'hidden' }}>
+          {/* cabeçalho */}
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
+              </div>
+              <div>
+                <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>
+                  Total gasto por mês
+                </div>
+                <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
+                  {motorista ? motorista.split(' ').slice(0,3).join(' ') : 'Todos os motoristas'} • Clique numa barra para ver detalhes
+                </div>
+              </div>
+            </div>
+            {mesFiltro && (
+              <button onClick={() => setMesFiltro('')}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb', fontSize:12, color:'#6b7280', cursor:'pointer' }}>
+                <i className="ti ti-x" style={{ fontSize:11 }}></i> Limpar seleção
+              </button>
+            )}
           </div>
-          {loadingChart && <div style={{ textAlign:'center', padding:20, fontSize:12, color:'#9ca3af' }}>Carregando...</div>}
-          {!loadingChart && (
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart
-                data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
-                onClick={e => motorista && e?.activePayload?.[0] && setMesSel(e.activePayload[0].payload.mes)}
-                style={{ cursor: motorista ? 'pointer' : 'default' }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="label" tick={{ fontSize:12, fill:'#6b7280' }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:11, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={52} />
-                <Tooltip content={<TooltipGrafico />} />
-                <Bar dataKey="totalGasto" name="Total Gasto (R$)" radius={[4,4,0,0]} maxBarSize={52} fill="#EB3238" fillOpacity={0.85}>
-                  <LabelList dataKey="totalGasto" position="top" style={{ fontSize:11, fontWeight:600, fill:'#374151' }}
-                    formatter={v => `R$${(v/1000).toFixed(1)}k`} />
-                </Bar>
-                <Line dataKey="mediaReal" name="Média Real (km/L)" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r:3 }} yAxisId={0} hide={!motorista} />
-              </ComposedChart>
-            </ResponsiveContainer>
+
+          {/* gráfico */}
+          {loadingChart
+            ? <div style={{ textAlign:'center', padding:40, fontSize:12, color:'#9ca3af' }}>Carregando...</div>
+            : (
+              <div style={{ padding:'16px 12px 8px' }}>
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart
+                    data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
+                    margin={{ top: 32, right: 24, left: 0, bottom: 4 }}
+                    onClick={e => {
+                      const mes = e?.activePayload?.[0]?.payload?.mes;
+                      if (mes) setMesFiltro(prev => prev === mes ? '' : mes);
+                    }}
+                    style={{ cursor:'pointer' }}
+                  >
+                    <defs>
+                      <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#EB3238" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.85} />
+                      </linearGradient>
+                      <linearGradient id="barGradSel" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ff6b6b" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#EB3238" stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize:11, fill:'#6b7280', fontWeight:500 }}
+                      axisLine={false} tickLine={false}
+                      interval={0}
+                    />
+                    <YAxis
+                      tickFormatter={v => `R$${(v/1000).toFixed(0)}k`}
+                      tick={{ fontSize:10, fill:'#9ca3af' }}
+                      axisLine={false} tickLine={false}
+                      width={58}
+                    />
+                    <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(235,50,56,0.06)', radius:4 }} />
+                    <Bar dataKey="totalGasto" name="Total Gasto" radius={[6,6,0,0]} maxBarSize={48}>
+                      {resumoChart.map((entry, i) => (
+                        <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#barGradSel)' : 'url(#barGrad)'} />
+                      ))}
+                      <LabelList
+                        dataKey="totalGasto"
+                        position="top"
+                        style={{ fontSize:10, fontWeight:700, fill:'#374151' }}
+                        formatter={v => `R$${(v/1000).toFixed(1)}k`}
+                      />
+                    </Bar>
+                    {motorista && (
+                      <Line dataKey="mediaReal" name="Média Real (km/L)" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r:3, fill:'#1d4ed8' }} />
+                    )}
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )
+          }
+
+          {/* tabela de motoristas abaixo do gráfico quando mês selecionado */}
+          {mesFiltro && (
+            <div style={{ borderTop:'2px solid #fef2f2', margin:'0 0 0 0' }}>
+              <div style={{ padding:'14px 20px 10px', display:'flex', alignItems:'center', gap:8, background:'#fef2f2' }}>
+                <i className="ti ti-users" style={{ color:'#EB3238', fontSize:14 }}></i>
+                <span style={{ fontWeight:700, fontSize:13, color:'#1a1a2e' }}>{fmtMesStr(mesFiltro)} — Todos os motoristas</span>
+                {loadingResMot && <span style={{ fontSize:11, color:'#9ca3af' }}>carregando...</span>}
+              </div>
+              {!loadingResMot && resumoMotoristas.length > 0 && (
+                <div style={{ overflowX:'auto' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                    <thead>
+                      <tr style={{ background:'#f8fafc' }}>
+                        {['Motorista','Km','Litros','Média Real','Média Sug.','% Ating.','Total Gasto'].map(h => (
+                          <th key={h} style={{ padding:'9px 14px', textAlign:h==='Motorista'?'left':'right', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resumoMotoristas.map((m, i) => (
+                        <tr key={m.motorista} style={{ background:i%2===0?'#fff':'#fafafa' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
+                          <td style={{ padding:'10px 14px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{m.motorista}</td>
+                          <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)}</td>
+                          <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalLitros)}</td>
+                          <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaReal)}</td>
+                          <td style={{ padding:'10px 14px', textAlign:'right', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaSug)}</td>
+                          <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>
+                            <span style={{ fontWeight:700, color:corPerc(m.perc) }}>{fmtN(m.perc,1)}%</span>
+                            <div style={{ marginTop:3, height:3, borderRadius:2, background:'#e5e7eb', width:60, marginLeft:'auto' }}>
+                              <div style={{ height:'100%', borderRadius:2, background:corPerc(m.perc), width:`${Math.min(m.perc,100)}%` }}></div>
+                            </div>
+                          </td>
+                          <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, color:'#EB3238', borderBottom:'1px solid #f3f4f6' }}>{fmtR(m.totalGasto)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {resumoMotoristas.length > 1 && (() => {
+                      const tk=resumoMotoristas.reduce((s,m)=>s+m.totalKm,0);
+                      const tl=resumoMotoristas.reduce((s,m)=>s+m.totalLitros,0);
+                      const tg=resumoMotoristas.reduce((s,m)=>s+m.totalGasto,0);
+                      const mr=tl>0?tk/tl:0;
+                      const sg=resumoMotoristas.filter(m=>m.mediaSug>0);
+                      const ms=sg.length?sg.reduce((s,m)=>s+m.mediaSug,0)/sg.length:0;
+                      const pc=ms>0?(mr/ms)*100:0;
+                      return (
+                        <tfoot>
+                          <tr style={{ background:'#f8fafc', fontWeight:700 }}>
+                            <td style={{ padding:'11px 14px', color:'#374151' }}>TOTAL / MÉDIA</td>
+                            <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tk,0)}</td>
+                            <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tl)}</td>
+                            <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(mr)}</td>
+                            <td style={{ padding:'11px 14px', textAlign:'right', color:'#6b7280' }}>{fmtN(ms)}</td>
+                            <td style={{ padding:'11px 14px', textAlign:'right', color:corPerc(pc) }}>{fmtN(pc,1)}%</td>
+                            <td style={{ padding:'11px 14px', textAlign:'right', color:'#EB3238' }}>{fmtR(tg)}</td>
+                          </tr>
+                        </tfoot>
+                      );
+                    })()}
+                  </table>
+                </div>
+              )}
+              {!loadingResMot && resumoMotoristas.length === 0 && (
+                <div style={{ padding:30, textAlign:'center', color:'#9ca3af', fontSize:13 }}>Nenhum dado para este mês.</div>
+              )}
+            </div>
           )}
         </div>
       )}
