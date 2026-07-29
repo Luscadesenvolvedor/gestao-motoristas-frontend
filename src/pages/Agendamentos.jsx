@@ -10,8 +10,9 @@ export default function Agendamentos() {
   const [perfilVisto, setPerfilVisto] = useState(1);
   const [lista, setLista] = useState([]);
   const [listaP2, setListaP2] = useState([]);
+  const [listaP3, setListaP3] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
-  const [guiches, setGuiches] = useState({ 1: 'Perfil 1', 2: 'Perfil 2' });
+  const [guiches, setGuiches] = useState({ 1: 'Perfil 1', 2: 'Perfil 2', 3: 'Perfil 3' });
   const [mesAtual, setMesAtual] = useState(() => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`; });
   const [diaSelecionado, setDiaSelecionado] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -21,7 +22,7 @@ export default function Agendamentos() {
     api.get('/motoristas').then(r => setMotoristas(r.data));
     if (isAdmin) {
       api.get('/usuarios').then(r => {
-        const mapa = { 1: 'Perfil 1', 2: 'Perfil 2' };
+        const mapa = { 1: 'Perfil 1', 2: 'Perfil 2', 3: 'Perfil 3' };
         r.data.forEach(u => {
           if (u.papel === 'guiche' && u.perfilAgendamento) {
             mapa[u.perfilAgendamento] = u.nome;
@@ -37,12 +38,14 @@ export default function Agendamentos() {
   async function carregar() {
     try {
       if (isAdmin) {
-        const [r1, r2] = await Promise.all([
+        const [r1, r2, r3] = await Promise.all([
           api.get('/agendamentos', { params: { perfil: 1, mes: mesAtual } }),
-          api.get('/agendamentos', { params: { perfil: 2, mes: mesAtual } })
+          api.get('/agendamentos', { params: { perfil: 2, mes: mesAtual } }),
+          api.get('/agendamentos', { params: { perfil: 3, mes: mesAtual } })
         ]);
         setLista(r1.data);
         setListaP2(r2.data);
+        setListaP3(r3.data);
       } else {
         const { data } = await api.get('/agendamentos', { params: { mes: mesAtual } });
         setLista(data);
@@ -104,7 +107,7 @@ export default function Agendamentos() {
 
   const { total, primeiroDia } = diasDoMes();
   const [anoAtual, mesAtualNum] = mesAtual.split('-').map(Number);
-  const listaExibida = isAdmin ? (perfilVisto === 1 ? lista : listaP2) : lista;
+  const listaExibida = isAdmin ? (perfilVisto === 1 ? lista : perfilVisto === 2 ? listaP2 : listaP3) : lista;
   const agsDiaSelecionado = diaSelecionado ? agendamentosDoDia(listaExibida, diaSelecionado) : [];
 
   return (
@@ -131,7 +134,7 @@ export default function Agendamentos() {
 
       {isAdmin && (
         <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-          {[1,2].map(p => (
+          {[1,2,3].map(p => (
             <button key={p} onClick={() => setPerfilVisto(p)}
               style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===p?'#EB3238':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===p?'#EB3238':'#fff', color:perfilVisto===p?'#fff':'#374151', fontWeight:perfilVisto===p?600:400 }}>
               {guiches[p]}
