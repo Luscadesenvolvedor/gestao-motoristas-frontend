@@ -54,7 +54,7 @@ export default function MediasConsumo() {
   const [salvando,    setSalvando]    = useState(false);
   const [frotaSel,    setFrotaSel]    = useState('');   // filtro rápido de frota
 
-  const FROTAS = ['BAÚ', 'SIDER', 'GRANELEIRO', 'TANQUE', 'FRIGORÍFICO'];
+  const FROTAS = ['BAÚ', 'FROTA'];
   const fileRef  = useRef();
   const rowRefs  = useRef({});
 
@@ -322,14 +322,10 @@ export default function MediasConsumo() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {FROTAS.map(f => (
                   <button key={f} onClick={() => setPreview(p => ({ ...p, frota: f }))}
-                    style={{ padding: '8px 18px', border: '2px solid #d97706', borderRadius: 20, background: '#fff', color: '#92400e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ padding: '8px 28px', border: '2px solid #d97706', borderRadius: 20, background: '#fff', color: '#92400e', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                     {f}
                   </button>
                 ))}
-                <button onClick={() => setPreview(p => ({ ...p, frota: 'Outros' }))}
-                  style={{ padding: '8px 18px', border: '2px solid #d97706', borderRadius: 20, background: '#fff', color: '#92400e', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Outros
-                </button>
               </div>
             </div>
           )}
