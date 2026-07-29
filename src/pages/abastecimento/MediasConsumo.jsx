@@ -511,101 +511,6 @@ export default function MediasConsumo() {
         </div>
       )}
 
-      {/* ── Filtro de mês ── */}
-      {meses.length > 0 && (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 20px', marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 10 }}>
-            <i className="ti ti-calendar-month" style={{ marginRight: 6 }}></i>Filtrar por mês
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setMesFiltro('')}
-              style={{ padding: '6px 14px', borderRadius: 20, border: '2px solid', borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb', background: !mesFiltro ? '#EB3238' : '#fff', color: !mesFiltro ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              Todos
-            </button>
-            {meses.map(m => {
-              const [ano, mes] = m.split('-');
-              const label = new Date(Number(ano), Number(mes) - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.','');
-              return (
-                <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
-                  style={{ padding: '6px 14px', borderRadius: 20, border: '2px solid', borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb', background: mesFiltro === m ? '#EB3238' : '#fff', color: mesFiltro === m ? '#fff' : '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── TABELA: Resumo por motorista (mês selecionado) ── */}
-      {mesFiltro && (
-        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className="ti ti-users" style={{ color: '#EB3238', fontSize: 16 }}></i>
-            <span style={{ fontWeight: 600, fontSize: 14, color: '#1a1a2e' }}>
-              {fmtMesStr(mesFiltro)} — Todos os motoristas
-            </span>
-            {loadingResMot && <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>Carregando...</span>}
-          </div>
-          {!loadingResMot && resumoMotoristas.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    {['Motorista','Distância (km)','Litros Diesel','Média Real','Média Sug.','% Atingido','Total Gasto'].map(h => (
-                      <th key={h} style={{ padding: '10px 16px', textAlign: h === 'Motorista' ? 'left' : 'right', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {resumoMotoristas.map((m, i) => (
-                    <tr key={m.motorista} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
-                      onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f9fafb'}>
-                      <td style={{ padding: '11px 16px', fontWeight: 600, color: '#1a1a2e', borderBottom: '1px solid #f3f4f6' }}>{m.motorista}</td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', borderBottom: '1px solid #f3f4f6' }}>{fmtN(m.totalKm, 0)} km</td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', borderBottom: '1px solid #f3f4f6' }}>{fmtN(m.totalLitros)} L</td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontWeight: 600, borderBottom: '1px solid #f3f4f6' }}>{fmtN(m.mediaReal)}</td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', color: '#6b7280', borderBottom: '1px solid #f3f4f6' }}>{fmtN(m.mediaSug)}</td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', borderBottom: '1px solid #f3f4f6' }}>
-                        <span style={{ fontWeight: 700, color: corPerc(m.perc) }}>{fmtN(m.perc, 1)}%</span>
-                        <div style={{ marginTop: 3, height: 4, borderRadius: 2, background: '#e5e7eb', width: 70, marginLeft: 'auto' }}>
-                          <div style={{ height: '100%', borderRadius: 2, background: corPerc(m.perc), width: `${Math.min(m.perc, 100)}%` }}></div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '11px 16px', textAlign: 'right', fontWeight: 600, borderBottom: '1px solid #f3f4f6' }}>{fmtR(m.totalGasto)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                {resumoMotoristas.length > 1 && (() => {
-                  const tk = resumoMotoristas.reduce((s, m) => s + m.totalKm, 0);
-                  const tl = resumoMotoristas.reduce((s, m) => s + m.totalLitros, 0);
-                  const tg = resumoMotoristas.reduce((s, m) => s + m.totalGasto, 0);
-                  const mr = tl > 0 ? tk / tl : 0;
-                  const sg = resumoMotoristas.filter(m => m.mediaSug > 0);
-                  const ms = sg.length ? sg.reduce((s, m) => s + m.mediaSug, 0) / sg.length : 0;
-                  const pc = ms > 0 ? (mr / ms) * 100 : 0;
-                  return (
-                    <tfoot>
-                      <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                        <td style={{ padding: '12px 16px', color: '#374151' }}>TOTAL / MÉDIA GERAL</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>{fmtN(tk, 0)} km</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>{fmtN(tl)} L</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>{fmtN(mr)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#6b7280' }}>{fmtN(ms)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: corPerc(pc) }}>{fmtN(pc, 1)}%</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>{fmtR(tg)}</td>
-                      </tr>
-                    </tfoot>
-                  );
-                })()}
-              </table>
-            </div>
-          )}
-          {!loadingResMot && resumoMotoristas.length === 0 && (
-            <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Nenhum dado para este mês.</div>
-          )}
-        </div>
-      )}
 
       {/* ── Sem importações ── */}
       {!loadingImps && importacoes.length === 0 && !preview && (
@@ -778,8 +683,8 @@ export default function MediasConsumo() {
         </div>
       )}
 
-      {/* ── RESUMO MENSAL ── */}
-      {!loadingReg && resumoMensal.length > 0 && (
+      {/* ── RESUMO MENSAL (accordion por mês, só quando sem filtro de mês) ── */}
+      {!mesFiltro && !loadingReg && resumoMensal.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="ti ti-chart-line" style={{ color: '#EB3238', fontSize: 16 }}></i>
