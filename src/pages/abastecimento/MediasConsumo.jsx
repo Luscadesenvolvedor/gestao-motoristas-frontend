@@ -409,11 +409,7 @@ export default function MediasConsumo() {
             return (
               <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
                 <span style={{ fontSize:11, color:'#9ca3af', marginRight:2 }}>Frota:</span>
-                <button onClick={() => setFrotaSel('')}
-                  style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:!frotaSel?'#EB3238':'#e5e7eb', background:!frotaSel?'#EB3238':'#f9fafb', color:!frotaSel?'#fff':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                  Todos
-                </button>
-                {frotasDisponiveis.map(f => (
+                {FROTAS.map(f => (
                   <button key={f} onClick={() => setFrotaSel(frotaSel===f?'':f)}
                     style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:frotaSel===f?'#EB3238':'#e5e7eb', background:frotaSel===f?'#EB3238':'#f9fafb', color:frotaSel===f?'#fff':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                     {f}
