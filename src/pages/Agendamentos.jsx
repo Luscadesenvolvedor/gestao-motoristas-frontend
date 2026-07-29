@@ -12,7 +12,10 @@ export default function Agendamentos() {
   const [listaP2, setListaP2] = useState([]);
   const [listaP3, setListaP3] = useState([]);
   const [motoristas, setMotoristas] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [guiches, setGuiches] = useState({ 1: 'Perfil 1', 2: 'Perfil 2', 3: 'Perfil 3' });
+  const [vincularModal, setVincularModal] = useState(null); // perfil número
+  const [vincularUserId, setVincularUserId] = useState('');
   const [mesAtual, setMesAtual] = useState(() => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`; });
   const [diaSelecionado, setDiaSelecionado] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -20,18 +23,36 @@ export default function Agendamentos() {
 
   useEffect(() => {
     api.get('/motoristas').then(r => setMotoristas(r.data));
-    if (isAdmin) {
-      api.get('/usuarios').then(r => {
-        const mapa = { 1: 'Perfil 1', 2: 'Perfil 2', 3: 'Perfil 3' };
-        r.data.forEach(u => {
-          if (u.papel === 'guiche' && u.perfilAgendamento) {
-            mapa[u.perfilAgendamento] = u.nome;
-          }
-        });
-        setGuiches(mapa);
-      });
-    }
+    if (isAdmin) carregarUsuarios();
   }, [isAdmin]);
+
+  async function carregarUsuarios() {
+    const r = await api.get('/usuarios');
+    setUsuarios(r.data);
+    const mapa = { 1: 'Perfil 1', 2: 'Perfil 2', 3: 'Perfil 3' };
+    r.data.forEach(u => {
+      if (u.papel === 'guiche' && u.perfilAgendamento) {
+        mapa[u.perfilAgendamento] = u.nome;
+      }
+    });
+    setGuiches(mapa);
+  }
+
+  async function salvarVinculo() {
+    if (!vincularModal || !vincularUserId) return;
+    try {
+      // desvincula qualquer usuário que já tenha esse perfil
+      const atual = usuarios.find(u => u.perfilAgendamento === vincularModal);
+      if (atual && atual.id !== vincularUserId) {
+        await api.patch(`/usuarios/${atual.id}/perfil-agendamento`, { perfilAgendamento: null });
+      }
+      await api.patch(`/usuarios/${vincularUserId}/perfil-agendamento`, { perfilAgendamento: vincularModal });
+      toast.success('Usuário vinculado!');
+      setVincularModal(null);
+      setVincularUserId('');
+      carregarUsuarios();
+    } catch { toast.error('Erro ao vincular'); }
+  }
 
   useEffect(() => { carregar(); }, [mesAtual, perfilVisto]);
 
@@ -133,12 +154,19 @@ export default function Agendamentos() {
       </div>
 
       {isAdmin && (
-        <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+        <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
           {[1,2,3].map(p => (
-            <button key={p} onClick={() => setPerfilVisto(p)}
-              style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===p?'#EB3238':'#d1d5db'), borderRadius:8, fontSize:13, cursor:'pointer', background:perfilVisto===p?'#EB3238':'#fff', color:perfilVisto===p?'#fff':'#374151', fontWeight:perfilVisto===p?600:400 }}>
-              {guiches[p]}
-            </button>
+            <div key={p} style={{ display:'flex', alignItems:'center', gap:0 }}>
+              <button onClick={() => setPerfilVisto(p)}
+                style={{ padding:'8px 20px', border:'1px solid '+(perfilVisto===p?'#EB3238':'#d1d5db'), borderRadius:'8px 0 0 8px', fontSize:13, cursor:'pointer', background:perfilVisto===p?'#EB3238':'#fff', color:perfilVisto===p?'#fff':'#374151', fontWeight:perfilVisto===p?600:400 }}>
+                {guiches[p]}
+              </button>
+              <button onClick={() => { setVincularModal(p); setVincularUserId(String(usuarios.find(u => u.perfilAgendamento === p)?.id || '')); }}
+                title="Vincular usuário"
+                style={{ padding:'8px 10px', border:'1px solid '+(perfilVisto===p?'#EB3238':'#d1d5db'), borderLeft:'none', borderRadius:'0 8px 8px 0', fontSize:12, cursor:'pointer', background:perfilVisto===p?'#c81d22':'#f9fafb', color:perfilVisto===p?'#fff':'#6b7280' }}>
+                <i className="ti ti-user-plus"></i>
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -250,8 +278,8 @@ export default function Agendamentos() {
 
       {/* Resumo admin */}
       {isAdmin && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
-          {[{perfil:1, dados: lista},{perfil:2, dados: listaP2}].map(({perfil, dados}) => (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16 }}>
+          {[{perfil:1, dados: lista},{perfil:2, dados: listaP2},{perfil:3, dados: listaP3}].map(({perfil, dados}) => (
             <div key={perfil} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:16 }}>
               <h3 style={{ fontSize:13, fontWeight:600, color:'#EB3238', marginBottom:10 }}>{guiches[perfil]} — {dados.length} agendamento(s)</h3>
               {dados.length === 0 && <p style={{ fontSize:12, color:'#9ca3af' }}>Nenhum agendamento neste mês</p>}
@@ -263,6 +291,38 @@ export default function Agendamentos() {
               ))}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal vincular usuário ao perfil */}
+      {vincularModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:12, padding:28, width:340, boxShadow:'0 8px 32px rgba(0,0,0,0.15)' }}>
+            <h3 style={{ fontSize:15, fontWeight:600, marginBottom:4 }}>Vincular usuário</h3>
+            <p style={{ fontSize:12, color:'#9ca3af', marginBottom:16 }}>Perfil {vincularModal} — {guiches[vincularModal]}</p>
+            <div style={{ marginBottom:20 }}>
+              <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:5 }}>Usuário (guichê)</label>
+              <select value={vincularUserId} onChange={e => setVincularUserId(e.target.value)}
+                style={{ width:'100%', padding:'9px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, outline:'none' }}>
+                <option value="">Selecione...</option>
+                {usuarios.filter(u => u.papel === 'guiche').map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome} {u.perfilAgendamento ? `(Perfil ${u.perfilAgendamento})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setVincularModal(null)}
+                style={{ padding:'8px 16px', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb', cursor:'pointer', fontSize:13 }}>
+                Cancelar
+              </button>
+              <button onClick={salvarVinculo} disabled={!vincularUserId}
+                style={{ padding:'8px 16px', border:'none', borderRadius:8, background: vincularUserId ? '#EB3238' : '#9ca3af', color:'#fff', cursor: vincularUserId ? 'pointer' : 'not-allowed', fontSize:13, fontWeight:600 }}>
+                Vincular
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
