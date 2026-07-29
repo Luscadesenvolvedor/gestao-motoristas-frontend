@@ -548,10 +548,30 @@ export default function MediasConsumo() {
             {mesFiltro && (
               <button onClick={() => setMesFiltro('')}
                 style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb', fontSize:12, color:'#6b7280', cursor:'pointer' }}>
-                <i className="ti ti-x" style={{ fontSize:11 }}></i> Limpar seleção
+                <i className="ti ti-x" style={{ fontSize:11 }}></i> Limpar
               </button>
             )}
           </div>
+
+          {/* pills de mês */}
+          {meses.length > 0 && (
+            <div style={{ padding:'10px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', gap:6, flexWrap:'wrap' }}>
+              <button onClick={() => setMesFiltro('')}
+                style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:!mesFiltro?'#EB3238':'#e5e7eb', background:!mesFiltro?'#EB3238':'#fff', color:!mesFiltro?'#fff':'#6b7280', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                Todos
+              </button>
+              {meses.map(m => {
+                const [ano, mes] = m.split('-');
+                const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
+                return (
+                  <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
+                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:mesFiltro===m?'#EB3238':'#e5e7eb', background:mesFiltro===m?'#EB3238':'#fff', color:mesFiltro===m?'#fff':'#6b7280', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* gráfico */}
           {loadingChart
