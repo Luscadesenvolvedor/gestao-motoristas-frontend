@@ -372,17 +372,21 @@ export default function MediasConsumo() {
     }, abrindo ? 50 : 0);
   }
 
-  // KPIs agregados de todos os meses do resumoChart
+  // KPIs: mês selecionado ou totais gerais
   const kpis = useMemo(() => {
     if (!resumoChart.length) return null;
-    const totalGasto   = resumoChart.reduce((s, m) => s + m.totalGasto, 0);
-    const totalKm      = resumoChart.reduce((s, m) => s + m.totalKm, 0);
-    const totalLitros  = resumoChart.reduce((s, m) => s + m.totalLitros, 0);
-    const totalArla    = resumoChart.reduce((s, m) => s + (m.totalArla || 0), 0);
-    const mediaReal    = totalLitros > 0 ? totalKm / totalLitros : 0;
-    const custoKm      = totalKm > 0 ? totalGasto / totalKm : 0;
+    const fonte = mesFiltro
+      ? resumoChart.filter(m => m.mes === mesFiltro)
+      : resumoChart;
+    if (!fonte.length) return null;
+    const totalGasto  = fonte.reduce((s, m) => s + m.totalGasto, 0);
+    const totalKm     = fonte.reduce((s, m) => s + m.totalKm, 0);
+    const totalLitros = fonte.reduce((s, m) => s + m.totalLitros, 0);
+    const totalArla   = fonte.reduce((s, m) => s + (m.totalArla || 0), 0);
+    const mediaReal   = totalLitros > 0 ? totalKm / totalLitros : 0;
+    const custoKm     = totalKm > 0 ? totalGasto / totalKm : 0;
     return { totalGasto, totalKm, totalLitros, totalArla, mediaReal, custoKm };
-  }, [resumoChart]);
+  }, [resumoChart, mesFiltro]);
 
   const imp = importacoes.find(i => i.id === importacaoId);
 
@@ -516,7 +520,14 @@ export default function MediasConsumo() {
 
       {/* ── KPI CARDS ── */}
       {kpis && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
+        <div style={{ marginBottom:16 }}>
+          {mesFiltro && (
+            <div style={{ fontSize:11, fontWeight:700, color:'#EB3238', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
+              <i className="ti ti-calendar-event"></i>
+              {fmtMesStr(mesFiltro)}
+            </div>
+          )}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12 }}>
           {[
             { label:'Total Gasto', value: fmtR(kpis.totalGasto), icon:'ti-currency-real', color:'#EB3238', bg:'#fef2f2' },
             { label:'Km Rodados', value: `${fmtN(kpis.totalKm,0)} km`, icon:'ti-road', color:'#1d4ed8', bg:'#eff6ff' },
@@ -535,6 +546,7 @@ export default function MediasConsumo() {
               <div style={{ fontSize:18, fontWeight:800, color:card.color }}>{card.value}</div>
             </div>
           ))}
+        </div>
         </div>
       )}
 
