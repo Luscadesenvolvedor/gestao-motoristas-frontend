@@ -686,7 +686,23 @@ export default function MediasConsumo() {
                           onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
                           <td style={{ padding:'10px 14px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{m.motorista}</td>
                           <td style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>
-                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{m.placas}</span>
+                            {(() => {
+                              const lista = (m.placas || '').split(', ').filter(p => p && p !== '—');
+                              if (!lista.length) return <span style={{ color:'#d1d5db', fontSize:11 }}>—</span>;
+                              const [first, ...rest] = lista;
+                              return (
+                                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                                  <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{first}</span>
+                                  {rest.length > 0 && (
+                                    <span
+                                      title={rest.join(', ')}
+                                      style={{ padding:'2px 6px', borderRadius:6, background:'#e0e7ff', color:'#4338ca', fontSize:10, fontWeight:700, cursor:'default' }}>
+                                      +{rest.length}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)}</td>
                           <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalLitros)}</td>
