@@ -70,6 +70,7 @@ export default function MediasConsumo() {
   // ── resumo por motorista (view de mês) ──
   const [resumoMotoristas, setResumoMotoristas] = useState([]);
   const [loadingResMot,    setLoadingResMot]    = useState(false);
+  const [placasExpandidas, setPlacasExpandidas] = useState(new Set());
 
   // ── dados carregados do banco ──
   const [registros,  setRegistros]  = useState([]);
@@ -685,20 +686,34 @@ export default function MediasConsumo() {
                           onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
                           onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
                           <td style={{ padding:'10px 14px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{m.motorista}</td>
-                          <td style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>
+                          <td style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6' }}>
                             {(() => {
                               const lista = (m.placas || '').split(', ').filter(p => p && p !== '—');
                               if (!lista.length) return <span style={{ color:'#d1d5db', fontSize:11 }}>—</span>;
+                              const expandido = placasExpandidas.has(m.motorista);
                               const [first, ...rest] = lista;
+                              const toggle = () => setPlacasExpandidas(prev => {
+                                const s = new Set(prev);
+                                s.has(m.motorista) ? s.delete(m.motorista) : s.add(m.motorista);
+                                return s;
+                              });
                               return (
-                                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                                  <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{first}</span>
-                                  {rest.length > 0 && (
-                                    <span
-                                      title={rest.join(', ')}
-                                      style={{ padding:'2px 6px', borderRadius:6, background:'#e0e7ff', color:'#4338ca', fontSize:10, fontWeight:700, cursor:'default' }}>
+                                <div style={{ display:'flex', alignItems:'center', gap:4, flexWrap: expandido ? 'wrap' : 'nowrap' }}>
+                                  <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace', whiteSpace:'nowrap' }}>{first}</span>
+                                  {rest.length > 0 && !expandido && (
+                                    <button onClick={toggle}
+                                      style={{ padding:'2px 6px', borderRadius:6, background:'#e0e7ff', color:'#4338ca', fontSize:10, fontWeight:700, border:'none', cursor:'pointer', whiteSpace:'nowrap' }}>
                                       +{rest.length}
-                                    </span>
+                                    </button>
+                                  )}
+                                  {expandido && rest.map(p => (
+                                    <span key={p} style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace', whiteSpace:'nowrap' }}>{p}</span>
+                                  ))}
+                                  {expandido && (
+                                    <button onClick={toggle}
+                                      style={{ padding:'2px 6px', borderRadius:6, background:'#fde8e8', color:'#dc2626', fontSize:10, fontWeight:700, border:'none', cursor:'pointer', whiteSpace:'nowrap' }}>
+                                      ▲
+                                    </button>
                                   )}
                                 </div>
                               );
