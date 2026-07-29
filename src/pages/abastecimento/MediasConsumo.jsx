@@ -59,10 +59,10 @@ export default function MediasConsumo() {
   const rowRefs  = useRef({});
 
   // ── filtros do relatório ──
-  const [motorista, setMotorista]   = useState('');
+  const [placa,     setPlaca]       = useState('');
   const [mesSel,    setMesSel]      = useState('');   // accordion dentro da tabela
   const [mesFiltro, setMesFiltro]   = useState('');   // filtro global de mês (YYYY-MM)
-  const [motoristas,   setMotoristas]   = useState([]);
+  const [placas,       setPlacas]       = useState([]);
   const [meses,        setMeses]        = useState([]);
   const [resumoChart,  setResumoChart]  = useState([]);
   const [loadingChart, setLoadingChart] = useState(false);
@@ -82,7 +82,7 @@ export default function MediasConsumo() {
     if (filtradas.length === 0) { setImportacaoId(''); return; }
     if (!filtradas.find(i => i.id === importacaoId)) {
       setImportacaoId(filtradas[0].id);
-      setMotorista(''); setMesSel('');
+      setPlaca(''); setMesSel('');
     }
   }, [frotaSel, importacoes]);
 
@@ -110,12 +110,12 @@ export default function MediasConsumo() {
   useEffect(() => {
     const p = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
     if (!p) {
-      setMotoristas([]); setMeses([]); setMotorista(''); setMesSel('');
+      setPlacas([]); setMeses([]); setPlaca(''); setMesSel('');
       setResumoChart([]); setRegistros([]);
       return;
     }
-    api.get('/medias-consumo/motoristas', { params: p })
-      .then(r => { setMotoristas(r.data); setMotorista(''); setMesSel(''); setRegistros([]); })
+    api.get('/medias-consumo/placas', { params: p })
+      .then(r => { setPlacas(r.data); setPlaca(''); setMesSel(''); setRegistros([]); })
       .catch(() => {});
     api.get('/medias-consumo/meses', { params: p })
       .then(r => setMeses(r.data))
@@ -127,29 +127,29 @@ export default function MediasConsumo() {
       .finally(() => setLoadingChart(false));
   }, [frotaSel, importacaoId]);
 
-  /* ── atualizar gráfico quando motorista muda ── */
+  /* ── atualizar gráfico quando placa muda ── */
   useEffect(() => {
     const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
     if (!base) return;
     setLoadingChart(true);
     const params = { ...base };
-    if (motorista) params.motorista = motorista;
+    if (placa) params.placa = placa;
     api.get('/medias-consumo/resumo-mensal', { params })
       .then(r => setResumoChart(r.data))
       .catch(() => {})
       .finally(() => setLoadingChart(false));
-  }, [frotaSel, importacaoId, motorista]);
+  }, [frotaSel, importacaoId, placa]);
 
-  /* ── buscar registros quando motorista muda ── */
+  /* ── buscar registros quando placa muda ── */
   useEffect(() => {
     const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
-    if (!base || !motorista) { setRegistros([]); setMesSel(''); return; }
+    if (!base || !placa) { setRegistros([]); setMesSel(''); return; }
     setLoadingReg(true);
-    api.get('/medias-consumo', { params: { ...base, motorista } })
+    api.get('/medias-consumo', { params: { ...base, placa } })
       .then(r => setRegistros(r.data))
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoadingReg(false));
-  }, [frotaSel, importacaoId, motorista]);
+  }, [frotaSel, importacaoId, placa]);
 
   /* ── carregar resumo por motorista quando mesFiltro muda ── */
   useEffect(() => {
@@ -377,7 +377,7 @@ export default function MediasConsumo() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 600, color: '#1a1a2e', margin: 0 }}>Médias de Consumo</h2>
-        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Relatório de consumo por motorista • filtro mensal</p>
+        <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Relatório de consumo por placa • filtro mensal</p>
       </div>
 
       {/* ── Preview Excel (antes de salvar) ── */}
@@ -493,17 +493,17 @@ export default function MediasConsumo() {
       </div>
 
       {/* ── Filtros ── */}
-      {motoristas.length > 0 && (
+      {placas.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 20, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ flex: '1 1 300px' }}>
-            <label style={lbl}>Motorista</label>
-            <select value={motorista} onChange={e => { setMotorista(e.target.value); setMesSel(''); }} style={inp}>
-              <option value="">Selecionar motorista…</option>
-              {motoristas.map(m => <option key={m} value={m}>{m}</option>)}
+            <label style={lbl}>Placa</label>
+            <select value={placa} onChange={e => { setPlaca(e.target.value); setMesSel(''); }} style={inp}>
+              <option value="">Selecionar placa…</option>
+              {placas.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
-          {motorista && (
-            <button onClick={() => { setMotorista(''); setMesSel(''); }}
+          {placa && (
+            <button onClick={() => { setPlaca(''); setMesSel(''); }}
               style={{ padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', fontSize: 12, color: '#6b7280', cursor: 'pointer' }}>
               Limpar
             </button>
@@ -541,7 +541,7 @@ export default function MediasConsumo() {
                   Total gasto por mês
                 </div>
                 <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
-                  {motorista ? motorista.split(' ').slice(0,3).join(' ') : 'Todos os motoristas'} • Clique numa barra para ver detalhes
+                  {placa ? placa : 'Todas as placas'} • Clique numa barra para ver detalhes
                 </div>
               </div>
             </div>
@@ -623,7 +623,7 @@ export default function MediasConsumo() {
                         formatter={v => `R$${(v/1000).toFixed(1)}k`}
                       />
                     </Bar>
-                    {motorista && (
+                    {placa && (
                       <Line dataKey="mediaReal" name="Média Real (km/L)" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r:3, fill:'#1d4ed8' }} />
                     )}
                   </ComposedChart>
@@ -709,7 +709,7 @@ export default function MediasConsumo() {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8 }}>
             <i className="ti ti-chart-line" style={{ color: '#EB3238', fontSize: 16 }}></i>
             <span style={{ fontWeight: 600, fontSize: 14, color: '#1a1a2e' }}>
-              {motorista ? motorista.split(' ').slice(0,3).join(' ') : 'Todos os motoristas'} — resumo mensal
+              {placa ? placa : 'Todas as placas'} — resumo mensal
             </span>
             <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>Clique em um mês para detalhar</span>
           </div>
