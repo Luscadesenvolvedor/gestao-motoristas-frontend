@@ -171,7 +171,7 @@ export default function MediasConsumo() {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
 
       // Mapear colunas por nome do cabeçalho (case-insensitive, sem acento)
       const norm = s => String(s || '').toLowerCase()
@@ -211,15 +211,20 @@ export default function MediasConsumo() {
       };
       const colNum = (row, campo) => {
         const v = col(row, campo);
-        const n = parseFloat(String(v || '').replace(',', '.'));
+        if (v === null || v === undefined || v === '') return null;
+        if (typeof v === 'number') return v;
+        // string com formatação (ex: "R$ 5,74" ou "216,73")
+        const n = parseFloat(String(v).replace(/[R$\s.]/g, '').replace(',', '.'));
         return isNaN(n) ? null : n;
       };
       const colData = (row, campo) => {
         const v = col(row, campo);
         if (!v) return null;
-        // já é string yyyy-mm-dd (cellDates + dateNF)
+        // Date object (cellDates: true)
+        if (v instanceof Date) return v.toISOString().slice(0, 10);
+        // string yyyy-mm-dd
         if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
-        // serial numérico (fallback)
+        // serial numérico do Excel
         if (typeof v === 'number') return excelDateToISO(v);
         return null;
       };
