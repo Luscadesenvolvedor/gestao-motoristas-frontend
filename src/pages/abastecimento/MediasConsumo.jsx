@@ -169,30 +169,85 @@ export default function MediasConsumo() {
     if (!file) return;
     try {
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer);
+      const wb = XLSX.read(buffer, { cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const registros = raw.slice(1).filter(r => r[0] && r[1]).map(r => ({
-        data:           excelDateToISO(r[0]),
-        motorista:      String(r[1] || '').trim(),
-        placa:          r[2] || null,
-        modelo:         r[3] || null,
-        conjunto:       r[4] || null,
-        kmInicial:      Number(r[5]) || null,
-        kmFinal:        Number(r[6]) || null,
-        distancia:      Number(r[7]) || null,
-        posto:          r[8] || null,
-        cidade:         r[9] || null,
-        uf:             r[10] || null,
-        precoLitro:     Number(r[11]) || null,
-        litros:         Number(r[12]) || null,
-        produto:        String(r[13] || ''),
-        vlrTotal:       Number(r[14]) || null,
-        mediaRealizada: Number(r[15]) || null,
-        mediaSugerida:  Number(r[16]) || null,
-        percAtingido:   String(r[17] || ''),
-        gap:            Number(r[18]) || null,
-      }));
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+
+      // Mapear colunas por nome do cabeçalho (case-insensitive, sem acento)
+      const norm = s => String(s || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+
+      const MAPA = {
+        data:           ['data abt', 'data'],
+        motorista:      ['motorista'],
+        placa:          ['placa'],
+        modelo:         ['modelo'],
+        conjunto:       ['conjunto'],
+        kmInicial:      ['km inicial', 'kminicial'],
+        kmFinal:        ['km final', 'kmfinal'],
+        distancia:      ['distancia'],
+        posto:          ['posto'],
+        cidade:         ['cidade'],
+        uf:             ['uf'],
+        precoLitro:     ['r$', 'preco litro', 'preco', 'vl unitario'],
+        litros:         ['litros'],
+        produto:        ['produto'],
+        vlrTotal:       ['vlr total', 'valor total', 'vlrtotal'],
+        mediaRealizada: ['media realizada', 'mediarealizada'],
+        mediaSugerida:  ['media sugerida', 'mediasugerida'],
+        percAtingido:   ['% atingido', 'perc atingido'],
+        gap:            ['gap'],
+      };
+
+      const header = raw[0] || [];
+      const idx = {};
+      for (const [campo, aliases] of Object.entries(MAPA)) {
+        idx[campo] = header.findIndex(h => aliases.includes(norm(h)));
+      }
+
+      const col = (row, campo, def = null) => {
+        const i = idx[campo];
+        return i >= 0 && row[i] !== undefined && row[i] !== '' ? row[i] : def;
+      };
+      const colNum = (row, campo) => {
+        const v = col(row, campo);
+        const n = parseFloat(String(v || '').replace(',', '.'));
+        return isNaN(n) ? null : n;
+      };
+      const colData = (row, campo) => {
+        const v = col(row, campo);
+        if (!v) return null;
+        // já é string yyyy-mm-dd (cellDates + dateNF)
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+        // serial numérico (fallback)
+        if (typeof v === 'number') return excelDateToISO(v);
+        return null;
+      };
+
+      const registros = raw.slice(1)
+        .filter(r => col(r, 'data') && col(r, 'motorista'))
+        .map(r => ({
+          data:           colData(r, 'data'),
+          motorista:      String(col(r, 'motorista') || '').trim(),
+          placa:          col(r, 'placa'),
+          modelo:         col(r, 'modelo'),
+          conjunto:       col(r, 'conjunto'),
+          kmInicial:      colNum(r, 'kmInicial'),
+          kmFinal:        colNum(r, 'kmFinal'),
+          distancia:      colNum(r, 'distancia'),
+          posto:          col(r, 'posto'),
+          cidade:         col(r, 'cidade'),
+          uf:             col(r, 'uf'),
+          precoLitro:     colNum(r, 'precoLitro'),
+          litros:         colNum(r, 'litros'),
+          produto:        col(r, 'produto', ''),
+          vlrTotal:       colNum(r, 'vlrTotal'),
+          mediaRealizada: colNum(r, 'mediaRealizada'),
+          mediaSugerida:  colNum(r, 'mediaSugerida'),
+          percAtingido:   col(r, 'percAtingido', ''),
+          gap:            colNum(r, 'gap'),
+        }));
+
       setPreview({ nomeArquivo: file.name, registros, frota: '' });
       toast.success(`${registros.length.toLocaleString('pt-BR')} registros lidos`);
     } catch (err) { toast.error('Erro ao ler o arquivo: ' + err.message); }
