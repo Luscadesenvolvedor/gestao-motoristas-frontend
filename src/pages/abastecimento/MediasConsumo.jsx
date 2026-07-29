@@ -651,6 +651,7 @@ export default function MediasConsumo() {
                         formatter={v => `R$${(v/1000).toFixed(1)}k`}
                       />
                     </Bar>
+                    <Line dataKey="totalGasto" name="Tendência" type="monotone" stroke="#ff9f43" strokeWidth={2.5} dot={{ r:3, fill:'#ff9f43', stroke:'#fff', strokeWidth:1.5 }} activeDot={{ r:5 }} legendType="none" />
                     {placa && (
                       <Line dataKey="mediaReal" name="Média Real (km/L)" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r:3, fill:'#1d4ed8' }} />
                     )}
