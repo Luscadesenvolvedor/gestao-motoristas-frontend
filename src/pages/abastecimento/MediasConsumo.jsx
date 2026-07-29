@@ -674,8 +674,8 @@ export default function MediasConsumo() {
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                     <thead>
                       <tr style={{ background:'#f8fafc' }}>
-                        {['Motorista','Km','Litros','Média Real','Média Sug.','% Ating.','Total Gasto'].map(h => (
-                          <th key={h} style={{ padding:'9px 14px', textAlign:h==='Motorista'?'left':'right', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                        {['Motorista','Placa','Km','Litros','Média Real','Média Sug.','% Ating.','Total Gasto'].map(h => (
+                          <th key={h} style={{ padding:'9px 14px', textAlign:h==='Motorista'||h==='Placa'?'left':'right', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -685,6 +685,9 @@ export default function MediasConsumo() {
                           onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
                           onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
                           <td style={{ padding:'10px 14px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{m.motorista}</td>
+                          <td style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>
+                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{m.placas}</span>
+                          </td>
                           <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)}</td>
                           <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalLitros)}</td>
                           <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaReal)}</td>
@@ -711,6 +714,7 @@ export default function MediasConsumo() {
                         <tfoot>
                           <tr style={{ background:'#f8fafc', fontWeight:700 }}>
                             <td style={{ padding:'11px 14px', color:'#374151' }}>TOTAL / MÉDIA</td>
+                            <td style={{ padding:'11px 14px' }}></td>
                             <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tk,0)}</td>
                             <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tl)}</td>
                             <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(mr)}</td>
