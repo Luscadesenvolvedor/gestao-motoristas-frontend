@@ -94,48 +94,57 @@ export default function MediasConsumo() {
 
   useEffect(() => { carregarImportacoes(); }, [carregarImportacoes]);
 
-  /* ── buscar motoristas, meses e resumo geral quando importação muda ── */
+  // helper: params para queries — usa frota se filtro ativo, senão importacaoId
+  const queryParams = useCallback((extra = {}) => {
+    if (frotaSel) return { frota: frotaSel, ...extra };
+    if (importacaoId) return { importacaoId, ...extra };
+    return extra;
+  }, [frotaSel, importacaoId]);
+
+  /* ── buscar motoristas, meses e resumo geral quando filtro muda ── */
   useEffect(() => {
-    if (!importacaoId) {
+    const p = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
+    if (!p) {
       setMotoristas([]); setMeses([]); setMotorista(''); setMesSel('');
       setResumoChart([]); setRegistros([]);
       return;
     }
-    api.get('/medias-consumo/motoristas', { params: { importacaoId } })
+    api.get('/medias-consumo/motoristas', { params: p })
       .then(r => { setMotoristas(r.data); setMotorista(''); setMesSel(''); setRegistros([]); })
       .catch(() => {});
-    api.get('/medias-consumo/meses', { params: { importacaoId } })
+    api.get('/medias-consumo/meses', { params: p })
       .then(r => setMeses(r.data))
       .catch(() => {});
-    // Carrega resumo geral (todos motoristas)
     setLoadingChart(true);
-    api.get('/medias-consumo/resumo-mensal', { params: { importacaoId } })
+    api.get('/medias-consumo/resumo-mensal', { params: p })
       .then(r => setResumoChart(r.data))
       .catch(() => {})
       .finally(() => setLoadingChart(false));
-  }, [importacaoId]);
+  }, [frotaSel, importacaoId]);
 
   /* ── atualizar gráfico quando motorista muda ── */
   useEffect(() => {
-    if (!importacaoId) return;
+    const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
+    if (!base) return;
     setLoadingChart(true);
-    const params = { importacaoId };
+    const params = { ...base };
     if (motorista) params.motorista = motorista;
     api.get('/medias-consumo/resumo-mensal', { params })
       .then(r => setResumoChart(r.data))
       .catch(() => {})
       .finally(() => setLoadingChart(false));
-  }, [importacaoId, motorista]);
+  }, [frotaSel, importacaoId, motorista]);
 
   /* ── buscar registros quando motorista muda ── */
   useEffect(() => {
-    if (!importacaoId || !motorista) { setRegistros([]); setMesSel(''); return; }
+    const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
+    if (!base || !motorista) { setRegistros([]); setMesSel(''); return; }
     setLoadingReg(true);
-    api.get('/medias-consumo', { params: { importacaoId, motorista } })
+    api.get('/medias-consumo', { params: { ...base, motorista } })
       .then(r => setRegistros(r.data))
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoadingReg(false));
-  }, [importacaoId, motorista]);
+  }, [frotaSel, importacaoId, motorista]);
 
   /* ── ler Excel localmente ── */
   async function handleFile(e) {
