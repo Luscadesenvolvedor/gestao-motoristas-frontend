@@ -313,7 +313,7 @@ export default function MediasConsumo() {
       toast.success('Importação removida');
       setImportacaoId('');
       setRegistros([]);
-      setMotorista('');
+      setPlaca('');
       await carregarImportacoes();
     } catch { toast.error('Erro ao excluir'); }
   }
@@ -350,15 +350,17 @@ export default function MediasConsumo() {
   const summaryMes = useMemo(() => {
     if (!detalhe.length) return null;
     const diesel    = detalhe.filter(r => String(r.produto || '').toLowerCase().includes('diesel'));
+    const arla      = detalhe.filter(r => String(r.produto || '').toLowerCase().includes('arla'));
     const totalKm   = diesel.reduce((s, r) => s + Number(r.distancia || 0), 0);
     const totalLit  = diesel.reduce((s, r) => s + Number(r.litros || 0), 0);
+    const totalArla = arla.reduce((s, r) => s + Number(r.litros || 0), 0);
     const totalGasto= detalhe.reduce((s, r) => s + Number(r.vlrTotal || 0), 0);
     const mediaReal = totalLit > 0 ? totalKm / totalLit : 0;
     const sugs      = diesel.filter(r => Number(r.mediaSugerida) > 0);
     const mediaSug  = sugs.length ? sugs.reduce((s, r) => s + Number(r.mediaSugerida), 0) / sugs.length : 0;
     const perc      = mediaSug > 0 ? (mediaReal / mediaSug) * 100 : 0;
     const custoKm   = totalKm > 0 ? totalGasto / totalKm : 0;
-    return { totalKm, totalLit, totalGasto, mediaReal, mediaSug, perc, custoKm };
+    return { totalKm, totalLit, totalArla, totalGasto, mediaReal, mediaSug, perc, custoKm };
   }, [detalhe]);
 
   function toggleMes(chave) {
@@ -761,6 +763,7 @@ export default function MediasConsumo() {
                               {[
                                 ['Distância', `${fmtN(sm.totalKm,0)} km`],
                                 ['Litros Diesel', `${fmtN(sm.totalLit)} L`],
+                                ['Litros Arla', `${fmtN(sm.totalArla)} L`],
                                 ['Média Real', `${fmtN(sm.mediaReal)} km/L`, corPerc(sm.perc)],
                                 ['Média Sugerida', `${fmtN(sm.mediaSug)} km/L`],
                                 ['% Atingido', `${fmtN(sm.perc,1)}%`, corPerc(sm.perc)],
