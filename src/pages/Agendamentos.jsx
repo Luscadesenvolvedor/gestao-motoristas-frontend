@@ -305,7 +305,7 @@ export default function Agendamentos() {
               <select value={vincularUserId} onChange={e => setVincularUserId(e.target.value)}
                 style={{ width:'100%', padding:'9px 12px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, outline:'none' }}>
                 <option value="">Selecione...</option>
-                {usuarios.filter(u => u.papel === 'guiche').map(u => (
+                {usuarios.map(u => (
                   <option key={u.id} value={u.id}>
                     {u.nome} {u.perfilAgendamento ? `(Perfil ${u.perfilAgendamento})` : ''}
                   </option>
