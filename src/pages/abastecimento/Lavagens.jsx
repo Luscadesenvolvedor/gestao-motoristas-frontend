@@ -7,8 +7,10 @@ const fmtDt      = d => d ? new Date(d.slice(0,10)+'T12:00:00').toLocaleDateStri
 const parseMoeda = v => parseFloat(String(v||'').trim().replace(/\./g,'').replace(',','.'));
 
 const FROTAS = [
-  { val:'buzin', label:'BUZIN', cor:'#7c3aed', bg:'#f5f3ff' },
-  { val:'lbm',   label:'LBM',   cor:'#b45309', bg:'#fffbeb' },
+  { val:'buzin',      label:'BUZIN',      cor:'#7c3aed', bg:'#f5f3ff' },
+  { val:'lbm',        label:'LBM',        cor:'#b45309', bg:'#fffbeb' },
+  { val:'meli_buzin', label:'MELI BUZIN', cor:'#0891b2', bg:'#e0f2fe' },
+  { val:'meli_lbm',   label:'MELI LBM',   cor:'#16a34a', bg:'#f0fdf4' },
 ];
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -133,8 +135,10 @@ export default function Lavagens() {
   }), [lavagens, filtroFrota, filtroBusca]);
 
   const totalMes   = lavagens.reduce((s, l) => s + Number(l.valor), 0);
-  const totalBuzin = lavagens.filter(l => l.frota === 'buzin').reduce((s,l) => s + Number(l.valor), 0);
-  const totalLbm   = lavagens.filter(l => l.frota === 'lbm').reduce((s,l) => s + Number(l.valor), 0);
+  const totalBuzin    = lavagens.filter(l => l.frota === 'buzin').reduce((s,l) => s + Number(l.valor), 0);
+  const totalLbm      = lavagens.filter(l => l.frota === 'lbm').reduce((s,l) => s + Number(l.valor), 0);
+  const totalMeliBuzin= lavagens.filter(l => l.frota === 'meli_buzin').reduce((s,l) => s + Number(l.valor), 0);
+  const totalMeliLbm  = lavagens.filter(l => l.frota === 'meli_lbm').reduce((s,l) => s + Number(l.valor), 0);
   const qtdMes     = lavagens.length;
 
   const anos = Array.from({ length:5 }, (_,i) => hoje.getFullYear() - i);
@@ -171,8 +175,10 @@ export default function Lavagens() {
         {[
           { label:'Serviços no Mês', valor:qtdMes,    fn: v => v,  cor:'#1a1a2e', bg:'#f8fafc', icone:'ti-wash' },
           { label:'Total Gasto',     valor:totalMes,  fn: fmt,     cor:'#EB3238', bg:'#fff5f5', icone:'ti-currency-dollar' },
-          { label:'BUZIN',           valor:totalBuzin,fn: fmt,     cor:'#7c3aed', bg:'#f5f3ff', icone:'ti-truck' },
-          { label:'LBM',             valor:totalLbm,  fn: fmt,     cor:'#b45309', bg:'#fffbeb', icone:'ti-truck' },
+          { label:'BUZIN',      valor:totalBuzin,     fn: fmt, cor:'#7c3aed', bg:'#f5f3ff', icone:'ti-truck' },
+          { label:'LBM',        valor:totalLbm,       fn: fmt, cor:'#b45309', bg:'#fffbeb', icone:'ti-truck' },
+          { label:'MELI BUZIN', valor:totalMeliBuzin, fn: fmt, cor:'#0891b2', bg:'#e0f2fe', icone:'ti-truck' },
+          { label:'MELI LBM',   valor:totalMeliLbm,   fn: fmt, cor:'#16a34a', bg:'#f0fdf4', icone:'ti-truck' },
         ].map(c => (
           <div key={c.label} style={{ background:c.bg, border:`1px solid ${c.cor}22`, borderRadius:12, padding:'16px 18px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
@@ -230,7 +236,7 @@ export default function Lavagens() {
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                 <thead>
                   <tr style={{ background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>
-                    {['Data','Placa','Frota','Serviço','Caminhão','Fornecedor','Valor',''].map(h => (
+                    {['Data','Placa','Frota','Serviço','Caminhão','Fornecedor','Valor','Observação',''].map(h => (
                       <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px' }}>{h}</th>
                     ))}
                   </tr>
@@ -251,6 +257,9 @@ export default function Lavagens() {
                         <td style={{ padding:'10px 14px', color:'#6b7280' }}>{l.tipoCaminhao?.nome || '—'}</td>
                         <td style={{ padding:'10px 14px', color:'#374151' }}>{l.fornecedor?.razaoSocial}</td>
                         <td style={{ padding:'10px 14px', fontWeight:600, color:'#16a34a' }}>{fmt(l.valor)}</td>
+                        <td style={{ padding:'10px 14px', color:'#6b7280', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={l.observacao||''}>
+                          {l.observacao || <span style={{ color:'#d1d5db' }}>—</span>}
+                        </td>
                         <td style={{ padding:'10px 14px' }}>
                           <button onClick={() => excluir(l.id)}
                             style={{ padding:'4px 8px', border:'1px solid #fee2e2', borderRadius:6, background:'#fff5f5', fontSize:12, cursor:'pointer', color:'#dc2626' }}>
