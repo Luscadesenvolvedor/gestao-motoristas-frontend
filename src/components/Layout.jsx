@@ -78,6 +78,19 @@ export default function Layout() {
         </div>
 
         <nav style={{ flex:1, padding:'8px 0', overflowY:'auto' }}>
+          <NavLink to="/"
+            end
+            style={({ isActive }) => ({
+              display:'flex', alignItems:'center', gap:10, padding:'9px 16px',
+              color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
+              background: isActive ? 'rgba(0,0,0,0.15)' : 'transparent',
+              textDecoration:'none', fontSize:13, fontWeight: isActive ? 500 : 400,
+              borderLeft: isActive ? '2px solid #fff' : '2px solid transparent',
+              transition:'all 0.15s'
+            })}>
+            <i className="ti ti-home" style={{ fontSize:17 }}></i>
+            Início
+          </NavLink>
           {(setorAtivo === 'abastecimento' ? menusAbastecimento : menusAcerto).map(m => {
             if (m.recurso && !pode(m.recurso, 'leitura')) return null;
             return (
