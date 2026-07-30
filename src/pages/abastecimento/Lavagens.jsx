@@ -31,6 +31,8 @@ export default function Lavagens() {
   const [tiposCaminhao,setTiposCaminhao]= useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [loading,      setLoading]      = useState(true);
+  const [editando,     setEditando]     = useState(null); // registro sendo editado
+  const [formEdit,     setFormEdit]     = useState({});
 
   const [showModal, setShowModal] = useState(false);
   const [form,      setForm]      = useState(vazioForm);
@@ -126,6 +128,29 @@ export default function Lavagens() {
       toast.success('Removido');
       carregarLavagens();
     } catch { toast.error('Erro ao excluir'); }
+  }
+
+  function abrirEdicao(l) {
+    setEditando(l);
+    setFormEdit({
+      placa:          l.placa || '',
+      frota:          l.frota || 'buzin',
+      tipoServicoId:  l.tipoServicoId || '',
+      tipoCaminhaoId: l.tipoCaminhaoId || '',
+      fornecedorId:   l.fornecedorId || '',
+      valor:          l.valor || '',
+      data:           l.data?.slice(0, 10) || '',
+      observacao:     l.observacao || '',
+    });
+  }
+
+  async function salvarEdicao() {
+    try {
+      await api.put(`/lavagens/${editando.id}`, formEdit);
+      toast.success('Atualizado!');
+      setEditando(null);
+      carregarLavagens();
+    } catch { toast.error('Erro ao salvar'); }
   }
 
   const lista = useMemo(() => lavagens.filter(l => {
@@ -261,10 +286,16 @@ export default function Lavagens() {
                           {l.observacao || <span style={{ color:'#d1d5db' }}>—</span>}
                         </td>
                         <td style={{ padding:'10px 14px' }}>
-                          <button onClick={() => excluir(l.id)}
-                            style={{ padding:'4px 8px', border:'1px solid #fee2e2', borderRadius:6, background:'#fff5f5', fontSize:12, cursor:'pointer', color:'#dc2626' }}>
-                            <i className="ti ti-trash"></i>
-                          </button>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button onClick={() => abrirEdicao(l)}
+                              style={{ padding:'4px 8px', border:'1px solid #dbeafe', borderRadius:6, background:'#eff6ff', fontSize:12, cursor:'pointer', color:'#2563eb' }}>
+                              <i className="ti ti-pencil"></i>
+                            </button>
+                            <button onClick={() => excluir(l.id)}
+                              style={{ padding:'4px 8px', border:'1px solid #fee2e2', borderRadius:6, background:'#fff5f5', fontSize:12, cursor:'pointer', color:'#dc2626' }}>
+                              <i className="ti ti-trash"></i>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -448,6 +479,85 @@ export default function Lavagens() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal edição */}
+      {editando && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:14, padding:28, width:'100%', maxWidth:480, boxShadow:'0 8px 32px rgba(0,0,0,0.18)', maxHeight:'90vh', overflowY:'auto' }}>
+            <h3 style={{ fontSize:16, fontWeight:700, color:'#1a1a2e', marginBottom:20 }}>Editar lavagem</h3>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+              <div>
+                <label style={lbl}>Placa</label>
+                <input value={formEdit.placa} onChange={e=>setFormEdit(f=>({...f,placa:e.target.value.toUpperCase()}))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Data</label>
+                <input type="date" value={formEdit.data} onChange={e=>setFormEdit(f=>({...f,data:e.target.value}))} style={inp} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={lbl}>Frota</label>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {FROTAS.map(fr => (
+                  <button key={fr.val} type="button" onClick={() => setFormEdit(f=>({...f,frota:fr.val}))}
+                    style={{ padding:'6px 14px', borderRadius:20, border:'2px solid', borderColor:formEdit.frota===fr.val?fr.cor:'#e5e7eb', background:formEdit.frota===fr.val?fr.bg:'#fff', color:formEdit.frota===fr.val?fr.cor:'#374151', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    {fr.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+              <div>
+                <label style={lbl}>Tipo de Serviço</label>
+                <select value={formEdit.tipoServicoId} onChange={e=>setFormEdit(f=>({...f,tipoServicoId:e.target.value,tipoCaminhaoId:''}))} style={inp}>
+                  <option value="">Selecione...</option>
+                  {tiposServico.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Tipo de Caminhão</label>
+                <select value={formEdit.tipoCaminhaoId} onChange={e=>setFormEdit(f=>({...f,tipoCaminhaoId:e.target.value}))} style={inp}>
+                  <option value="">—</option>
+                  {tiposCaminhao.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+              <div>
+                <label style={lbl}>Fornecedor</label>
+                <select value={formEdit.fornecedorId} onChange={e=>setFormEdit(f=>({...f,fornecedorId:e.target.value}))} style={inp}>
+                  <option value="">Selecione...</option>
+                  {fornecedores.map(f => <option key={f.id} value={f.id}>{f.razaoSocial}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Valor (R$)</label>
+                <input type="number" step="0.01" value={formEdit.valor} onChange={e=>setFormEdit(f=>({...f,valor:e.target.value}))} style={inp} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom:20 }}>
+              <label style={lbl}>Observação</label>
+              <textarea value={formEdit.observacao} onChange={e=>setFormEdit(f=>({...f,observacao:e.target.value}))}
+                rows={3} style={{ ...inp, resize:'vertical' }} placeholder="Opcional..." />
+            </div>
+
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button onClick={() => setEditando(null)}
+                style={{ padding:'9px 20px', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb', fontSize:13, cursor:'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={salvarEdicao}
+                style={{ padding:'9px 20px', border:'none', borderRadius:8, background:'#EB3238', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                Salvar
+              </button>
+            </div>
           </div>
         </div>
       )}
