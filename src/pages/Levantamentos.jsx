@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer
 } from 'recharts';
 
@@ -267,6 +267,18 @@ export default function Levantamentos() {
               <XAxis dataKey="mes" tick={{ fontSize:12, fill:'#94a3b8', fontWeight:500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize:11, fill:'#64748b' }} axisLine={false} tickLine={false} tickFormatter={fmtK} width={60} />
               <Tooltip content={<CustomTooltip fmtVal={fmt} />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
+              <Legend
+                verticalAlign="top"
+                align="right"
+                iconType="circle"
+                iconSize={10}
+                wrapperStyle={{ fontSize:12, paddingBottom:8, color:'#94a3b8' }}
+                formatter={(value) => (
+                  <span style={{ color: value === 'FROTA' ? '#10b981' : '#3b82f6', fontWeight:600, marginLeft:2 }}>
+                    {value}
+                  </span>
+                )}
+              />
               {(!tipoFiltro || tipoFiltro === 'FROTA') && (
                 <Bar dataKey="FROTA" fill="#10b981" radius={[6,6,0,0]} maxBarSize={50} name="FROTA" />
               )}
