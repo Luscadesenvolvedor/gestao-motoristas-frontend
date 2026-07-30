@@ -24,6 +24,7 @@ import FaturasAbastecimento from './pages/abastecimento/Faturas';
 import LaVagens from './pages/abastecimento/Lavagens';
 import FornecedoresLavagem from './pages/abastecimento/FornecedoresLavagem';
 import MediasConsumo from './pages/abastecimento/MediasConsumo';
+import Home from './pages/Home';
 import './theme.css';
 import { Component } from 'react';
 
@@ -96,7 +97,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Privada><Layout /></Privada>}>
-        <Route index element={<Navigate to={primeiraRota()} />} />
+        <Route index element={<Home />} />
         <Route path="usuarios"     element={<Privada recurso="usuarios"><ErrorBoundary><Usuarios /></ErrorBoundary></Privada>} />
         <Route path="motoristas"   element={<Privada recurso="motoristas"><ErrorBoundary><Motoristas /></ErrorBoundary></Privada>} />
         <Route path="solicitacoes" element={<Privada recurso="solicitacoes"><ErrorBoundary><Solicitacoes /></ErrorBoundary></Privada>} />
