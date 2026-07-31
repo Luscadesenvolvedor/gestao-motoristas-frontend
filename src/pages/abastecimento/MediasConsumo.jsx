@@ -69,7 +69,8 @@ export default function MediasConsumo() {
   const rowRefs  = useRef({});
 
   // ── filtros do relatório ──
-  const [placa,     setPlaca]       = useState('');
+  const [placa,      setPlaca]      = useState('');   // placa commitada (dispara API)
+  const [buscaPlaca, setBuscaPlaca] = useState('');   // texto do input (local)
   const [mesSel,    setMesSel]      = useState('');   // accordion dentro da tabela
   const [mesFiltro, setMesFiltro]   = useState('');   // filtro global de mês (YYYY-MM)
   const [placas,       setPlacas]       = useState([]);
@@ -93,7 +94,7 @@ export default function MediasConsumo() {
     if (filtradas.length === 0) { setImportacaoId(''); return; }
     if (!filtradas.find(i => i.id === importacaoId)) {
       setImportacaoId(filtradas[0].id);
-      setPlaca(''); setMesSel('');
+      setPlaca(''); setBuscaPlaca(''); setMesSel('');
     }
   }, [frotaSel, importacoes]);
 
@@ -121,12 +122,12 @@ export default function MediasConsumo() {
   useEffect(() => {
     const p = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
     if (!p) {
-      setPlacas([]); setMeses([]); setPlaca(''); setMesSel('');
+      setPlacas([]); setMeses([]); setPlaca(''); setBuscaPlaca(''); setMesSel('');
       setResumoChart([]); setRegistros([]);
       return;
     }
     api.get('/medias-consumo/placas', { params: p })
-      .then(r => { setPlacas(r.data); setPlaca(''); setMesSel(''); setRegistros([]); })
+      .then(r => { setPlacas(r.data); setPlaca(''); setBuscaPlaca(''); setMesSel(''); setRegistros([]); })
       .catch(() => {});
     api.get('/medias-consumo/meses', { params: p })
       .then(r => setMeses(r.data))
@@ -324,7 +325,7 @@ export default function MediasConsumo() {
       toast.success('Importação removida');
       setImportacaoId('');
       setRegistros([]);
-      setPlaca('');
+      setPlaca(''); setBuscaPlaca('');
       await carregarImportacoes();
     } catch { toast.error('Erro ao excluir'); }
   }
@@ -429,17 +430,22 @@ export default function MediasConsumo() {
             );
           })()}
 
-          {/* placa select compacto */}
-          {placas.length > 0 && (
+          {/* placa busca */}
+          {(placas.length > 0 || placa) && (
             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{ fontSize:11, color:'#9ca3af' }}>Placa:</span>
-              <select value={placa} onChange={e => { setPlaca(e.target.value); setMesSel(''); }}
-                style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', cursor:'pointer', outline:'none' }}>
-                <option value="">Todas</option>
-                {placas.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              {placa && (
-                <button onClick={() => { setPlaca(''); setMesSel(''); }}
+              <div style={{ position:'relative' }}>
+                <i className="ti ti-search" style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', fontSize:13, color:'#9ca3af', pointerEvents:'none' }}></i>
+                <input
+                  value={buscaPlaca}
+                  onChange={e => setBuscaPlaca(e.target.value.toUpperCase())}
+                  onBlur={() => { setPlaca(buscaPlaca); setMesSel(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') { setPlaca(buscaPlaca); setMesSel(''); e.target.blur(); } }}
+                  placeholder="Buscar placa..."
+                  style={{ padding:'6px 10px 6px 28px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', outline:'none', width:160 }}
+                />
+              </div>
+              {(placa || buscaPlaca) && (
+                <button onClick={() => { setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
                   style={{ padding:'4px 8px', border:'none', borderRadius:6, background:'#fee2e2', color:'#dc2626', fontSize:11, cursor:'pointer' }}>
                   <i className="ti ti-x"></i>
                 </button>
@@ -459,7 +465,7 @@ export default function MediasConsumo() {
               return (
                 <>
                   <select value={importacoesFiltradas.find(i=>i.id===importacaoId)?importacaoId:(importacoesFiltradas[0]?.id||'')}
-                    onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setMesSel(''); }}
+                    onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
                     style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:200, cursor:'pointer', outline:'none' }}>
                     {importacoesFiltradas.map(im => (
                       <option key={im.id} value={im.id}>
