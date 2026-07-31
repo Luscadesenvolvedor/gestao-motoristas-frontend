@@ -345,11 +345,12 @@ export default function MediasConsumo() {
       if (String(r.produto || '').toLowerCase().includes('diesel')) map[chave].diesel.push(r);
     }
     return Object.values(map).sort((a, b) => a.chave.localeCompare(b.chave)).map(m => {
-      const totalKm    = m.diesel.reduce((s, r) => s + Number(r.distancia || 0), 0);
-      const totalLit   = m.diesel.reduce((s, r) => s + Number(r.litros || 0), 0);
+      const dieselComKm = m.diesel.filter(r => Number(r.distancia) > 0);
+      const totalKm    = dieselComKm.reduce((s, r) => s + Number(r.distancia || 0), 0);
+      const totalLit   = dieselComKm.reduce((s, r) => s + Number(r.litros || 0), 0);
       const totalGasto = m.todos.reduce((s, r) => s + Number(r.vlrTotal || 0), 0);
       const mediaReal  = totalLit > 0 ? totalKm / totalLit : 0;
-      const sugs       = m.diesel.filter(r => Number(r.mediaSugerida) > 0);
+      const sugs       = dieselComKm.filter(r => Number(r.mediaSugerida) > 0);
       const mediaSug   = sugs.length ? sugs.reduce((s, r) => s + Number(r.mediaSugerida), 0) / sugs.length : 0;
       const perc       = mediaSug > 0 ? (mediaReal / mediaSug) * 100 : 0;
       return { ...m, totalKm, totalLit, totalGasto, mediaReal, mediaSug, perc };
@@ -364,17 +365,18 @@ export default function MediasConsumo() {
 
   const summaryMes = useMemo(() => {
     if (!detalhe.length) return null;
-    const diesel    = detalhe.filter(r => String(r.produto || '').toLowerCase().includes('diesel'));
-    const arla      = detalhe.filter(r => String(r.produto || '').toLowerCase().includes('arla'));
-    const totalKm   = diesel.reduce((s, r) => s + Number(r.distancia || 0), 0);
-    const totalLit  = diesel.reduce((s, r) => s + Number(r.litros || 0), 0);
-    const totalArla = arla.reduce((s, r) => s + Number(r.litros || 0), 0);
-    const totalGasto= detalhe.reduce((s, r) => s + Number(r.vlrTotal || 0), 0);
-    const mediaReal = totalLit > 0 ? totalKm / totalLit : 0;
-    const sugs      = diesel.filter(r => Number(r.mediaSugerida) > 0);
-    const mediaSug  = sugs.length ? sugs.reduce((s, r) => s + Number(r.mediaSugerida), 0) / sugs.length : 0;
-    const perc      = mediaSug > 0 ? (mediaReal / mediaSug) * 100 : 0;
-    const custoKm   = totalKm > 0 ? totalGasto / totalKm : 0;
+    const dieselTodos = detalhe.filter(r => String(r.produto || '').toLowerCase().includes('diesel'));
+    const diesel      = dieselTodos.filter(r => Number(r.distancia) > 0);
+    const arla        = detalhe.filter(r => String(r.produto || '').toLowerCase().includes('arla'));
+    const totalKm     = diesel.reduce((s, r) => s + Number(r.distancia || 0), 0);
+    const totalLit    = diesel.reduce((s, r) => s + Number(r.litros || 0), 0);
+    const totalArla   = arla.reduce((s, r) => s + Number(r.litros || 0), 0);
+    const totalGasto  = detalhe.reduce((s, r) => s + Number(r.vlrTotal || 0), 0);
+    const mediaReal   = totalLit > 0 ? totalKm / totalLit : 0;
+    const sugs        = diesel.filter(r => Number(r.mediaSugerida) > 0);
+    const mediaSug    = sugs.length ? sugs.reduce((s, r) => s + Number(r.mediaSugerida), 0) / sugs.length : 0;
+    const perc        = mediaSug > 0 ? (mediaReal / mediaSug) * 100 : 0;
+    const custoKm     = totalKm > 0 ? totalGasto / totalKm : 0;
     return { totalKm, totalLit, totalArla, totalGasto, mediaReal, mediaSug, perc, custoKm };
   }, [detalhe]);
 
