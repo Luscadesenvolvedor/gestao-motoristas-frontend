@@ -118,14 +118,17 @@ export default function MediasConsumo() {
     return extra;
   }, [frotaSel, importacaoId]);
 
-  /* ── buscar motoristas, meses e resumo geral quando filtro muda ── */
+  // chave estável: evita duplo disparo quando frotaSel muda importacaoId
+  const queryKey = frotaSel ? `frota:${frotaSel}` : importacaoId ? `imp:${importacaoId}` : '';
+
+  /* ── buscar placas, meses e resumo geral quando filtro muda ── */
   useEffect(() => {
-    const p = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
-    if (!p) {
+    if (!queryKey) {
       setPlacas([]); setMeses([]); setPlaca(''); setBuscaPlaca(''); setMesSel('');
       setResumoChart([]); setRegistros([]);
       return;
     }
+    const p = frotaSel ? { frota: frotaSel } : { importacaoId };
     api.get('/medias-consumo/placas', { params: p })
       .then(r => { setPlacas(r.data); setPlaca(''); setBuscaPlaca(''); setMesSel(''); setRegistros([]); })
       .catch(() => {});
@@ -137,43 +140,46 @@ export default function MediasConsumo() {
       .then(r => setResumoChart(r.data))
       .catch(() => {})
       .finally(() => setLoadingChart(false));
-  }, [frotaSel, importacaoId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
 
   /* ── atualizar gráfico quando placa muda ── */
   useEffect(() => {
-    const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
-    if (!base) return;
+    if (!queryKey) return;
+    const base = frotaSel ? { frota: frotaSel } : { importacaoId };
     setLoadingChart(true);
-    const params = { ...base };
-    if (placa) params.placa = placa;
+    const params = placa ? { ...base, placa } : base;
     api.get('/medias-consumo/resumo-mensal', { params })
       .then(r => setResumoChart(r.data))
       .catch(() => {})
       .finally(() => setLoadingChart(false));
-  }, [frotaSel, importacaoId, placa]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey, placa]);
 
   /* ── buscar registros quando placa muda ── */
   useEffect(() => {
-    const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
-    if (!base || !placa) { setRegistros([]); setMesSel(''); return; }
+    if (!queryKey || !placa) { setRegistros([]); setMesSel(''); return; }
+    const base = frotaSel ? { frota: frotaSel } : { importacaoId };
     setLoadingReg(true);
     api.get('/medias-consumo', { params: { ...base, placa } })
       .then(r => setRegistros(r.data))
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoadingReg(false));
-  }, [frotaSel, importacaoId, placa]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey, placa]);
 
   /* ── carregar resumo por motorista quando mesFiltro muda ── */
   useEffect(() => {
-    const base = frotaSel ? { frota: frotaSel } : importacaoId ? { importacaoId } : null;
-    if (!base || !mesFiltro) { setResumoMotoristas([]); return; }
+    if (!queryKey || !mesFiltro) { setResumoMotoristas([]); return; }
+    const base = frotaSel ? { frota: frotaSel } : { importacaoId };
     const [ano, mes] = mesFiltro.split('-');
     setLoadingResMot(true);
     api.get('/medias-consumo/resumo-motoristas', { params: { ...base, mes, ano } })
       .then(r => setResumoMotoristas(r.data))
       .catch(() => toast.error('Erro ao carregar resumo do mês'))
       .finally(() => setLoadingResMot(false));
-  }, [frotaSel, importacaoId, mesFiltro]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey, mesFiltro]);
 
   /* ── ler Excel localmente ── */
   async function handleFile(e) {
