@@ -226,7 +226,7 @@ export default function Levantamentos() {
             </button>
           ))}
           <span style={{ width:1, height:20, background:'#e2e8f0', margin:'0 4px' }}/>
-          {[...new Set(lista.map(l => l.mes))].sort().reverse().map(mes => (
+          {[...new Set(lista.map(l => l.mes))].sort().map(mes => (
             <button key={mes} onClick={()=>setMesFiltro(mesFiltro===mes ? null : mes)}
               style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:500, cursor:'pointer',
                 border: mesFiltro===mes ? '1px solid #EB3238' : '1px solid #e2e8f0',
