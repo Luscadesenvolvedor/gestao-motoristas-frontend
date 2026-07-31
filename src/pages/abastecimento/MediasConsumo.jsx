@@ -715,7 +715,7 @@ export default function MediasConsumo() {
                                 return (
                                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:1 }}>
                                     <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace', whiteSpace:'nowrap' }}>{p}</span>
-                                    <span style={{ padding:'1px 6px', borderRadius:4, background:bg, color, fontSize:9, fontWeight:700, whiteSpace:'nowrap' }}>{tipo}</span>
+                                    {frotaSel === 'BAÚ' && <span style={{ padding:'1px 6px', borderRadius:4, background:bg, color, fontSize:9, fontWeight:700, whiteSpace:'nowrap' }}>{tipo}</span>}
                                   </div>
                                 );
                               };
@@ -879,7 +879,7 @@ export default function MediasConsumo() {
                                           {(() => { const tipo = tipoBau(r.placa); const { bg, color } = corBau(tipo); return (
                                             <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
                                               <span style={{ fontWeight:700, fontSize:12, color:'#374151', fontFamily:'monospace' }}>{r.placa}</span>
-                                              <span style={{ padding:'1px 5px', borderRadius:3, background:bg, color, fontSize:9, fontWeight:700, width:'fit-content' }}>{tipo}</span>
+                                              {frotaSel === 'BAÚ' && <span style={{ padding:'1px 5px', borderRadius:3, background:bg, color, fontSize:9, fontWeight:700, width:'fit-content' }}>{tipo}</span>}
                                             </div>
                                           ); })()}
                                         </td>
