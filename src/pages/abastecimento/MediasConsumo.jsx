@@ -7,13 +7,8 @@ import {
   Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, LabelList
 } from 'recharts';
 
-/* ── classificação de placas ── */
-const PLACAS_RODOBAU = new Set([
-  'TQO0G98','TQS6G86','JDK8B73','JDM6G24','TQS5E49','JDJ3F52',
-  'TQO0H03','TQO5E90','JDK6G78','TQS9J32','JDJ4D69','JCJ0J29',
-]);
-const tipoBau = placa => PLACAS_RODOBAU.has((placa||'').toUpperCase().trim()) ? 'RODOBAÚ' : 'BAÚ SIMPLES';
-const corBau  = tipo  => tipo === 'RODOBAÚ'
+/* ── classificação por conjunto ── */
+const corConjunto = conj => conj
   ? { bg:'#eff6ff', color:'#1d4ed8' }
   : { bg:'#f0fdf4', color:'#15803d' };
 
@@ -723,16 +718,14 @@ export default function MediasConsumo() {
                                 s.has(m.motorista) ? s.delete(m.motorista) : s.add(m.motorista);
                                 return s;
                               });
-                              const PlacaBadge = ({ p }) => {
-                                const tipo = tipoBau(p);
-                                const { bg, color } = corBau(tipo);
-                                return (
-                                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:1 }}>
-                                    <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace', whiteSpace:'nowrap' }}>{p}</span>
-                                    {frotaSel === 'BAÚ' && <span style={{ padding:'1px 6px', borderRadius:4, background:bg, color, fontSize:9, fontWeight:700, whiteSpace:'nowrap' }}>{tipo}</span>}
-                                  </div>
-                                );
-                              };
+                              const conj = (m.conjuntos || '').split(', ').filter(Boolean)[0] || '';
+                              const { bg, color } = corConjunto(conj);
+                              const PlacaBadge = ({ p }) => (
+                                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:1 }}>
+                                  <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace', whiteSpace:'nowrap' }}>{p}</span>
+                                  {frotaSel === 'BAÚ' && conj && <span style={{ padding:'1px 6px', borderRadius:4, background:bg, color, fontSize:9, fontWeight:700, whiteSpace:'nowrap' }}>{conj}</span>}
+                                </div>
+                              );
                               return (
                                 <div style={{ display:'flex', alignItems:'flex-start', gap:4, flexWrap: expandido ? 'wrap' : 'nowrap' }}>
                                   <PlacaBadge p={first} />
@@ -890,12 +883,12 @@ export default function MediasConsumo() {
                                       <tr key={i} style={{ background:i%2===0?'#fff':'#f9fafb' }}>
                                         <td style={{ padding:'7px 10px', whiteSpace:'nowrap', borderBottom:'1px solid #f3f4f6' }}>{fmtDt(r.data?.slice(0,10))}</td>
                                         <td style={{ padding:'7px 10px', borderBottom:'1px solid #f3f4f6' }}>
-                                          {(() => { const tipo = tipoBau(r.placa); const { bg, color } = corBau(tipo); return (
-                                            <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
-                                              <span style={{ fontWeight:700, fontSize:12, color:'#374151', fontFamily:'monospace' }}>{r.placa}</span>
-                                              {frotaSel === 'BAÚ' && <span style={{ padding:'1px 5px', borderRadius:3, background:bg, color, fontSize:9, fontWeight:700, width:'fit-content' }}>{tipo}</span>}
-                                            </div>
-                                          ); })()}
+                                          <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
+                                            <span style={{ fontWeight:700, fontSize:12, color:'#374151', fontFamily:'monospace' }}>{r.placa}</span>
+                                            {frotaSel === 'BAÚ' && r.conjunto && (() => { const { bg, color } = corConjunto(r.conjunto); return (
+                                              <span style={{ padding:'1px 5px', borderRadius:3, background:bg, color, fontSize:9, fontWeight:700, width:'fit-content' }}>{r.conjunto}</span>
+                                            ); })()}
+                                          </div>
                                         </td>
                                         <td style={{ padding:'7px 10px', borderBottom:'1px solid #f3f4f6' }}>
                                           <span style={{ padding:'2px 6px', borderRadius:4, fontSize:10, fontWeight:600, background:isDiesel?'#eff6ff':'#f0fdf4', color:isDiesel?'#1d4ed8':'#15803d' }}>{isDiesel?'Diesel':'Arla'}</span>
