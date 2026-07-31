@@ -16,6 +16,7 @@ const menusAcerto = [
   { path: 'vales-fixos',  label: 'Vales Fixos',         icon: 'ti-credit-card',    recurso: 'solicitacoes' },
   { path: 'indicadores',  label: 'Indicadores',         icon: 'ti-chart-bar',      recurso: 'solicitacoes' },
   { path: 'levantamentos',     label: 'Levantamentos',        icon: 'ti-report-money',   recurso: 'levantamentos' },
+  { path: 'ab-medias-consumo', label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: 'levantamentos' },
   { path: 'mapa-ineficiencia', label: 'Mapa de Ineficiência', icon: 'ti-map-pin',        recurso: 'financeiro' },
 ];
 
