@@ -145,10 +145,12 @@ export default function MediasConsumo() {
 
   /* ── atualizar gráfico quando placa muda ── */
   useEffect(() => {
-    if (!queryKey) return;
-    const base = frotaSel ? { frota: frotaSel } : { importacaoId };
+    if (!queryKey && !placa) return;
     setLoadingChart(true);
-    const params = placa ? { ...base, placa } : base;
+    // quando há placa, ignora frota e busca em todas as importações
+    const params = placa
+      ? { placa }
+      : frotaSel ? { frota: frotaSel } : { importacaoId };
     api.get('/medias-consumo/resumo-mensal', { params })
       .then(r => setResumoChart(r.data))
       .catch(() => {})
@@ -158,15 +160,15 @@ export default function MediasConsumo() {
 
   /* ── buscar registros quando placa muda ── */
   useEffect(() => {
-    if (!queryKey || !placa) { setRegistros([]); setMesSel(''); return; }
-    const base = frotaSel ? { frota: frotaSel } : { importacaoId };
+    if (!placa) { setRegistros([]); setMesSel(''); return; }
     setLoadingReg(true);
-    api.get('/medias-consumo', { params: { ...base, placa } })
+    // busca só pela placa, sem restrição de frota
+    api.get('/medias-consumo', { params: { placa } })
       .then(r => setRegistros(r.data))
       .catch(() => toast.error('Erro ao carregar dados'))
       .finally(() => setLoadingReg(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryKey, placa]);
+  }, [placa]);
 
   /* ── carregar resumo por motorista quando mesFiltro muda ── */
   useEffect(() => {
