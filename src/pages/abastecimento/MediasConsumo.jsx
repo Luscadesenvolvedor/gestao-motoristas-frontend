@@ -62,7 +62,7 @@ export default function MediasConsumo() {
   // ── estado Excel local (antes de salvar) ──
   const [preview,     setPreview]     = useState(null); // { nomeArquivo, registros[], frota }
   const [salvando,    setSalvando]    = useState(false);
-  const [frotaSel,    setFrotaSel]    = useState('');   // filtro rápido de frota
+  const [frotaSel,    setFrotaSel]    = useState('BAÚ'); // filtro rápido de frota
 
   const FROTAS = ['BAÚ', 'FROTA'];
   const fileRef  = useRef();
