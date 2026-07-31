@@ -647,6 +647,12 @@ export default function MediasConsumo() {
                         style={{ fontSize:10, fontWeight:700, fill:'#374151' }}
                         formatter={v => `R$${(v/1000).toFixed(1)}k`}
                       />
+                      <LabelList
+                        dataKey="totalCaminhoes"
+                        position="insideTop"
+                        style={{ fontSize:10, fontWeight:700, fill:'rgba(255,255,255,0.92)' }}
+                        formatter={v => v > 0 ? `🚛 ${v}` : ''}
+                      />
                     </Bar>
                     <Line dataKey="totalGasto" name="Tendência" type="monotone" stroke="#ff9f43" strokeWidth={2.5} dot={{ r:3, fill:'#ff9f43', stroke:'#fff', strokeWidth:1.5 }} activeDot={{ r:5 }} legendType="none" />
                     {placa && (
