@@ -386,12 +386,27 @@ export default function Levantamentos() {
                 <input value={buscaMot} onChange={e => setBuscaMot(e.target.value)} placeholder="Buscar motorista..."
                   style={{ padding:'6px 10px 6px 26px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, outline:'none', width:180 }} />
               </div>
-              {/* filtro mês */}
-              <select value={mesFiltroMot} onChange={e => setMesFiltroMot(e.target.value)}
-                style={{ padding:'6px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', cursor:'pointer', outline:'none' }}>
-                <option value="">Todos os meses</option>
-                {mesesMot.map(m => <option key={m} value={m}>{fmtMes(m)}</option>)}
-              </select>
+              {/* filtros rápidos de mês */}
+              {mesesMot.length > 0 && (
+                <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                  <button onClick={() => setMesFiltroMot('')}
+                    style={{ padding:'4px 10px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                      borderColor: mesFiltroMot === '' ? '#6366f1' : '#e5e7eb',
+                      background:  mesFiltroMot === '' ? '#6366f1' : '#f9fafb',
+                      color:       mesFiltroMot === '' ? '#fff'    : '#6b7280' }}>
+                    Todos
+                  </button>
+                  {mesesMot.map(m => (
+                    <button key={m} onClick={() => setMesFiltroMot(mesFiltroMot === m ? '' : m)}
+                      style={{ padding:'4px 10px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                        borderColor: mesFiltroMot === m ? '#6366f1' : '#e5e7eb',
+                        background:  mesFiltroMot === m ? '#6366f1' : '#f9fafb',
+                        color:       mesFiltroMot === m ? '#fff'    : '#6b7280' }}>
+                      {fmtMes(m)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
