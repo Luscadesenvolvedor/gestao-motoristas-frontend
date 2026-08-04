@@ -75,13 +75,24 @@ export default function Levantamentos() {
 
   const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
 
-  const regsFiltrados = useMemo(() => regsMot.filter(r => {
-    if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
-    if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
-    return true;
-  }), [regsMot, mesFiltroMot, buscaMot]);
+  const regsFiltrados = useMemo(() => {
+    const filtrado = regsMot.filter(r => {
+      if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
+      if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
+      return true;
+    });
+    // agrupar por motorista + veiculo, somando valores
+    const map = {};
+    for (const r of filtrado) {
+      const key = r.motorista.trim().toUpperCase();
+      if (!map[key]) map[key] = { motorista: r.motorista, veiculo: r.veiculo, valor: 0, meses: new Set() };
+      map[key].valor += parseFloat(r.valor || 0);
+      if (r.mes) map[key].meses.add(r.mes);
+    }
+    return Object.values(map).sort((a, b) => a.motorista.localeCompare(b.motorista));
+  }, [regsMot, mesFiltroMot, buscaMot]);
 
-  const totalMot = regsFiltrados.reduce((s, r) => s + parseFloat(r.valor||0), 0);
+  const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
 
   async function handleFileMot(e) {
     const file = e.target.files[0];
@@ -370,21 +381,23 @@ export default function Levantamentos() {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
-                      {['Motorista','Veículo','Mês','Valor'].map(h => (
-                        <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                      {['Motorista','Veículo','Mês(es)','Valor Total'].map(h => (
+                        <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor Total' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {regsFiltrados.map((r, i) => (
-                      <tr key={r.id} style={{ background: i%2===0?'#fff':'#fafafa' }}
+                      <tr key={r.motorista} style={{ background: i%2===0?'#fff':'#fafafa' }}
                         onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
                         onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
                         <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6' }}>{r.motorista}</td>
                         <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6' }}>
                           {r.veiculo ? <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span> : <span style={{ color:'#d1d5db' }}>—</span>}
                         </td>
-                        <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6', color:'#475569' }}>{fmtMes(r.mes)}</td>
+                        <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6', color:'#475569', fontSize:12 }}>
+                          {[...r.meses].sort().map(m => fmtMes(m)).join(', ') || '—'}
+                        </td>
                         <td style={{ padding:'10px 16px', textAlign:'right', fontWeight:700, color:'#EB3238', borderBottom:'1px solid #f3f4f6' }}>{fmtR(r.valor)}</td>
                       </tr>
                     ))}
