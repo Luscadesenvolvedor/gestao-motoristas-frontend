@@ -1,5 +1,6 @@
 // frontend/src/pages/Levantamentos.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -44,6 +45,116 @@ export default function Levantamentos() {
   const [anoFiltro, setAnoFiltro] = useState(null);
   const [mesFiltro, setMesFiltro] = useState(null);
   const [tipoFiltro, setTipoFiltro] = useState(null);
+
+  // ── Por Motorista ──
+  const [abaAtiva, setAbaAtiva]           = useState('geral'); // 'geral' | 'motoristas'
+  const [impsMot, setImpsMot]             = useState([]);
+  const [impMotId, setImpMotId]           = useState('');
+  const [regsMot, setRegsMot]             = useState([]);
+  const [mesFiltroMot, setMesFiltroMot]   = useState('');
+  const [buscaMot, setBuscaMot]           = useState('');
+  const [salvandoMot, setSalvandoMot]     = useState(false);
+  const [previewMot, setPreviewMot]       = useState(null);
+  const fileRefMot = useRef();
+
+  const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
+  const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+
+  useEffect(() => {
+    api.get('/levantamentos-motoristas/importacoes')
+      .then(r => { setImpsMot(r.data); if (r.data.length) setImpMotId(r.data[0].id); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!impMotId) { setRegsMot([]); return; }
+    api.get('/levantamentos-motoristas', { params: { importacaoId: impMotId } })
+      .then(r => setRegsMot(r.data))
+      .catch(() => {});
+  }, [impMotId]);
+
+  const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
+
+  const regsFiltrados = useMemo(() => regsMot.filter(r => {
+    if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
+    if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
+    return true;
+  }), [regsMot, mesFiltroMot, buscaMot]);
+
+  const totalMot = regsFiltrados.reduce((s, r) => s + parseFloat(r.valor||0), 0);
+
+  async function handleFileMot(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+      const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+      const header = raw[0] || [];
+      const iMot = header.findIndex(h => norm(h).includes('motorista'));
+      const iVei = header.findIndex(h => norm(h).includes('veiculo') || norm(h).includes('veículo') || norm(h).includes('placa'));
+      const iVal = header.findIndex(h => norm(h).includes('valor'));
+      const iMes = header.findIndex(h => norm(h).includes('mes') || norm(h).includes('mês'));
+      const parseMes = v => {
+        if (!v) return null;
+        // YYYY-MM
+        if (/^\d{4}-\d{2}/.test(String(v))) return String(v).slice(0,7);
+        // MM/YYYY ou M/YYYY
+        if (/^\d{1,2}\/\d{4}$/.test(String(v))) { const [m,a] = String(v).split('/'); return `${a}-${m.padStart(2,'0')}`; }
+        // Date object
+        if (v instanceof Date) return v.toISOString().slice(0,7);
+        // número serial Excel
+        if (typeof v === 'number') { const d = new Date(Math.round((v-25569)*86400*1000)); return d.toISOString().slice(0,7); }
+        return String(v).slice(0,7);
+      };
+      const parseVal = v => {
+        if (!v && v !== 0) return null;
+        if (typeof v === 'number') return v;
+        return parseFloat(String(v).replace(/[R$\s.]/g,'').replace(',','.')) || null;
+      };
+      const registros = raw.slice(1).filter(r => r[iMot] && r[iVal] != null).map(r => ({
+        motorista: String(r[iMot]).trim(),
+        veiculo:   iVei >= 0 ? String(r[iVei]||'').trim() : null,
+        valor:     parseVal(r[iVal]),
+        mes:       parseMes(r[iMes]),
+      })).filter(r => r.valor !== null && r.mes);
+      if (!registros.length) { toast.error('Nenhum registro válido encontrado'); return; }
+      setPreviewMot({ nomeArquivo: file.name, registros });
+      toast.success(`${registros.length} registros lidos`);
+    } catch (err) { toast.error('Erro ao ler arquivo: ' + err.message); }
+    e.target.value = '';
+  }
+
+  async function salvarImportacaoMot() {
+    if (!previewMot) return;
+    setSalvandoMot(true);
+    try {
+      const { data } = await api.post('/levantamentos-motoristas/importar', {
+        nomeArquivo: previewMot.nomeArquivo,
+        registros:   previewMot.registros,
+      });
+      toast.success(`${data.total} registros salvos!`);
+      setPreviewMot(null);
+      const r = await api.get('/levantamentos-motoristas/importacoes');
+      setImpsMot(r.data);
+      setImpMotId(data.importacaoId);
+    } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
+    finally { setSalvandoMot(false); }
+  }
+
+  async function excluirImportacaoMot(id) {
+    if (!confirm('Excluir esta importação e todos os registros?')) return;
+    try {
+      await api.delete(`/levantamentos-motoristas/importacoes/${id}`);
+      toast.success('Importação removida');
+      const r = await api.get('/levantamentos-motoristas/importacoes');
+      setImpsMot(r.data);
+      setImpMotId(r.data[0]?.id || '');
+      setRegsMot([]);
+    } catch { toast.error('Erro ao excluir'); }
+  }
 
   function carregar() {
     api.get('/levantamentos').then(r => setLista(r.data)).catch(err => {
@@ -152,14 +263,153 @@ export default function Levantamentos() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Header com abas */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e' }}>Levantamentos</h2>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Levantamentos</h2>
+          <div style={{ display:'flex', gap:4, background:'#f1f5f9', borderRadius:10, padding:4 }}>
+            {[{ id:'geral', label:'Geral' }, { id:'motoristas', label:'Por Motorista' }].map(ab => (
+              <button key={ab.id} onClick={() => setAbaAtiva(ab.id)}
+                style={{ padding:'5px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer',
+                  background: abaAtiva === ab.id ? '#fff' : 'transparent',
+                  color: abaAtiva === ab.id ? '#EB3238' : '#64748b',
+                  boxShadow: abaAtiva === ab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                {ab.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <button onClick={abrirNovo}
           style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(235,50,56,0.3)' }}>
           <i className="ti ti-plus"></i> Incluir
         </button>
       </div>
+
+      {/* ═══════════════ ABA POR MOTORISTA ═══════════════ */}
+      {abaAtiva === 'motoristas' && (
+        <div>
+          {/* Barra de ferramentas */}
+          <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
+            <input ref={fileRefMot} type="file" accept=".xlsx,.xls" onChange={handleFileMot} style={{ display:'none' }} />
+            <button onClick={() => fileRefMot.current?.click()}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:500, cursor:'pointer' }}>
+              <i className="ti ti-upload" style={{ fontSize:13 }}></i> Importar Planilha
+            </button>
+
+            {impsMot.length > 0 && (
+              <>
+                <select value={impMotId} onChange={e => setImpMotId(e.target.value)}
+                  style={{ padding:'6px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', cursor:'pointer', outline:'none', maxWidth:220 }}>
+                  {impsMot.map(im => (
+                    <option key={im.id} value={im.id}>
+                      {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({im._count?.registros || 0} reg.)
+                    </option>
+                  ))}
+                </select>
+                {impMotId && (
+                  <button onClick={() => excluirImportacaoMot(impMotId)}
+                    style={{ padding:'6px 9px', border:'1px solid #fee2e2', borderRadius:7, background:'#fff5f5', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                    <i className="ti ti-trash"></i>
+                  </button>
+                )}
+              </>
+            )}
+
+            <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
+              {/* busca motorista */}
+              <div style={{ position:'relative' }}>
+                <i className="ti ti-search" style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#9ca3af', pointerEvents:'none' }}></i>
+                <input value={buscaMot} onChange={e => setBuscaMot(e.target.value)} placeholder="Buscar motorista..."
+                  style={{ padding:'6px 10px 6px 26px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, outline:'none', width:180 }} />
+              </div>
+              {/* filtro mês */}
+              <select value={mesFiltroMot} onChange={e => setMesFiltroMot(e.target.value)}
+                style={{ padding:'6px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', cursor:'pointer', outline:'none' }}>
+                <option value="">Todos os meses</option>
+                {mesesMot.map(m => <option key={m} value={m}>{fmtMes(m)}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Preview antes de salvar */}
+          {previewMot && (
+            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+              <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#d97706' }}></i>
+              <div>
+                <div style={{ fontWeight:600, fontSize:13, color:'#92400e' }}>{previewMot.nomeArquivo}</div>
+                <div style={{ fontSize:11, color:'#b45309' }}>{previewMot.registros.length} registros lidos</div>
+              </div>
+              <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+                <button onClick={() => setPreviewMot(null)} style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer' }}>Cancelar</button>
+                <button onClick={salvarImportacaoMot} disabled={salvandoMot}
+                  style={{ padding:'7px 16px', border:'none', borderRadius:8, background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  {salvandoMot ? 'Salvando...' : 'Salvar no banco'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Card total */}
+          {regsFiltrados.length > 0 && (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px,1fr))', gap:12, marginBottom:16 }}>
+              <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 18px' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Total</div>
+                <div style={{ fontSize:22, fontWeight:800, color:'#EB3238' }}>{fmtR(totalMot)}</div>
+              </div>
+              <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 18px' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Motoristas</div>
+                <div style={{ fontSize:22, fontWeight:800, color:'#0ea5e9' }}>{regsFiltrados.length}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Tabela */}
+          {regsFiltrados.length > 0 ? (
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
+              <div style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                  <thead>
+                    <tr style={{ background:'#f8fafc' }}>
+                      {['Motorista','Veículo','Mês','Valor'].map(h => (
+                        <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {regsFiltrados.map((r, i) => (
+                      <tr key={r.id} style={{ background: i%2===0?'#fff':'#fafafa' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                        onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
+                        <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6' }}>{r.motorista}</td>
+                        <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6' }}>
+                          {r.veiculo ? <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span> : <span style={{ color:'#d1d5db' }}>—</span>}
+                        </td>
+                        <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6', color:'#475569' }}>{fmtMes(r.mes)}</td>
+                        <td style={{ padding:'10px 16px', textAlign:'right', fontWeight:700, color:'#EB3238', borderBottom:'1px solid #f3f4f6' }}>{fmtR(r.valor)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background:'#f8fafc', fontWeight:700 }}>
+                      <td colSpan={3} style={{ padding:'11px 16px', color:'#374151' }}>TOTAL</td>
+                      <td style={{ padding:'11px 16px', textAlign:'right', color:'#EB3238' }}>{fmtR(totalMot)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign:'center', padding:60, color:'#9ca3af', background:'#fff', borderRadius:12, border:'1px dashed #d1d5db' }}>
+              <i className="ti ti-users" style={{ fontSize:36, display:'block', marginBottom:10, color:'#d1d5db' }}></i>
+              <div style={{ fontWeight:500, marginBottom:4 }}>Nenhum dado</div>
+              <div style={{ fontSize:12 }}>Importe uma planilha para começar</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ ABA GERAL ═══════════════ */}
+      {abaAtiva === 'geral' && <>
 
       {/* Form */}
       {showForm && (
@@ -354,6 +604,8 @@ export default function Levantamentos() {
           Nenhum levantamento registrado
         </div>
       )}
+      </>}
+
     </div>
   );
 }
