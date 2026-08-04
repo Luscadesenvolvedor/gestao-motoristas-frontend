@@ -102,39 +102,89 @@ export default function Levantamentos() {
       const wb = XLSX.read(buf, { cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-      const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
-      const header = raw[0] || [];
-      const iMot = header.findIndex(h => norm(h).includes('motorista'));
-      const iVei = header.findIndex(h => norm(h).includes('veiculo') || norm(h).includes('veículo') || norm(h).includes('placa'));
-      const iVal = header.findIndex(h => norm(h).includes('valor'));
-      const iMes = header.findIndex(h => norm(h).includes('mes') || norm(h).includes('mês'));
+
+      // normaliza texto: minúsculo, sem acento, sem espaço extra
+      const norm = s => String(s||'').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+
+      const header = (raw[0] || []).map(norm);
+      console.log('[LevtMot] cabeçalhos encontrados:', header);
+
+      const iMot = header.findIndex(h => h.includes('motorista'));
+      const iVei = header.findIndex(h => h.includes('veiculo') || h.includes('placa') || h.includes('vei'));
+      const iVal = header.findIndex(h => h.includes('valor'));
+      const iMes = header.findIndex(h => h.includes('mes'));
+
+      console.log('[LevtMot] colunas → motorista:', iMot, 'veiculo:', iVei, 'valor:', iVal, 'mes:', iMes);
+
+      if (iMot < 0 || iVal < 0) {
+        toast.error(`Colunas não encontradas. Cabeçalhos lidos: ${header.join(', ')}`);
+        return;
+      }
+
+      const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12,jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12 };
+
       const parseMes = v => {
-        if (!v) return null;
-        // YYYY-MM
-        if (/^\d{4}-\d{2}/.test(String(v))) return String(v).slice(0,7);
-        // MM/YYYY ou M/YYYY
-        if (/^\d{1,2}\/\d{4}$/.test(String(v))) { const [m,a] = String(v).split('/'); return `${a}-${m.padStart(2,'0')}`; }
-        // Date object
-        if (v instanceof Date) return v.toISOString().slice(0,7);
-        // número serial Excel
-        if (typeof v === 'number') { const d = new Date(Math.round((v-25569)*86400*1000)); return d.toISOString().slice(0,7); }
-        return String(v).slice(0,7);
-      };
-      const parseVal = v => {
         if (!v && v !== 0) return null;
-        if (typeof v === 'number') return v;
-        return parseFloat(String(v).replace(/[R$\s.]/g,'').replace(',','.')) || null;
+        const s = String(v).trim();
+        // YYYY-MM
+        if (/^\d{4}-\d{2}/.test(s)) return s.slice(0,7);
+        // MM/YYYY ou M/YYYY
+        if (/^\d{1,2}\/\d{4}$/.test(s)) { const [m,a] = s.split('/'); return `${a}-${m.padStart(2,'0')}`; }
+        // YYYY/MM
+        if (/^\d{4}\/\d{2}$/.test(s)) { const [a,m] = s.split('/'); return `${a}-${m}`; }
+        // Date object (cellDates:true)
+        if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
+        // número serial Excel
+        if (typeof v === 'number') {
+          const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+          return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+        }
+        // "Janeiro/2026" ou "jan/26" ou "Janeiro 2026"
+        const lower = norm(s);
+        for (const [nome, num] of Object.entries(MESES_PT)) {
+          if (lower.startsWith(nome)) {
+            const anoRaw = s.match(/\d{4}/)?.[0] || s.match(/\d{2}/)?.[0];
+            const anoFull = anoRaw
+              ? (anoRaw.length === 2 ? `20${anoRaw}` : anoRaw)
+              : new Date().getFullYear();
+            return `${anoFull}-${String(num).padStart(2,'0')}`;
+          }
+        }
+        // fallback: pega só os primeiros 7 chars se parecer data
+        return s.length >= 7 ? s.slice(0,7) : null;
       };
-      const registros = raw.slice(1).filter(r => r[iMot] && r[iVal] != null).map(r => ({
-        motorista: String(r[iMot]).trim(),
-        veiculo:   iVei >= 0 ? String(r[iVei]||'').trim() : null,
-        valor:     parseVal(r[iVal]),
-        mes:       parseMes(r[iMes]),
-      })).filter(r => r.valor !== null && r.mes);
-      if (!registros.length) { toast.error('Nenhum registro válido encontrado'); return; }
+
+      const parseVal = v => {
+        if (v === null || v === undefined || v === '') return null;
+        if (typeof v === 'number') return v;
+        const n = parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'));
+        return isNaN(n) ? null : n;
+      };
+
+      const registros = raw.slice(1)
+        .filter(r => r[iMot] && String(r[iMot]).trim())
+        .map(r => ({
+          motorista: String(r[iMot]).trim(),
+          veiculo:   iVei >= 0 && r[iVei] ? String(r[iVei]).trim() : null,
+          valor:     parseVal(r[iVal]),
+          mes:       iMes >= 0 ? parseMes(r[iMes]) : null,
+        }))
+        .filter(r => r.valor !== null);
+
+      console.log('[LevtMot] registros lidos:', registros.length, registros.slice(0,3));
+
+      if (!registros.length) {
+        toast.error('Nenhum registro válido encontrado — verifique as colunas da planilha');
+        return;
+      }
+
       setPreviewMot({ nomeArquivo: file.name, registros });
       toast.success(`${registros.length} registros lidos`);
-    } catch (err) { toast.error('Erro ao ler arquivo: ' + err.message); }
+    } catch (err) {
+      console.error('[LevtMot] erro:', err);
+      toast.error('Erro ao ler arquivo: ' + err.message);
+    }
     e.target.value = '';
   }
 
@@ -220,8 +270,11 @@ export default function Levantamentos() {
   const fmtK = v => v >= 1000 ? `R$${(v/1000).toFixed(1)}k` : `R$${v.toFixed(0)}`;
   const fmtMes = mes => {
     if (!mes) return '—';
-    const [ano, m] = mes.split('-');
-    return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(m,10)-1]}/${ano.slice(2)}`;
+    const parts = mes.split('-');
+    if (parts.length < 2) return mes;
+    const [ano, m] = parts;
+    const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return `${nomes[parseInt(m,10)-1] || m}/${ano.slice(2)}`;
   };
   const total = l => parseFloat(l.previa||0)+parseFloat(l.saldo||0)+parseFloat(l.custoFolha||0);
 
