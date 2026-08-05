@@ -55,6 +55,8 @@ export default function Levantamentos() {
   const [buscaMot, setBuscaMot]           = useState('');
   const [salvandoMot, setSalvandoMot]     = useState(false);
   const [previewMot, setPreviewMot]       = useState(null);
+  const [verImps, setVerImps]             = useState(false);
+  const [reloadMot, setReloadMot]         = useState(0);
   const fileRefMot = useRef();
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
@@ -67,11 +69,10 @@ export default function Levantamentos() {
   }, []);
 
   useEffect(() => {
-    if (!impMotId) { setRegsMot([]); return; }
-    api.get('/levantamentos-motoristas', { params: { importacaoId: impMotId } })
+    api.get('/levantamentos-motoristas')
       .then(r => setRegsMot(r.data))
       .catch(() => {});
-  }, [impMotId]);
+  }, [reloadMot]);
 
   const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
 
@@ -200,7 +201,7 @@ export default function Levantamentos() {
       setPreviewMot(null);
       const r = await api.get('/levantamentos-motoristas/importacoes');
       setImpsMot(r.data);
-      setImpMotId(data.importacaoId);
+      setReloadMot(n => n + 1);
     } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
     finally { setSalvandoMot(false); }
   }
@@ -212,8 +213,7 @@ export default function Levantamentos() {
       toast.success('Importação removida');
       const r = await api.get('/levantamentos-motoristas/importacoes');
       setImpsMot(r.data);
-      setImpMotId(r.data[0]?.id || '');
-      setRegsMot([]);
+      setReloadMot(n => n + 1);
     } catch { toast.error('Erro ao excluir'); }
   }
 
@@ -361,22 +361,11 @@ export default function Levantamentos() {
             </button>
 
             {impsMot.length > 0 && (
-              <>
-                <select value={impMotId} onChange={e => setImpMotId(e.target.value)}
-                  style={{ padding:'6px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, color:'#374151', background:'#f9fafb', cursor:'pointer', outline:'none', maxWidth:220 }}>
-                  {impsMot.map(im => (
-                    <option key={im.id} value={im.id}>
-                      {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({im._count?.registros || 0} reg.)
-                    </option>
-                  ))}
-                </select>
-                {impMotId && (
-                  <button onClick={() => excluirImportacaoMot(impMotId)}
-                    style={{ padding:'6px 9px', border:'1px solid #fee2e2', borderRadius:7, background:'#fff5f5', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
-                    <i className="ti ti-trash"></i>
-                  </button>
-                )}
-              </>
+              <button onClick={() => setVerImps(v => !v)}
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, fontWeight:500, cursor:'pointer', background: verImps ? '#f1f5f9' : '#fff', color:'#374151' }}>
+                <i className={`ti ti-${verImps ? 'chevron-up' : 'database'}`} style={{ fontSize:13 }}></i>
+                {verImps ? 'Ocultar' : 'Ver importações'} ({impsMot.length})
+              </button>
             )}
 
             <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
@@ -409,6 +398,28 @@ export default function Levantamentos() {
               )}
             </div>
           </div>
+
+          {/* Painel de importações */}
+          {verImps && impsMot.length > 0 && (
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'12px 16px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Importações</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {impsMot.map(im => (
+                  <div key={im.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #f1f5f9' }}>
+                    <i className="ti ti-file-spreadsheet" style={{ fontSize:15, color:'#6366f1' }}></i>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:'#1a1a2e' }}>{im.nomeArquivo.replace(/\.xlsx?$/i,'')}</div>
+                      <div style={{ fontSize:11, color:'#9ca3af' }}>{im.totalRegistros} registros · {fmtDt(im.criadoEm)}</div>
+                    </div>
+                    <button onClick={() => excluirImportacaoMot(im.id)}
+                      style={{ padding:'4px 8px', border:'1px solid #fee2e2', borderRadius:6, background:'#fff5f5', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
+                      <i className="ti ti-trash"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Preview antes de salvar */}
           {previewMot && (
