@@ -51,6 +51,7 @@ export default function Levantamentos() {
   const [mesFiltroMot, setMesFiltroMot]   = useState('');
   const [buscaMot, setBuscaMot]           = useState('');
   const [importacoesMot, setImportacoesMot] = useState([]);
+  const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -63,6 +64,26 @@ export default function Levantamentos() {
       .then(r => setImportacoesMot(r.data))
       .catch(() => {});
   }, []);
+
+  async function salvarPlacaMot(motorista) {
+    const placa = (placasMot[motorista]?.valor || '').trim();
+    if (!placa) return;
+    setPlacasMot(p => ({ ...p, [motorista]: { ...p[motorista], salvando: true } }));
+    try {
+      await api.put('/levantamentos-motoristas/veiculo', { motorista, veiculo: placa });
+      // Atualiza localmente os registros para refletir a placa salva
+      setRegsMot(prev => prev.map(r =>
+        r.motorista.trim().toUpperCase() === motorista.trim().toUpperCase()
+          ? { ...r, veiculo: placa }
+          : r
+      ));
+      setPlacasMot(p => ({ ...p, [motorista]: { valor: placa, salvando: false, salvo: true } }));
+      toast.success(`Placa salva`);
+    } catch {
+      toast.error('Erro ao salvar placa');
+      setPlacasMot(p => ({ ...p, [motorista]: { ...p[motorista], salvando: false } }));
+    }
+  }
 
   const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
 
@@ -346,7 +367,29 @@ export default function Levantamentos() {
                         onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
                         <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6' }}>{r.motorista}</td>
                         <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6' }}>
-                          {r.veiculo ? <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span> : <span style={{ color:'#d1d5db' }}>—</span>}
+                          {r.veiculo ? (
+                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span>
+                          ) : placasMot[r.motorista]?.salvo ? (
+                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#dcfce7', color:'#166534', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>
+                              {placasMot[r.motorista].valor} ✓
+                            </span>
+                          ) : (
+                            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                              <input
+                                value={placasMot[r.motorista]?.valor || ''}
+                                onChange={e => setPlacasMot(p => ({ ...p, [r.motorista]: { ...p[r.motorista], valor: e.target.value.toUpperCase(), salvo: false } }))}
+                                onKeyDown={e => e.key === 'Enter' && salvarPlacaMot(r.motorista)}
+                                placeholder="ABC-1234"
+                                style={{ width:85, padding:'3px 7px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:11, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', outline:'none' }}
+                              />
+                              <button
+                                onClick={() => salvarPlacaMot(r.motorista)}
+                                disabled={placasMot[r.motorista]?.salvando || !placasMot[r.motorista]?.valor}
+                                style={{ padding:'3px 8px', border:'none', borderRadius:6, background:'#6366f1', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                                {placasMot[r.motorista]?.salvando ? '...' : 'Salvar'}
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6', color:'#475569', fontSize:12 }}>
                           {[...r.meses].sort().map(m => fmtMes(m)).join(', ') || '—'}
