@@ -15,6 +15,7 @@ import Financeiro from './pages/Financeiro';
 import Indicadores from './pages/Indicadores';
 import ValesFixos from './pages/ValesFixos';
 import Levantamentos from './pages/Levantamentos';
+import LevantamentosImportacoes from './pages/LevantamentosImportacoes';
 import MapaIneficiencia from './pages/MapaIneficiencia';
 import Configuracoes from './pages/Configuracoes';
 import NotasAbastecimento from './pages/abastecimento/Notas';
@@ -108,7 +109,8 @@ function AppRoutes() {
         <Route path="financeiro"   element={<Privada recurso="financeiro"><ErrorBoundary><Financeiro /></ErrorBoundary></Privada>} />
         <Route path="indicadores"  element={<Privada recurso="solicitacoes"><ErrorBoundary><Indicadores /></ErrorBoundary></Privada>} />
         <Route path="vales-fixos"  element={<Privada recurso="solicitacoes"><ErrorBoundary><ValesFixos /></ErrorBoundary></Privada>} />
-        <Route path="levantamentos"     element={<Privada recurso="levantamentos"><ErrorBoundary><Levantamentos /></ErrorBoundary></Privada>} />
+        <Route path="levantamentos"            element={<Privada recurso="levantamentos"><ErrorBoundary><Levantamentos /></ErrorBoundary></Privada>} />
+        <Route path="levantamentos-importacoes" element={<Privada recurso="levantamentos"><ErrorBoundary><LevantamentosImportacoes /></ErrorBoundary></Privada>} />
         <Route path="mapa-ineficiencia" element={<Privada recurso="financeiro"><ErrorBoundary><MapaIneficiencia /></ErrorBoundary></Privada>} />
         <Route path="configuracoes"           element={<Privada><ErrorBoundary><Configuracoes /></ErrorBoundary></Privada>} />
         <Route path="notas-abastecimento"      element={<Privada><ErrorBoundary><NotasAbastecimento /></ErrorBoundary></Privada>} />
