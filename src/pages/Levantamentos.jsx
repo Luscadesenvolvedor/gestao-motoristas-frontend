@@ -261,11 +261,8 @@ export default function Levantamentos() {
     // desconsiderar entradas com total = 0 na média
     const validos = registros.filter(l => total(l) > 0);
     const t = validos.reduce((s,l) => s + total(l), 0) + extraTotal;
-    // usar o MAIOR motoristasFechados entre os meses (não a soma) — mesmo motoristas em meses diferentes
-    const mManuais = validos.length > 0
-      ? Math.max(...validos.map(l => parseInt(l.motoristasFechados) || 0))
-      : 0;
-    const m = mManuais + extraMot;
+    // soma motoristasFechados de cada mês → média mensal por motorista (total/meses/motoristas)
+    const m = validos.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0) + extraMot;
     return m > 0 ? t / m : 0;
   };
 
