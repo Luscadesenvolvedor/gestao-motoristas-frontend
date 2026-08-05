@@ -167,14 +167,56 @@ export default function Levantamentos() {
     return true;
   });
 
-  const mesesChart = [...new Set(listaFiltrada.map(l => l.mes))].sort();
+  // Map importacaoId → { tipoPagamento, frota }
+  const importacoesMap = useMemo(() => {
+    const map = {};
+    for (const im of importacoesMot) map[im.id] = { tipoPagamento: im.tipoPagamento, frota: im.frota };
+    return map;
+  }, [importacoesMot]);
+
+  // Dados de importação por motorista agrupados por mês (respeita filtros de mês/ano/frota)
+  const chartMotData = useMemo(() => {
+    const map = {};
+    for (const r of regsMot) {
+      const meta = importacoesMap[r.importacaoId];
+      if (!meta?.tipoPagamento) continue;
+      if (tipoFiltro && meta.frota !== tipoFiltro) continue;
+      if (mesFiltro  && r.mes !== mesFiltro) continue;
+      if (anoFiltro  && !r.mes?.startsWith(anoFiltro)) continue;
+      if (!map[r.mes]) map[r.mes] = { saldo: 0, diarias: 0, bonificacao: 0 };
+      const k = meta.tipoPagamento;
+      if (map[r.mes][k] !== undefined) map[r.mes][k] += parseFloat(r.valor || 0);
+    }
+    return map;
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
+
+  // Totais agregados para os cards (soma de todos os meses do filtro atual)
+  const totaisMot = useMemo(() => {
+    const result = { saldo: 0, diarias: 0, bonificacao: 0 };
+    for (const vals of Object.values(chartMotData)) {
+      result.saldo       += vals.saldo;
+      result.diarias     += vals.diarias;
+      result.bonificacao += vals.bonificacao;
+    }
+    return result;
+  }, [chartMotData]);
+
+  const mesesChart = [...new Set([
+    ...listaFiltrada.map(l => l.mes),
+    ...Object.keys(chartMotData),
+  ])].sort();
+
   const chartData = mesesChart.map(mes => {
     const frota = listaFiltrada.find(l => l.mes === mes && l.tipo === 'FROTA');
     const meli  = listaFiltrada.find(l => l.mes === mes && l.tipo === 'MELI');
+    const mot   = chartMotData[mes] || {};
     return {
       mes: fmtMes(mes),
-      ...(frota ? { FROTA: total(frota) } : {}),
-      ...(meli  ? { MELI:  total(meli)  } : {}),
+      ...(frota            ? { FROTA:           total(frota)   } : {}),
+      ...(meli             ? { MELI:            total(meli)    } : {}),
+      ...(mot.saldo       > 0 ? { 'Saldo/Prévia': mot.saldo }       : {}),
+      ...(mot.diarias     > 0 ? { 'Diárias':      mot.diarias }     : {}),
+      ...(mot.bonificacao > 0 ? { 'Bonificações': mot.bonificacao } : {}),
     };
   });
 
@@ -197,25 +239,13 @@ export default function Levantamentos() {
         { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada)), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
-  // Totais de importações por motorista, filtrados por frota se ativo
-  const totaisMot = useMemo(() => {
-    const filtrados = tipoFiltro
-      ? importacoesMot.filter(i => i.frota === tipoFiltro)
-      : importacoesMot;
-    return {
-      saldo:       filtrados.filter(i => i.tipoPagamento === 'saldo').reduce((s,i) => s + parseFloat(i.totalValor||0), 0),
-      diarias:     filtrados.filter(i => i.tipoPagamento === 'diarias').reduce((s,i) => s + parseFloat(i.totalValor||0), 0),
-      bonificacao: filtrados.filter(i => i.tipoPagamento === 'bonificacao').reduce((s,i) => s + parseFloat(i.totalValor||0), 0),
-    };
-  }, [importacoesMot, tipoFiltro]);
-
   const resumo = [
-    { label:'Total Geral',  valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0)), cor:'#EB3238', icon:'ti-cash' },
+    { label:'Total Geral',       valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0)), cor:'#EB3238', icon:'ti-cash' },
     ...(mesFiltro ? [{ label:'Motoristas Fechados', valor: listaFiltrada.reduce((s,l)=>s+(parseInt(l.motoristasFechados)||0),0), cor:'#0ea5e9', icon:'ti-users' }] : []),
-    { label:'Custo Folha',       valor: fmt(soma('custoFolha')),              cor:'#3b82f6', icon:'ti-id-badge' },
-    { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo), cor:'#06b6d4', icon:'ti-wallet' },
-    ...(totaisMot.diarias     > 0 ? [{ label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),     cor:'#0ea5e9', icon:'ti-truck' }] : []),
-    ...(totaisMot.bonificacao > 0 ? [{ label:'Bonificações',       valor: fmt(totaisMot.bonificacao), cor:'#16a34a', icon:'ti-gift'  }] : []),
+    { label:'Custo Folha',       valor: fmt(soma('custoFolha')),                                        cor:'#3b82f6', icon:'ti-id-badge' },
+    { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
+    { label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),                                         cor:'#0ea5e9', icon:'ti-truck'    },
+    { label:'Bonificações',      valor: fmt(totaisMot.bonificacao),                                     cor:'#16a34a', icon:'ti-gift'     },
     ...cardsMedia,
   ];
 
@@ -450,17 +480,29 @@ export default function Levantamentos() {
               <YAxis tick={{ fontSize:11, fill:'#64748b' }} axisLine={false} tickLine={false} tickFormatter={fmtK} width={60} />
               <Tooltip content={<CustomTooltip fmtVal={fmt} />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
               {(!tipoFiltro || tipoFiltro === 'FROTA') && (
-                <Bar dataKey="FROTA" fill="#10b981" radius={[6,6,0,0]} maxBarSize={50} name="FROTA">
+                <Bar dataKey="FROTA" fill="#10b981" radius={[6,6,0,0]} maxBarSize={40} name="FROTA">
                   <LabelList dataKey="FROTA" position="top" style={{ fontSize:10, fontWeight:700, fill:'#10b981' }} formatter={v => fmtK(v)} />
                   <LabelList dataKey="FROTA" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'FROTA'} />
                 </Bar>
               )}
               {(!tipoFiltro || tipoFiltro === 'MELI') && (
-                <Bar dataKey="MELI" fill="#3b82f6" radius={[6,6,0,0]} maxBarSize={50} name="MELI">
+                <Bar dataKey="MELI" fill="#3b82f6" radius={[6,6,0,0]} maxBarSize={40} name="MELI">
                   <LabelList dataKey="MELI" position="top" style={{ fontSize:10, fontWeight:700, fill:'#3b82f6' }} formatter={v => fmtK(v)} />
                   <LabelList dataKey="MELI" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'MELI'} />
                 </Bar>
               )}
+              <Bar dataKey="Saldo/Prévia" fill="#EB3238" radius={[6,6,0,0]} maxBarSize={40} name="Saldo/Prévia">
+                <LabelList dataKey="Saldo/Prévia" position="top" style={{ fontSize:10, fontWeight:700, fill:'#EB3238' }} formatter={v => fmtK(v)} />
+                <LabelList dataKey="Saldo/Prévia" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'Saldo'} />
+              </Bar>
+              <Bar dataKey="Diárias" fill="#0ea5e9" radius={[6,6,0,0]} maxBarSize={40} name="Diárias">
+                <LabelList dataKey="Diárias" position="top" style={{ fontSize:10, fontWeight:700, fill:'#0ea5e9' }} formatter={v => fmtK(v)} />
+                <LabelList dataKey="Diárias" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'Diár.'} />
+              </Bar>
+              <Bar dataKey="Bonificações" fill="#16a34a" radius={[6,6,0,0]} maxBarSize={40} name="Bonificações">
+                <LabelList dataKey="Bonificações" position="top" style={{ fontSize:10, fontWeight:700, fill:'#16a34a' }} formatter={v => fmtK(v)} />
+                <LabelList dataKey="Bonificações" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'Bonif.'} />
+              </Bar>
               {tipoFiltro && (
                 <Line dataKey={tipoFiltro} type="monotone" stroke="#e2e8f0" strokeWidth={2}
                   dot={{ fill:'#fff', stroke:'#e2e8f0', strokeWidth:2, r:4 }}
