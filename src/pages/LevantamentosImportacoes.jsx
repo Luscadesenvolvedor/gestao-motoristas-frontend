@@ -15,7 +15,57 @@ const TIPOS = [
 const fmtR  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
 const fmtDt = s => s ? new Date(s).toLocaleDateString('pt-BR') : '—';
 
-const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
+
+// Tokens com mais de 2 letras (ignora partículas como "de", "da")
+const tokens = s => norm(s).split(/\s+/).filter(t => t.length > 2);
+
+// Score de similaridade entre dois nomes (0–1)
+function scoreNome(a, b) {
+  const ta = tokens(a), tb = tokens(b);
+  if (!ta.length || !tb.length) return 0;
+  const tbSet = new Set(tb);
+  const overlap = ta.filter(t => tbSet.has(t)).length;
+  // token overlap é o fator principal
+  const tokenScore = overlap / Math.max(ta.length, tb.length);
+  // levenshtein normalizado como secundário
+  const na = norm(a), nb = norm(b);
+  const maxL = Math.max(na.length, nb.length);
+  if (!maxL) return tokenScore;
+  const dp = Array.from({length: na.length+1}, (_,i) =>
+    Array.from({length: nb.length+1}, (_,j) => i===0 ? j : j===0 ? i : 0)
+  );
+  for (let i=1; i<=na.length; i++)
+    for (let j=1; j<=nb.length; j++)
+      dp[i][j] = na[i-1]===nb[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  const levScore = 1 - dp[na.length][nb.length] / maxL;
+  return tokenScore * 0.7 + levScore * 0.3;
+}
+
+const THRESHOLD = 0.45; // score mínimo para considerar match
+
+// Analisa correspondências entre nomes da planilha e registros existentes
+function analisarCorrespondencias(nomesPlanilha, mapaExistentes) {
+  const exatos = [], similares = [], semMatch = [];
+  for (const nome of nomesPlanilha) {
+    const n = norm(nome);
+    if (mapaExistentes.has(n)) {
+      exatos.push({ planilha: nome, encontrado: mapaExistentes.get(n).original, veiculo: mapaExistentes.get(n).veiculo, score: 1 });
+      continue;
+    }
+    let melhorScore = 0, melhorEntry = null;
+    for (const [nk, entry] of mapaExistentes) {
+      const s = scoreNome(n, nk);
+      if (s > melhorScore) { melhorScore = s; melhorEntry = entry; }
+    }
+    if (melhorScore >= THRESHOLD && melhorEntry) {
+      similares.push({ planilha: nome, encontrado: melhorEntry.original, veiculo: melhorEntry.veiculo, score: melhorScore });
+    } else {
+      semMatch.push({ planilha: nome, melhorScore, melhorNome: melhorEntry?.original });
+    }
+  }
+  return { exatos, similares, semMatch };
+}
 
 const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12,jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12 };
 
@@ -106,16 +156,29 @@ export default function LevantamentosImportacoes() {
   }
 
   async function handleTipoSelect(tipo) {
-    const novo = { ...preview, tipoPagamento: tipo, semPlaca: null };
-    setPreview(novo);
+    setPreview(p => ({ ...p, tipoPagamento: tipo, correspondencias: null }));
     if (tipo === 'custoFolha' && preview?.registros?.length) {
       try {
         const { data: existentes } = await api.get('/levantamentos-motoristas');
-        const nomesExistentes = new Set(existentes.map(r => norm(r.motorista)));
+        // Mapa: normName → { original, veiculo } (usa o primeiro encontrado por nome)
+        const mapaExistentes = new Map();
+        for (const r of existentes) {
+          const k = norm(r.motorista);
+          if (!mapaExistentes.has(k)) mapaExistentes.set(k, { original: r.motorista, veiculo: r.veiculo });
+        }
         const nomesPlanilha = [...new Set(preview.registros.map(r => r.motorista))];
-        const semPlaca = nomesPlanilha.filter(n => !nomesExistentes.has(norm(n)));
-        setPreview(p => ({ ...p, semPlaca }));
-      } catch { /* silencioso */ }
+        const correspondencias = analisarCorrespondencias(nomesPlanilha, mapaExistentes);
+
+        // Popula veiculo nos registros quando há match (exato ou similar)
+        const matchMap = new Map();
+        for (const e of correspondencias.exatos)   matchMap.set(e.planilha, e.veiculo);
+        for (const s of correspondencias.similares) matchMap.set(s.planilha, s.veiculo);
+        const registrosAtualizados = preview.registros.map(r =>
+          matchMap.has(r.motorista) ? { ...r, veiculo: matchMap.get(r.motorista) } : r
+        );
+
+        setPreview(p => ({ ...p, tipoPagamento: tipo, correspondencias, registros: registrosAtualizados }));
+      } catch { setPreview(p => ({ ...p, tipoPagamento: tipo })); }
     }
   }
 
@@ -132,13 +195,9 @@ export default function LevantamentosImportacoes() {
         frota:         preview.frota,
       });
       toast.success('Importação salva!');
-      // Se custo folha, mantém o relatório de não encontrados
-      if (preview.tipoPagamento === 'custoFolha' && preview.semPlaca?.length > 0) {
-        setRelatorio({
-          semPlaca:        preview.semPlaca,
-          totalImportados: [...new Set(preview.registros.map(r => r.motorista))].length,
-          nomeArquivo:     preview.nomeArquivo,
-        });
+      // Se custo folha, mantém o relatório de correspondências
+      if (preview.tipoPagamento === 'custoFolha' && preview.correspondencias) {
+        setRelatorio({ correspondencias: preview.correspondencias, nomeArquivo: preview.nomeArquivo });
       }
       setPreview(null);
       await carregar();
@@ -230,74 +289,114 @@ export default function LevantamentosImportacoes() {
             </button>
           </div>
 
-          {/* Aviso de não encontrados (visível já no preview) */}
-          {preview.tipoPagamento === 'custoFolha' && preview.semPlaca?.length > 0 && (
-            <div style={{ marginTop:14, background:'#fef3c7', border:'1px solid #fbbf24', borderRadius:8, padding:'10px 14px' }}>
-              <div style={{ fontWeight:700, fontSize:12, color:'#92400e', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
-                <i className="ti ti-alert-triangle" style={{ fontSize:14 }}></i>
-                {preview.semPlaca.length} motorista(s) sem placa identificada — serão importados sem vínculo de veículo
+          {/* Resumo de correspondências (visível já no preview) */}
+          {preview.tipoPagamento === 'custoFolha' && preview.correspondencias && (() => {
+            const { exatos, similares, semMatch } = preview.correspondencias;
+            return (
+              <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:8 }}>
+                {exatos.length > 0 && (
+                  <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#166534', display:'flex', alignItems:'center', gap:6 }}>
+                    <i className="ti ti-circle-check" style={{ fontSize:14 }}></i>
+                    <strong>{exatos.length}</strong> motorista(s) encontrados exatamente
+                  </div>
+                )}
+                {similares.length > 0 && (
+                  <div style={{ background:'#fffbeb', border:'1px solid #fbbf24', borderRadius:8, padding:'10px 14px' }}>
+                    <div style={{ fontWeight:700, fontSize:12, color:'#92400e', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                      <i className="ti ti-arrows-exchange" style={{ fontSize:14 }}></i>
+                      {similares.length} encontrado(s) por similaridade — verifique:
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                      {similares.map(s => (
+                        <div key={s.planilha} style={{ fontSize:11, color:'#92400e', display:'flex', gap:6, alignItems:'center' }}>
+                          <span style={{ fontWeight:600 }}>{s.planilha}</span>
+                          <i className="ti ti-arrow-right" style={{ fontSize:10 }}></i>
+                          <span style={{ color:'#065f46', fontWeight:600 }}>{s.encontrado}</span>
+                          <span style={{ color:'#9ca3af' }}>({Math.round(s.score*100)}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {semMatch.length > 0 && (
+                  <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'10px 14px' }}>
+                    <div style={{ fontWeight:700, fontSize:12, color:'#991b1b', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                      <i className="ti ti-x" style={{ fontSize:14 }}></i>
+                      {semMatch.length} sem correspondência — serão importados sem placa
+                    </div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+                      {semMatch.map(s => (
+                        <span key={s.planilha} style={{ padding:'2px 8px', borderRadius:20, background:'#fee2e2', color:'#991b1b', fontSize:11, fontWeight:600 }}>{s.planilha}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                {preview.semPlaca.map(n => (
-                  <span key={n} style={{ padding:'2px 8px', borderRadius:20, background:'#fde68a', color:'#92400e', fontSize:11, fontWeight:600 }}>{n}</span>
-                ))}
-              </div>
-            </div>
-          )}
-          {preview.tipoPagamento === 'custoFolha' && preview.semPlaca?.length === 0 && (
-            <div style={{ marginTop:14, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#166534', display:'flex', alignItems:'center', gap:6 }}>
-              <i className="ti ti-circle-check" style={{ fontSize:14 }}></i> Todos os motoristas foram identificados nos registros anteriores.
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
-      {/* Relatório pós-importação — motoristas sem placa */}
-      {relatorio && (
-        <div style={{ background:'#fff', border:'1px solid #fbbf24', borderRadius:12, padding:20, marginBottom:20 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:36, height:36, borderRadius:8, background:'#fef3c7', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <i className="ti ti-alert-triangle" style={{ fontSize:20, color:'#d97706' }}></i>
-              </div>
+      {/* Relatório pós-importação */}
+      {relatorio && (() => {
+        const { exatos, similares, semMatch } = relatorio.correspondencias;
+        const total = exatos.length + similares.length + semMatch.length;
+        return (
+          <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:20, marginBottom:20 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
               <div>
-                <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Relatório de Inconsistências — {relatorio.nomeArquivo}</div>
+                <div style={{ fontWeight:700, fontSize:15, color:'#1a1a2e' }}>Relatório de Correspondências — {relatorio.nomeArquivo}</div>
                 <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
-                  {relatorio.semPlaca.length} de {relatorio.totalImportados} motoristas sem placa identificada nos registros anteriores
+                  {exatos.length} exatos · {similares.length} por similaridade · {semMatch.length} sem correspondência · {total} total
                 </div>
               </div>
+              <button onClick={() => setRelatorio(null)}
+                style={{ padding:'5px 12px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>
+                Fechar
+              </button>
             </div>
-            <button onClick={() => setRelatorio(null)}
-              style={{ padding:'5px 12px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>
-              Fechar
-            </button>
-          </div>
-          <div style={{ background:'#fafafa', border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-              <thead>
-                <tr style={{ background:'#f3f4f6' }}>
-                  <th style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>#</th>
-                  <th style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Motorista</th>
-                  <th style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {relatorio.semPlaca.map((nome, i) => (
-                  <tr key={nome} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
-                    <td style={{ padding:'9px 14px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
-                    <td style={{ padding:'9px 14px', fontWeight:600, color:'#1a1a2e' }}>{nome}</td>
-                    <td style={{ padding:'9px 14px' }}>
-                      <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24' }}>
-                        Sem placa identificada
-                      </span>
-                    </td>
+
+            {/* Tabela completa */}
+            <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                <thead>
+                  <tr style={{ background:'#f8fafc' }}>
+                    {['#','Nome na planilha','Encontrado como','Placa','Status'].map(h => (
+                      <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[
+                    ...exatos.map(e => ({ ...e, status:'exato' })),
+                    ...similares.map(s => ({ ...s, status:'similar' })),
+                    ...semMatch.map(s => ({ planilha: s.planilha, encontrado: s.melhorNome, veiculo: null, score: s.melhorScore, status:'sem_match' })),
+                  ].map((row, i) => (
+                    <tr key={row.planilha+i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
+                      <td style={{ padding:'9px 14px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
+                      <td style={{ padding:'9px 14px', fontWeight:600, color:'#1a1a2e' }}>{row.planilha}</td>
+                      <td style={{ padding:'9px 14px', color:'#374151' }}>
+                        {row.encontrado || <span style={{ color:'#d1d5db' }}>—</span>}
+                        {row.status === 'similar' && <span style={{ marginLeft:6, fontSize:10, color:'#9ca3af' }}>({Math.round(row.score*100)}%)</span>}
+                      </td>
+                      <td style={{ padding:'9px 14px' }}>
+                        {row.veiculo
+                          ? <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{row.veiculo}</span>
+                          : <span style={{ color:'#d1d5db' }}>—</span>}
+                      </td>
+                      <td style={{ padding:'9px 14px' }}>
+                        {row.status === 'exato'    && <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#dcfce7', color:'#166534', border:'1px solid #bbf7d0' }}>Exato</span>}
+                        {row.status === 'similar'  && <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24' }}>Similar</span>}
+                        {row.status === 'sem_match'&& <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca' }}>Sem correspondência</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Cards por tipo */}
       {lista.length > 0 && (
