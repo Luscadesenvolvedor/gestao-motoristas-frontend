@@ -50,22 +50,6 @@ export default function Levantamentos() {
   const [regsMot, setRegsMot]             = useState([]);
   const [mesFiltroMot, setMesFiltroMot]   = useState('');
   const [buscaMot, setBuscaMot]           = useState('');
-  const [importacoesMot, setImportacoesMot] = useState([]);
-
-  const TIPOS_MOT = [
-    { key: 'saldo',       label: 'Saldo/Prévia',      cor:'#EB3238', icon:'ti-wallet' },
-    { key: 'diarias',     label: 'Diárias Dedicados',  cor:'#0ea5e9', icon:'ti-truck' },
-    { key: 'bonificacao', label: 'Bonificações',        cor:'#16a34a', icon:'ti-gift' },
-  ];
-
-  const totaisPorTipo = useMemo(() => {
-    const map = { saldo: 0, diarias: 0, bonificacao: 0 };
-    for (const im of importacoesMot) {
-      const k = im.tipoPagamento;
-      if (k && map[k] !== undefined) map[k] += parseFloat(im.totalValor || 0);
-    }
-    return map;
-  }, [importacoesMot]);
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -73,9 +57,6 @@ export default function Levantamentos() {
   useEffect(() => {
     api.get('/levantamentos-motoristas')
       .then(r => setRegsMot(r.data))
-      .catch(() => {});
-    api.get('/levantamentos-motoristas/importacoes')
-      .then(r => setImportacoesMot(r.data))
       .catch(() => {});
   }, []);
 
@@ -421,7 +402,7 @@ export default function Levantamentos() {
         </div>
 
         {/* Cards resumo */}
-        <div style={{ display:'grid', gridTemplateColumns:`repeat(${resumo.length},1fr)`, gap:10, marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:`repeat(${resumo.length},1fr)`, gap:10, marginBottom:16 }}>
           {resumo.map(r => (
             <div key={r.label} style={{ background:'#fff', borderRadius:12, padding:'16px 18px', border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
@@ -434,23 +415,6 @@ export default function Levantamentos() {
             </div>
           ))}
         </div>
-
-        {/* Cards por tipo de importação motorista */}
-        {importacoesMot.length > 0 && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
-            {TIPOS_MOT.map(t => (
-              <div key={t.key} style={{ background:'#fff', borderRadius:12, padding:'16px 18px', border:'1px solid #e5e7eb', borderTop:`3px solid ${t.cor}`, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                  <div style={{ width:34, height:34, borderRadius:8, background:t.cor+'18', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <i className={`ti ${t.icon}`} style={{ fontSize:18, color:t.cor }}></i>
-                  </div>
-                  <span style={{ fontSize:11, color:'#6b7280', fontWeight:500 }}>{t.label}</span>
-                </div>
-                <div style={{ fontSize:20, fontWeight:700, color:t.cor }}>{fmt(totaisPorTipo[t.key])}</div>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Gráfico */}
         <div style={{ background:'linear-gradient(135deg,#1e293b 0%,#0f172a 100%)', borderRadius:16, padding:'24px 20px 16px', boxShadow:'0 8px 32px rgba(0,0,0,0.18)' }}>

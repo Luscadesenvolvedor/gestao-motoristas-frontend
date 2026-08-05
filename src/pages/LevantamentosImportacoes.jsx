@@ -51,7 +51,7 @@ export default function LevantamentosImportacoes() {
   const { isAdmin } = useAuth();
   const [lista, setLista]         = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [preview, setPreview]     = useState(null);
+  const [preview, setPreview]     = useState(null); // { nomeArquivo, registros, tipoPagamento, frota }
   const [salvando, setSalvando]   = useState(false);
   const fileRef = useRef();
 
@@ -97,7 +97,7 @@ export default function LevantamentosImportacoes() {
         .filter(r => r.valor !== null);
 
       if (!registros.length) { toast.error('Nenhum registro válido'); return; }
-      setPreview({ nomeArquivo: file.name, registros });
+      setPreview({ nomeArquivo: file.name, registros, tipoPagamento: '', frota: '' });
       toast.success(`${registros.length} registros lidos`);
     } catch (err) { toast.error('Erro ao ler arquivo: ' + err.message); }
     e.target.value = '';
@@ -105,11 +105,15 @@ export default function LevantamentosImportacoes() {
 
   async function salvar() {
     if (!preview) return;
+    if (!preview.tipoPagamento) { toast.error('Selecione o tipo de pagamento'); return; }
+    if (!preview.frota)         { toast.error('Selecione a frota'); return; }
     setSalvando(true);
     try {
       await api.post('/levantamentos-motoristas/importar', {
-        nomeArquivo: preview.nomeArquivo,
-        registros:   preview.registros,
+        nomeArquivo:   preview.nomeArquivo,
+        registros:     preview.registros,
+        tipoPagamento: preview.tipoPagamento,
+        frota:         preview.frota,
       });
       toast.success('Importação salva!');
       setPreview(null);
@@ -118,11 +122,16 @@ export default function LevantamentosImportacoes() {
     finally { setSalvando(false); }
   }
 
-  async function atualizarTipo(id, tipo) {
+  async function atualizarCampo(id, campo, valor) {
     try {
-      await api.put(`/levantamentos-motoristas/importacoes/${id}`, { tipoPagamento: tipo });
-      setLista(l => l.map(i => i.id === id ? { ...i, tipoPagamento: tipo || null } : i));
-    } catch { toast.error('Erro ao atualizar tipo'); }
+      const atual = lista.find(i => i.id === id) || {};
+      const payload = {
+        tipoPagamento: campo === 'tipoPagamento' ? valor : atual.tipoPagamento,
+        frota:         campo === 'frota'         ? valor : atual.frota,
+      };
+      await api.put(`/levantamentos-motoristas/importacoes/${id}`, payload);
+      setLista(l => l.map(i => i.id === id ? { ...i, [campo]: valor || null } : i));
+    } catch { toast.error('Erro ao atualizar'); }
   }
 
   async function excluir(id, nome) {
@@ -159,16 +168,40 @@ export default function LevantamentosImportacoes() {
 
       {/* Preview */}
       {preview && (
-        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:'14px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#d97706' }}></i>
-          <div>
-            <div style={{ fontWeight:600, fontSize:13, color:'#92400e' }}>{preview.nomeArquivo}</div>
-            <div style={{ fontSize:11, color:'#b45309' }}>{preview.registros.length} registros lidos</div>
+        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+            <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#d97706' }}></i>
+            <div>
+              <div style={{ fontWeight:600, fontSize:13, color:'#92400e' }}>{preview.nomeArquivo}</div>
+              <div style={{ fontSize:11, color:'#b45309' }}>{preview.registros.length} registros lidos — preencha os campos abaixo para salvar</div>
+            </div>
           </div>
-          <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-            <button onClick={() => setPreview(null)} style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer' }}>Cancelar</button>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto auto', gap:10, alignItems:'end' }}>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#92400e', textTransform:'uppercase', marginBottom:4 }}>Tipo de Pagamento</div>
+              <select value={preview.tipoPagamento}
+                onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value }))}
+                style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #fbbf24', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
+                <option value="">— selecione —</option>
+                {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, fontWeight:700, color:'#92400e', textTransform:'uppercase', marginBottom:4 }}>Frota</div>
+              <select value={preview.frota}
+                onChange={e => setPreview(p => ({ ...p, frota: e.target.value }))}
+                style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #fbbf24', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
+                <option value="">— selecione —</option>
+                <option value="FROTA">FROTA</option>
+                <option value="MELI">MELI</option>
+              </select>
+            </div>
+            <button onClick={() => setPreview(null)}
+              style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer', whiteSpace:'nowrap' }}>
+              Cancelar
+            </button>
             <button onClick={salvar} disabled={salvando}
-              style={{ padding:'7px 16px', border:'none', borderRadius:8, background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+              style={{ padding:'7px 16px', border:'none', borderRadius:8, background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
               {salvando ? 'Salvando...' : 'Salvar no banco'}
             </button>
           </div>
@@ -201,7 +234,7 @@ export default function LevantamentosImportacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {['Arquivo','Data','Registros','Total','Tipo',''].map(h => (
+                {['Arquivo','Data','Registros','Total','Tipo','Frota',''].map(h => (
                   <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -224,13 +257,27 @@ export default function LevantamentosImportacoes() {
                   <td style={{ padding:'11px 16px', fontWeight:700, color:'#374151', borderBottom:'1px solid #f3f4f6' }}>{fmtR(im.totalValor)}</td>
                   <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
                     {isAdmin ? (
-                      <select value={im.tipoPagamento || ''} onChange={e => atualizarTipo(im.id, e.target.value)}
+                      <select value={im.tipoPagamento || ''} onChange={e => atualizarCampo(im.id, 'tipoPagamento', e.target.value)}
                         style={{ padding:'4px 8px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
                         <option value="">— sem tipo —</option>
                         {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                       </select>
                     ) : (
                       (() => { const t = TIPOS.find(x => x.key === im.tipoPagamento); return t ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:t.color+'18', color:t.color, border:`1px solid ${t.color}40` }}>{t.label}</span> : <span style={{ color:'#d1d5db' }}>—</span>; })()
+                    )}
+                  </td>
+                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
+                    {isAdmin ? (
+                      <select value={im.frota || ''} onChange={e => atualizarCampo(im.id, 'frota', e.target.value)}
+                        style={{ padding:'4px 8px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
+                        <option value="">— frota —</option>
+                        <option value="FROTA">FROTA</option>
+                        <option value="MELI">MELI</option>
+                      </select>
+                    ) : (
+                      im.frota
+                        ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background: im.frota==='MELI'?'#dbeafe':'#d1fae5', color: im.frota==='MELI'?'#1d4ed8':'#065f46' }}>{im.frota}</span>
+                        : <span style={{ color:'#d1d5db' }}>—</span>
                     )}
                   </td>
                   <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6', textAlign:'right' }}>
