@@ -52,8 +52,9 @@ export default function LevantamentosImportacoes() {
   const { isAdmin } = useAuth();
   const [lista, setLista]         = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [preview, setPreview]     = useState(null); // { nomeArquivo, registros, tipoPagamento, frota }
+  const [preview, setPreview]     = useState(null); // { nomeArquivo, registros, tipoPagamento, frota, semPlaca }
   const [salvando, setSalvando]   = useState(false);
+  const [relatorio, setRelatorio] = useState(null); // { semPlaca: string[], totalImportados: number, nomeArquivo: string }
   const fileRef = useRef();
 
   async function carregar() {
@@ -104,6 +105,20 @@ export default function LevantamentosImportacoes() {
     e.target.value = '';
   }
 
+  async function handleTipoSelect(tipo) {
+    const novo = { ...preview, tipoPagamento: tipo, semPlaca: null };
+    setPreview(novo);
+    if (tipo === 'custoFolha' && preview?.registros?.length) {
+      try {
+        const { data: existentes } = await api.get('/levantamentos-motoristas');
+        const nomesExistentes = new Set(existentes.map(r => norm(r.motorista)));
+        const nomesPlanilha = [...new Set(preview.registros.map(r => r.motorista))];
+        const semPlaca = nomesPlanilha.filter(n => !nomesExistentes.has(norm(n)));
+        setPreview(p => ({ ...p, semPlaca }));
+      } catch { /* silencioso */ }
+    }
+  }
+
   async function salvar() {
     if (!preview) return;
     if (!preview.tipoPagamento) { toast.error('Selecione o tipo de pagamento'); return; }
@@ -117,6 +132,14 @@ export default function LevantamentosImportacoes() {
         frota:         preview.frota,
       });
       toast.success('Importação salva!');
+      // Se custo folha, mantém o relatório de não encontrados
+      if (preview.tipoPagamento === 'custoFolha' && preview.semPlaca?.length > 0) {
+        setRelatorio({
+          semPlaca:        preview.semPlaca,
+          totalImportados: [...new Set(preview.registros.map(r => r.motorista))].length,
+          nomeArquivo:     preview.nomeArquivo,
+        });
+      }
       setPreview(null);
       await carregar();
     } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
@@ -181,7 +204,7 @@ export default function LevantamentosImportacoes() {
             <div>
               <div style={{ fontSize:10, fontWeight:700, color:'#92400e', textTransform:'uppercase', marginBottom:4 }}>Tipo de Pagamento</div>
               <select value={preview.tipoPagamento}
-                onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value }))}
+                onChange={e => handleTipoSelect(e.target.value)}
                 style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #fbbf24', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
                 <option value="">— selecione —</option>
                 {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
@@ -205,6 +228,73 @@ export default function LevantamentosImportacoes() {
               style={{ padding:'7px 16px', border:'none', borderRadius:8, background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
               {salvando ? 'Salvando...' : 'Salvar no banco'}
             </button>
+          </div>
+
+          {/* Aviso de não encontrados (visível já no preview) */}
+          {preview.tipoPagamento === 'custoFolha' && preview.semPlaca?.length > 0 && (
+            <div style={{ marginTop:14, background:'#fef3c7', border:'1px solid #fbbf24', borderRadius:8, padding:'10px 14px' }}>
+              <div style={{ fontWeight:700, fontSize:12, color:'#92400e', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize:14 }}></i>
+                {preview.semPlaca.length} motorista(s) sem placa identificada — serão importados sem vínculo de veículo
+              </div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
+                {preview.semPlaca.map(n => (
+                  <span key={n} style={{ padding:'2px 8px', borderRadius:20, background:'#fde68a', color:'#92400e', fontSize:11, fontWeight:600 }}>{n}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {preview.tipoPagamento === 'custoFolha' && preview.semPlaca?.length === 0 && (
+            <div style={{ marginTop:14, background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#166534', display:'flex', alignItems:'center', gap:6 }}>
+              <i className="ti ti-circle-check" style={{ fontSize:14 }}></i> Todos os motoristas foram identificados nos registros anteriores.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Relatório pós-importação — motoristas sem placa */}
+      {relatorio && (
+        <div style={{ background:'#fff', border:'1px solid #fbbf24', borderRadius:12, padding:20, marginBottom:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:36, height:36, borderRadius:8, background:'#fef3c7', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize:20, color:'#d97706' }}></i>
+              </div>
+              <div>
+                <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Relatório de Inconsistências — {relatorio.nomeArquivo}</div>
+                <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
+                  {relatorio.semPlaca.length} de {relatorio.totalImportados} motoristas sem placa identificada nos registros anteriores
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setRelatorio(null)}
+              style={{ padding:'5px 12px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>
+              Fechar
+            </button>
+          </div>
+          <div style={{ background:'#fafafa', border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead>
+                <tr style={{ background:'#f3f4f6' }}>
+                  <th style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>#</th>
+                  <th style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Motorista</th>
+                  <th style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {relatorio.semPlaca.map((nome, i) => (
+                  <tr key={nome} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
+                    <td style={{ padding:'9px 14px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
+                    <td style={{ padding:'9px 14px', fontWeight:600, color:'#1a1a2e' }}>{nome}</td>
+                    <td style={{ padding:'9px 14px' }}>
+                      <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24' }}>
+                        Sem placa identificada
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

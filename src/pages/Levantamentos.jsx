@@ -177,6 +177,7 @@ export default function Levantamentos() {
   // Totais por tipoPagamento respeitando filtros (para os cards)
   const totaisMot = useMemo(() => {
     const result = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0 };
+    const motoristasClostoFolha = new Set();
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.tipoPagamento) continue;
@@ -185,8 +186,9 @@ export default function Levantamentos() {
       if (anoFiltro  && !r.mes?.startsWith(anoFiltro)) continue;
       const k = meta.tipoPagamento;
       if (result[k] !== undefined) result[k] += parseFloat(r.valor || 0);
+      if (k === 'custoFolha') motoristasClostoFolha.add(r.motorista.trim().toUpperCase());
     }
-    return result;
+    return { ...result, motoristasFechados: motoristasClostoFolha.size };
   }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
 
   // Totais por frota agrupados por mês (para o gráfico — soma nas barras FROTA/MELI)
@@ -242,8 +244,8 @@ export default function Levantamentos() {
       ];
 
   const resumo = [
-    { label:'Total Geral',       valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0)), cor:'#EB3238', icon:'ti-cash' },
-    ...(mesFiltro ? [{ label:'Motoristas Fechados', valor: listaFiltrada.reduce((s,l)=>s+(parseInt(l.motoristasFechados)||0),0), cor:'#0ea5e9', icon:'ti-users' }] : []),
+    { label:'Total Geral',         valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0)), cor:'#EB3238', icon:'ti-cash' },
+    { label:'Motoristas Fechados', valor: listaFiltrada.reduce((s,l)=>s+(parseInt(l.motoristasFechados)||0),0) + totaisMot.motoristasFechados, cor:'#0ea5e9', icon:'ti-users' },
     { label:'Custo Folha',       valor: fmt(soma('custoFolha') + totaisMot.custoFolha),               cor:'#3b82f6', icon:'ti-id-badge' },
     { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
     { label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),                                         cor:'#0ea5e9', icon:'ti-truck'    },
