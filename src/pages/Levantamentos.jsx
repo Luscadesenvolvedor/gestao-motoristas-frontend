@@ -50,6 +50,7 @@ export default function Levantamentos() {
   const [regsMot, setRegsMot]             = useState([]);
   const [mesFiltroMot, setMesFiltroMot]   = useState('');
   const [buscaMot, setBuscaMot]           = useState('');
+  const [importacoesMot, setImportacoesMot] = useState([]);
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -57,6 +58,9 @@ export default function Levantamentos() {
   useEffect(() => {
     api.get('/levantamentos-motoristas')
       .then(r => setRegsMot(r.data))
+      .catch(() => {});
+    api.get('/levantamentos-motoristas/importacoes')
+      .then(r => setImportacoesMot(r.data))
       .catch(() => {});
   }, []);
 
@@ -193,11 +197,25 @@ export default function Levantamentos() {
         { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada)), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
+  // Totais de importações por motorista, filtrados por frota se ativo
+  const totaisMot = useMemo(() => {
+    const filtrados = tipoFiltro
+      ? importacoesMot.filter(i => i.frota === tipoFiltro)
+      : importacoesMot;
+    return {
+      saldo:       filtrados.filter(i => i.tipoPagamento === 'saldo').reduce((s,i) => s + parseFloat(i.totalValor||0), 0),
+      diarias:     filtrados.filter(i => i.tipoPagamento === 'diarias').reduce((s,i) => s + parseFloat(i.totalValor||0), 0),
+      bonificacao: filtrados.filter(i => i.tipoPagamento === 'bonificacao').reduce((s,i) => s + parseFloat(i.totalValor||0), 0),
+    };
+  }, [importacoesMot, tipoFiltro]);
+
   const resumo = [
     { label:'Total Geral',  valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0)), cor:'#EB3238', icon:'ti-cash' },
     ...(mesFiltro ? [{ label:'Motoristas Fechados', valor: listaFiltrada.reduce((s,l)=>s+(parseInt(l.motoristasFechados)||0),0), cor:'#0ea5e9', icon:'ti-users' }] : []),
-    { label:'Custo Folha',  valor: fmt(soma('custoFolha')), cor:'#3b82f6', icon:'ti-id-badge' },
-    { label:'Saldo/Prévia', valor: fmt(soma('saldo') + soma('previa')), cor:'#06b6d4', icon:'ti-wallet' },
+    { label:'Custo Folha',       valor: fmt(soma('custoFolha')),              cor:'#3b82f6', icon:'ti-id-badge' },
+    { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo), cor:'#06b6d4', icon:'ti-wallet' },
+    ...(totaisMot.diarias     > 0 ? [{ label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),     cor:'#0ea5e9', icon:'ti-truck' }] : []),
+    ...(totaisMot.bonificacao > 0 ? [{ label:'Bonificações',       valor: fmt(totaisMot.bonificacao), cor:'#16a34a', icon:'ti-gift'  }] : []),
     ...cardsMedia,
   ];
 
