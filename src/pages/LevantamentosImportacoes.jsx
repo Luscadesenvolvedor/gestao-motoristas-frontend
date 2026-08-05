@@ -104,7 +104,8 @@ export default function LevantamentosImportacoes() {
   const [carregando, setCarregando] = useState(true);
   const [preview, setPreview]     = useState(null); // { nomeArquivo, registros, tipoPagamento, frota, semPlaca }
   const [salvando, setSalvando]   = useState(false);
-  const [relatorio, setRelatorio] = useState(null); // { semPlaca: string[], totalImportados: number, nomeArquivo: string }
+  const [relatorio, setRelatorio] = useState(null); // { correspondencias, nomeArquivo }
+  const [placasEdit, setPlacasEdit] = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const fileRef = useRef();
 
   async function carregar() {
@@ -198,11 +199,26 @@ export default function LevantamentosImportacoes() {
       // Se custo folha, mantém o relatório de correspondências
       if (preview.tipoPagamento === 'custoFolha' && preview.correspondencias) {
         setRelatorio({ correspondencias: preview.correspondencias, nomeArquivo: preview.nomeArquivo });
+        setPlacasEdit({});
       }
       setPreview(null);
       await carregar();
     } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
     finally { setSalvando(false); }
+  }
+
+  async function salvarPlaca(motorista) {
+    const placa = (placasEdit[motorista]?.valor || '').trim();
+    if (!placa) { toast.error('Digite a placa'); return; }
+    setPlacasEdit(p => ({ ...p, [motorista]: { ...p[motorista], salvando: true } }));
+    try {
+      await api.put('/levantamentos-motoristas/veiculo', { motorista, veiculo: placa });
+      setPlacasEdit(p => ({ ...p, [motorista]: { ...p[motorista], salvando: false, salvo: true } }));
+      toast.success(`Placa salva para ${motorista}`);
+    } catch {
+      toast.error('Erro ao salvar placa');
+      setPlacasEdit(p => ({ ...p, [motorista]: { ...p[motorista], salvando: false } }));
+    }
   }
 
   async function atualizarCampo(id, campo, valor) {
@@ -380,9 +396,32 @@ export default function LevantamentosImportacoes() {
                         {row.status === 'similar' && <span style={{ marginLeft:6, fontSize:10, color:'#9ca3af' }}>({Math.round(row.score*100)}%)</span>}
                       </td>
                       <td style={{ padding:'9px 14px' }}>
-                        {row.veiculo
-                          ? <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{row.veiculo}</span>
-                          : <span style={{ color:'#d1d5db' }}>—</span>}
+                        {row.veiculo ? (
+                          <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{row.veiculo}</span>
+                        ) : row.status === 'sem_match' ? (
+                          placasEdit[row.planilha]?.salvo ? (
+                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#dcfce7', color:'#166534', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>
+                              {placasEdit[row.planilha].valor} ✓
+                            </span>
+                          ) : (
+                            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                              <input
+                                value={placasEdit[row.planilha]?.valor || ''}
+                                onChange={e => setPlacasEdit(p => ({ ...p, [row.planilha]: { ...p[row.planilha], valor: e.target.value.toUpperCase(), salvo: false } }))}
+                                onKeyDown={e => e.key === 'Enter' && salvarPlaca(row.planilha)}
+                                placeholder="ABC-1234"
+                                style={{ width:90, padding:'4px 7px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:11, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', outline:'none' }}
+                              />
+                              <button onClick={() => salvarPlaca(row.planilha)}
+                                disabled={placasEdit[row.planilha]?.salvando}
+                                style={{ padding:'4px 8px', border:'none', borderRadius:6, background:'#6366f1', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                                {placasEdit[row.planilha]?.salvando ? '...' : 'Salvar'}
+                              </button>
+                            </div>
+                          )
+                        ) : (
+                          <span style={{ color:'#d1d5db' }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding:'9px 14px' }}>
                         {row.status === 'exato'    && <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#dcfce7', color:'#166534', border:'1px solid #bbf7d0' }}>Exato</span>}
