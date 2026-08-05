@@ -198,18 +198,25 @@ export default function Levantamentos() {
   // Totais por tipoPagamento respeitando filtros (para os cards)
   const totaisMot = useMemo(() => {
     const result = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0 };
-    const motoristasClostoFolha = new Set();
+    // soma por motorista para contar apenas quem tem valor > 0
+    const motoristasValores = {};
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.tipoPagamento) continue;
       if (tipoFiltro && meta.frota !== tipoFiltro) continue;
       if (mesFiltro  && r.mes !== mesFiltro) continue;
-      if (anoFiltro  && !r.mes?.startsWith(anoFiltro)) continue;
+      if (anoFiltro  && r.mes && !r.mes.startsWith(anoFiltro)) continue;
       const k = meta.tipoPagamento;
-      if (result[k] !== undefined) result[k] += parseFloat(r.valor || 0);
-      if (k === 'custoFolha') motoristasClostoFolha.add(r.motorista.trim().toUpperCase());
+      const v = parseFloat(r.valor || 0);
+      if (result[k] !== undefined) result[k] += v;
+      if (k === 'custoFolha') {
+        const key = r.motorista.trim().toUpperCase();
+        motoristasValores[key] = (motoristasValores[key] || 0) + v;
+      }
     }
-    return { ...result, motoristasFechados: motoristasClostoFolha.size };
+    // conta apenas motoristas com valor total > 0
+    const motoristasFechados = Object.values(motoristasValores).filter(v => v > 0).length;
+    return { ...result, motoristasFechados };
   }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
 
   // Totais por frota agrupados por mês (para o gráfico — soma nas barras FROTA/MELI)
@@ -248,8 +255,10 @@ export default function Levantamentos() {
   const soma = key => listaFiltrada.reduce((s,l) => s + parseFloat(l[key]||0), 0);
 
   const calcMedia = (registros) => {
-    const t = registros.reduce((s,l) => s + total(l), 0);
-    const m = registros.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
+    // desconsiderar entradas com total = 0 na média (não puxar a média para baixo)
+    const validos = registros.filter(l => total(l) > 0);
+    const t = validos.reduce((s,l) => s + total(l), 0);
+    const m = validos.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
     return m > 0 ? t / m : 0;
   };
 
