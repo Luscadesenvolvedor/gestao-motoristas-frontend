@@ -254,11 +254,14 @@ export default function Levantamentos() {
 
   const soma = key => listaFiltrada.reduce((s,l) => s + parseFloat(l[key]||0), 0);
 
-  const calcMedia = (registros) => {
-    // desconsiderar entradas com total = 0 na média (não puxar a média para baixo)
+  // soma dos dados importados (todos os tipos)
+  const totalImportados = totaisMot.saldo + totaisMot.diarias + totaisMot.bonificacao + totaisMot.custoFolha;
+
+  const calcMedia = (registros, extraTotal = 0, extraMot = 0) => {
+    // desconsiderar entradas com total = 0 na média
     const validos = registros.filter(l => total(l) > 0);
-    const t = validos.reduce((s,l) => s + total(l), 0);
-    const m = validos.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
+    const t = validos.reduce((s,l) => s + total(l), 0) + extraTotal;
+    const m = validos.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0) + extraMot;
     return m > 0 ? t / m : 0;
   };
 
@@ -266,15 +269,15 @@ export default function Levantamentos() {
   const listaMeli  = lista.filter(l => (!anoFiltro || l.mes.startsWith(anoFiltro)) && (!mesFiltro || l.mes === mesFiltro) && l.tipo === 'MELI');
 
   const cardsMedia = tipoFiltro
-    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(calcMedia(listaFiltrada)), cor:'#8b5cf6', icon:'ti-chart-bar' }]
+    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor:'#8b5cf6', icon:'ti-chart-bar' }]
     : [
         { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota)), cor:'#10b981', icon:'ti-chart-bar' },
         { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli)),  cor:'#8b5cf6', icon:'ti-chart-bar' },
-        { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada)), cor:'#f59e0b', icon:'ti-chart-bar' },
+        { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
   const resumo = [
-    { label:'Total Geral',         valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0)), cor:'#EB3238', icon:'ti-cash' },
+    { label:'Total Geral', valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados), cor:'#EB3238', icon:'ti-cash' },
     { label:'Motoristas Fechados', valor: listaFiltrada.reduce((s,l)=>s+(parseInt(l.motoristasFechados)||0),0) + totaisMot.motoristasFechados, cor:'#0ea5e9', icon:'ti-users' },
     { label:'Custo Folha',       valor: fmt(soma('custoFolha') + totaisMot.custoFolha),               cor:'#3b82f6', icon:'ti-id-badge' },
     { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
