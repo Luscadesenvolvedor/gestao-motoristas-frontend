@@ -270,11 +270,21 @@ export default function Levantamentos() {
   const fmtK = v => v >= 1000 ? `R$${(v/1000).toFixed(1)}k` : `R$${v.toFixed(0)}`;
   const fmtMes = mes => {
     if (!mes) return '—';
-    const parts = mes.split('-');
-    if (parts.length < 2) return mes;
-    const [ano, m] = parts;
     const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    return `${nomes[parseInt(m,10)-1] || m}/${ano.slice(2)}`;
+    const parts = mes.split('-');
+    if (parts.length >= 2) {
+      const [ano, m] = parts;
+      return `${nomes[parseInt(m,10)-1] || m}/${ano.slice(2)}`;
+    }
+    // fallback: nome por extenso (ex: "Janeiro", "JANEIRO")
+    const MESES_PT_NUM = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12 };
+    const normStr = mes.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+    const num = MESES_PT_NUM[normStr];
+    if (num) {
+      const anoAtual = String(new Date().getFullYear()).slice(2);
+      return `${nomes[num-1]}/${anoAtual}`;
+    }
+    return mes;
   };
   const total = l => parseFloat(l.previa||0)+parseFloat(l.saldo||0)+parseFloat(l.custoFolha||0);
 
