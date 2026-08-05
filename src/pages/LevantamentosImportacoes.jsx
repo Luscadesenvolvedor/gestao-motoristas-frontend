@@ -6,9 +6,10 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 const TIPOS = [
-  { key: 'saldo',       label: 'Saldo/Prévia',      color: '#EB3238' },
-  { key: 'diarias',     label: 'Diárias dedicados', color: '#0ea5e9' },
-  { key: 'bonificacao', label: 'Bonificações',       color: '#16a34a' },
+  { key: 'saldo',      label: 'Saldo/Prévia',      color: '#EB3238' },
+  { key: 'diarias',    label: 'Diárias dedicados', color: '#0ea5e9' },
+  { key: 'bonificacao',label: 'Bonificações',       color: '#16a34a' },
+  { key: 'custoFolha', label: 'Custo Folha',        color: '#8b5cf6' },
 ];
 
 const fmtR  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
