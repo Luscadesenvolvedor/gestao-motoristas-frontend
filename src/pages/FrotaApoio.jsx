@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -28,9 +28,31 @@ export default function FrotaApoio() {
 
   // filtros rápidos
   const hoje = new Date();
-  const [mesFiltro, setMesFiltro] = useState(String(hoje.getMonth() + 1).padStart(2,'0'));
+  const [mesFiltro, setMesFiltro] = useState('');
   const [anoFiltro, setAnoFiltro] = useState(String(hoje.getFullYear()));
   const [ccFiltro,  setCcFiltro]  = useState('');
+
+  // períodos disponíveis (anos/meses com registros)
+  const [periodos, setPeriodos] = useState([]);
+
+  const anosDisponiveis = useMemo(() => {
+    const set = [...new Set(periodos.map(p => p.ano))].sort().reverse();
+    const anoAtual = String(hoje.getFullYear());
+    if (!set.includes(anoAtual)) set.unshift(anoAtual);
+    return set;
+  }, [periodos]);
+
+  const mesesDisponiveis = useMemo(() => {
+    const filtrado = anoFiltro ? periodos.filter(p => p.ano === anoFiltro) : periodos;
+    return [...new Set(filtrado.map(p => p.mes))].sort();
+  }, [periodos, anoFiltro]);
+
+  // se o mês selecionado não existe nos dados, limpa
+  useEffect(() => {
+    if (mesFiltro && mesesDisponiveis.length > 0 && !mesesDisponiveis.includes(mesFiltro)) {
+      setMesFiltro('');
+    }
+  }, [mesesDisponiveis]);
 
   const fmt  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
   const fmtN = (v,d=2) => parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:d, maximumFractionDigits:d });
@@ -53,7 +75,13 @@ export default function FrotaApoio() {
     try { const r = await api.get('/frota-apoio/veiculos'); setVeiculos(r.data); }
     catch {}
   }
-  useEffect(() => { carregarVeiculos(); }, []);
+
+  async function carregarPeriodos() {
+    try { const r = await api.get('/frota-apoio/periodos'); setPeriodos(r.data); }
+    catch {}
+  }
+
+  useEffect(() => { carregarVeiculos(); carregarPeriodos(); }, []);
 
   async function salvarVeiculo(e) {
     e.preventDefault();
@@ -135,6 +163,7 @@ export default function FrotaApoio() {
       }
       setShowForm(false); setEditandoId(null); setForm(FORM_VAZIO);
       carregar();
+      carregarPeriodos();
     } catch (err) {
       const detalhe = err?.response?.data?.detail || err?.response?.data?.error || 'Erro ao salvar';
       toast.error(detalhe);
@@ -188,7 +217,7 @@ export default function FrotaApoio() {
         {/* Anos */}
         <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginBottom:10 }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', marginRight:4 }}>Ano</span>
-          {['2024','2025','2026','2027'].map(a => (
+          {anosDisponiveis.map(a => (
             <button key={a} onClick={() => setAnoFiltro(a)}
               style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
                 background: anoFiltro === a ? '#1e293b' : '#f1f5f9',
@@ -207,7 +236,7 @@ export default function FrotaApoio() {
               color:      mesFiltro === '' ? '#fff'    : '#64748b' }}>
             Todos
           </button>
-          {MESES.map(m => (
+          {MESES.filter(m => mesesDisponiveis.includes(m.v)).map(m => (
             <button key={m.v} onClick={() => setMesFiltro(mesFiltro === m.v ? '' : m.v)}
               style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
                 background: mesFiltro === m.v ? '#EB3238' : '#f1f5f9',
@@ -215,6 +244,9 @@ export default function FrotaApoio() {
               {m.l.slice(0,3)}
             </button>
           ))}
+          {mesesDisponiveis.length === 0 && (
+            <span style={{ fontSize:12, color:'#9ca3af', fontStyle:'italic' }}>Nenhum registro para este ano</span>
+          )}
         </div>
 
         {/* Centro de Custo */}
