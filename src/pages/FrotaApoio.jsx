@@ -20,6 +20,12 @@ export default function FrotaApoio() {
   const [form, setForm]             = useState(FORM_VAZIO);
   const [salvando, setSalvando]     = useState(false);
 
+  // veículos cadastrados
+  const [veiculos, setVeiculos]         = useState([]);
+  const [showVeiculos, setShowVeiculos] = useState(false);
+  const [novoVeiculo, setNovoVeiculo]   = useState({ placa: '', modelo: '' });
+  const [showSelectVeiculo, setShowSelectVeiculo] = useState(false);
+
   // filtros rápidos
   const hoje = new Date();
   const [mesFiltro, setMesFiltro] = useState(String(hoje.getMonth() + 1).padStart(2,'0'));
@@ -42,6 +48,34 @@ export default function FrotaApoio() {
   }
 
   useEffect(() => { carregar(); }, [mesFiltro, anoFiltro, ccFiltro]);
+
+  async function carregarVeiculos() {
+    try { const r = await api.get('/frota-apoio/veiculos'); setVeiculos(r.data); }
+    catch {}
+  }
+  useEffect(() => { carregarVeiculos(); }, []);
+
+  async function salvarVeiculo(e) {
+    e.preventDefault();
+    if (!novoVeiculo.placa) return;
+    try {
+      await api.post('/frota-apoio/veiculos', novoVeiculo);
+      toast.success('Veículo cadastrado!');
+      setNovoVeiculo({ placa: '', modelo: '' });
+      carregarVeiculos();
+    } catch { toast.error('Erro ao cadastrar veículo'); }
+  }
+
+  async function excluirVeiculo(id) {
+    if (!confirm('Remover este veículo?')) return;
+    try { await api.delete(`/frota-apoio/veiculos/${id}`); carregarVeiculos(); }
+    catch { toast.error('Erro ao remover'); }
+  }
+
+  function selecionarVeiculo(v) {
+    setForm(prev => ({ ...prev, placa: v.placa, modelo: v.modelo || '' }));
+    setShowSelectVeiculo(false);
+  }
 
   // auto-calcula distância e valor
   function handleForm(e) {
@@ -136,10 +170,16 @@ export default function FrotaApoio() {
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Controle de Frota Apoio</h2>
-        <button onClick={abrirNovo}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(235,50,56,0.3)' }}>
-          <i className="ti ti-plus"></i> Incluir
-        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={() => setShowVeiculos(true)}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', background:'#f1f5f9', color:'#374151', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' }}>
+            <i className="ti ti-car"></i> Veículos
+          </button>
+          <button onClick={abrirNovo}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(235,50,56,0.3)' }}>
+            <i className="ti ti-plus"></i> Incluir
+          </button>
+        </div>
       </div>
 
       {/* Filtros Rápidos */}
@@ -260,6 +300,54 @@ export default function FrotaApoio() {
         </div>
       </div>
 
+      {/* Modal Veículos */}
+      {showVeiculos && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:480, maxHeight:'80vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding:'18px 24px', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, background:'#fff' }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:700 }}>Veículos Cadastrados</h3>
+              <button onClick={() => setShowVeiculos(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9ca3af' }}>×</button>
+            </div>
+            <div style={{ padding:24 }}>
+              {/* Formulário de novo veículo */}
+              <form onSubmit={salvarVeiculo} style={{ display:'flex', gap:8, marginBottom:20, alignItems:'flex-end' }}>
+                <div style={{ flex:1 }}>
+                  <label style={lbl}>Placa</label>
+                  <input value={novoVeiculo.placa} onChange={e => setNovoVeiculo(p => ({ ...p, placa: e.target.value.toUpperCase() }))}
+                    required placeholder="ABC-1234" style={{ ...inp, textTransform:'uppercase' }} />
+                </div>
+                <div style={{ flex:2 }}>
+                  <label style={lbl}>Modelo</label>
+                  <input value={novoVeiculo.modelo} onChange={e => setNovoVeiculo(p => ({ ...p, modelo: e.target.value }))}
+                    placeholder="Ex: Fiat Uno" style={inp} />
+                </div>
+                <button type="submit"
+                  style={{ padding:'8px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                  <i className="ti ti-plus"></i> Adicionar
+                </button>
+              </form>
+
+              {/* Lista */}
+              {veiculos.length === 0 && (
+                <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center' }}>Nenhum veículo cadastrado ainda.</p>
+              )}
+              {veiculos.map(v => (
+                <div key={v.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f1f5f9' }}>
+                  <div>
+                    <span style={{ fontWeight:700, fontSize:14, marginRight:10 }}>{v.placa}</span>
+                    <span style={{ color:'#6b7280', fontSize:13 }}>{v.modelo || '—'}</span>
+                  </div>
+                  <button onClick={() => excluirVeiculo(v.id)}
+                    style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:16 }}>
+                    <i className="ti ti-trash"></i>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Formulário */}
       {showForm && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -290,11 +378,38 @@ export default function FrotaApoio() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:14, marginBottom:14 }}>
                 <div>
                   <label style={lbl}>Placa *</label>
-                  <input name="placa" value={form.placa} onChange={handleForm} required placeholder="ABC-1234" style={{ ...inp, textTransform:'uppercase' }} />
+                  <div style={{ position:'relative' }}>
+                    <input name="placa" value={form.placa} onChange={handleForm} required placeholder="ABC-1234"
+                      style={{ ...inp, textTransform:'uppercase', paddingRight:36 }} />
+                    <button type="button" onClick={() => setShowSelectVeiculo(v => !v)}
+                      title="Selecionar veículo cadastrado"
+                      style={{ position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#6366f1', fontSize:16, padding:2 }}>
+                      <i className="ti ti-list-search"></i>
+                    </button>
+                    {/* dropdown de veículos */}
+                    {showSelectVeiculo && veiculos.length > 0 && (
+                      <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:'1.5px solid #e5e7eb', borderRadius:8, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', zIndex:200, maxHeight:200, overflowY:'auto', marginTop:2 }}>
+                        {veiculos.map(v => (
+                          <button key={v.id} type="button" onClick={() => selecionarVeiculo(v)}
+                            style={{ width:'100%', textAlign:'left', padding:'8px 12px', border:'none', background:'none', cursor:'pointer', fontSize:13, display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9' }}
+                            onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'}
+                            onMouseLeave={e => e.currentTarget.style.background='none'}>
+                            <span style={{ fontWeight:700 }}>{v.placa}</span>
+                            <span style={{ color:'#6b7280', fontSize:12 }}>{v.modelo || '—'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showSelectVeiculo && veiculos.length === 0 && (
+                      <div style={{ position:'absolute', top:'100%', left:0, right:0, background:'#fff', border:'1.5px solid #e5e7eb', borderRadius:8, padding:'10px 12px', fontSize:12, color:'#9ca3af', zIndex:200, marginTop:2 }}>
+                        Nenhum veículo cadastrado. Use o botão <strong>Veículos</strong> no topo.
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label style={lbl}>Modelo</label>
-                  <input name="modelo" value={form.modelo} onChange={handleForm} placeholder="Ex: Fiat Uno" style={inp} />
+                  <input name="modelo" value={form.modelo} onChange={handleForm} placeholder="Preenchido ao selecionar" style={inp} />
                 </div>
               </div>
 
