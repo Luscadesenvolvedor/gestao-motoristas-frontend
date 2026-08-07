@@ -25,6 +25,7 @@ import FaturasAbastecimento from './pages/abastecimento/Faturas';
 import LaVagens from './pages/abastecimento/Lavagens';
 import FornecedoresLavagem from './pages/abastecimento/FornecedoresLavagem';
 import MediasConsumo from './pages/abastecimento/MediasConsumo';
+import FrotaApoio from './pages/FrotaApoio';
 import Home from './pages/Home';
 import './theme.css';
 import { Component } from 'react';
@@ -121,6 +122,7 @@ function AppRoutes() {
         <Route path="ab-lavagens"               element={<Privada><ErrorBoundary><LaVagens /></ErrorBoundary></Privada>} />
         <Route path="ab-forn-lavagem"           element={<Privada><ErrorBoundary><FornecedoresLavagem /></ErrorBoundary></Privada>} />
         <Route path="ab-medias-consumo"          element={<Privada><ErrorBoundary><MediasConsumo /></ErrorBoundary></Privada>} />
+        <Route path="frota-apoio"               element={<Privada><ErrorBoundary><FrotaApoio /></ErrorBoundary></Privada>} />
       </Route>
     </Routes>
   );

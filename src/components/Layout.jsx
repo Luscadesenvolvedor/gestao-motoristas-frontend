@@ -18,6 +18,7 @@ const menusAcerto = [
   { path: 'levantamentos',             label: 'Levantamentos',        icon: 'ti-report-money',   recurso: 'levantamentos' },
   { path: 'levantamentos-importacoes', label: 'Importações Motoristas', icon: 'ti-file-import',    recurso: 'levantamentos' },
   { path: 'ab-medias-consumo', label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: 'levantamentos' },
+  { path: 'frota-apoio',      label: 'Frota Apoio',          icon: 'ti-car',            recurso: 'levantamentos' },
   { path: 'mapa-ineficiencia', label: 'Mapa de Ineficiência', icon: 'ti-map-pin',        recurso: 'financeiro' },
 ];
 
@@ -26,6 +27,7 @@ const menusAbastecimento = [
   { path: 'ab-lavagens',     label: 'Lavagens',            icon: 'ti-wash',           recurso: null },
   { path: 'ab-forn-lavagem',     label: 'Fornec. Lavagem',     icon: 'ti-building-store', recurso: null },
   { path: 'ab-medias-consumo',   label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: null },
+  { path: 'frota-apoio',         label: 'Frota Apoio',          icon: 'ti-car',            recurso: null },
   { path: 'ab-relatorios',       label: 'Relatórios',          icon: 'ti-chart-bar',      recurso: null },
 ];
 
