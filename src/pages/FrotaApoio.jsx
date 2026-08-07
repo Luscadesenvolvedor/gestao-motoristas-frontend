@@ -310,7 +310,7 @@ export default function FrotaApoio() {
                 </div>
                 <div>
                   <label style={lbl}>Distância (km) — auto</label>
-                  <input type="number" name="distancia" value={form.distancia} onChange={handleForm} placeholder="Calculado automaticamente" style={{ ...inp, background:'#f9fafb' }} />
+                  <input type="number" name="distancia" value={form.distancia} readOnly tabIndex={-1} placeholder="Calculado automaticamente" style={{ ...inp, background:'#f1f5f9', color:'#6b7280', cursor:'not-allowed' }} />
                 </div>
               </div>
 
@@ -358,7 +358,7 @@ export default function FrotaApoio() {
                 </div>
                 <div>
                   <label style={lbl}>Valor (R$) — auto</label>
-                  <input type="number" step="0.01" name="valor" value={form.valor} onChange={handleForm} placeholder="Calculado automaticamente" style={{ ...inp, background:'#f9fafb' }} />
+                  <input type="number" step="0.01" name="valor" value={form.valor} readOnly tabIndex={-1} placeholder="Calculado automaticamente" style={{ ...inp, background:'#f1f5f9', color:'#6b7280', cursor:'not-allowed' }} />
                 </div>
                 <div>
                   <label style={lbl}>Centro de Custo</label>
