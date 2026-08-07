@@ -20,11 +20,11 @@ export default function FrotaApoio() {
   const [form, setForm]             = useState(FORM_VAZIO);
   const [salvando, setSalvando]     = useState(false);
 
-  // filtros
+  // filtros rápidos
   const hoje = new Date();
-  const [mesFiltro, setMesFiltro]   = useState(String(hoje.getMonth() + 1).padStart(2,'0'));
-  const [anoFiltro, setAnoFiltro]   = useState(String(hoje.getFullYear()));
-  const [ccFiltro, setCcFiltro]     = useState('');
+  const [mesFiltro, setMesFiltro] = useState(String(hoje.getMonth() + 1).padStart(2,'0'));
+  const [anoFiltro, setAnoFiltro] = useState(String(hoje.getFullYear()));
+  const [ccFiltro,  setCcFiltro]  = useState('');
 
   const fmt  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
   const fmtN = (v,d=2) => parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:d, maximumFractionDigits:d });
@@ -32,8 +32,10 @@ export default function FrotaApoio() {
 
   async function carregar() {
     try {
-      const params = new URLSearchParams({ mes: mesFiltro, ano: anoFiltro });
-      if (ccFiltro) params.append('centroCusto', ccFiltro);
+      const params = new URLSearchParams();
+      if (anoFiltro) params.append('ano', anoFiltro);
+      if (mesFiltro) params.append('mes', mesFiltro);
+      if (ccFiltro)  params.append('centroCusto', ccFiltro);
       const r = await api.get(`/frota-apoio?${params}`);
       setLista(r.data);
     } catch { toast.error('Erro ao carregar registros'); }
@@ -119,14 +121,6 @@ export default function FrotaApoio() {
     return { litragem, percorrido, valorTotal, consumoKm };
   }, [lista]);
 
-  // anos disponíveis para filtro
-  const anos = useMemo(() => {
-    const set = new Set(lista.map(r => r.data?.slice(0,4)).filter(Boolean));
-    const arr = [...set].sort().reverse();
-    if (!arr.includes(String(hoje.getFullYear()))) arr.unshift(String(hoje.getFullYear()));
-    return arr;
-  }, [lista]);
-
   const MESES = [
     {v:'01',l:'Janeiro'},{v:'02',l:'Fevereiro'},{v:'03',l:'Março'},
     {v:'04',l:'Abril'},{v:'05',l:'Maio'},{v:'06',l:'Junho'},
@@ -148,26 +142,57 @@ export default function FrotaApoio() {
         </button>
       </div>
 
-      {/* Filtros */}
-      <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-        <div>
-          <label style={lbl}>Mês</label>
-          <select value={mesFiltro} onChange={e => setMesFiltro(e.target.value)} style={{ ...inp, width:140 }}>
-            {MESES.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
-          </select>
+      {/* Filtros Rápidos */}
+      <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:16 }}>
+        {/* Anos */}
+        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginBottom:10 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', marginRight:4 }}>Ano</span>
+          {['2024','2025','2026','2027'].map(a => (
+            <button key={a} onClick={() => setAnoFiltro(a)}
+              style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                background: anoFiltro === a ? '#1e293b' : '#f1f5f9',
+                color:      anoFiltro === a ? '#fff'    : '#64748b' }}>
+              {a}
+            </button>
+          ))}
         </div>
-        <div>
-          <label style={lbl}>Ano</label>
-          <select value={anoFiltro} onChange={e => setAnoFiltro(e.target.value)} style={{ ...inp, width:100 }}>
-            {['2024','2025','2026','2027'].map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+
+        {/* Meses */}
+        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginBottom:10 }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', marginRight:4 }}>Mês</span>
+          <button onClick={() => setMesFiltro('')}
+            style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+              background: mesFiltro === '' ? '#EB3238' : '#f1f5f9',
+              color:      mesFiltro === '' ? '#fff'    : '#64748b' }}>
+            Todos
+          </button>
+          {MESES.map(m => (
+            <button key={m.v} onClick={() => setMesFiltro(mesFiltro === m.v ? '' : m.v)}
+              style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                background: mesFiltro === m.v ? '#EB3238' : '#f1f5f9',
+                color:      mesFiltro === m.v ? '#fff'    : '#64748b' }}>
+              {m.l.slice(0,3)}
+            </button>
+          ))}
         </div>
-        <div>
-          <label style={lbl}>Centro de Custo</label>
-          <select value={ccFiltro} onChange={e => setCcFiltro(e.target.value)} style={{ ...inp, width:140 }}>
-            <option value="">Todos</option>
-            {CENTROS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+
+        {/* Centro de Custo */}
+        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', marginRight:4 }}>Centro de Custo</span>
+          <button onClick={() => setCcFiltro('')}
+            style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+              background: ccFiltro === '' ? '#6366f1' : '#f1f5f9',
+              color:      ccFiltro === '' ? '#fff'    : '#64748b' }}>
+            Todos
+          </button>
+          {CENTROS.map(c => (
+            <button key={c} onClick={() => setCcFiltro(ccFiltro === c ? '' : c)}
+              style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                background: ccFiltro === c ? '#6366f1' : '#f1f5f9',
+                color:      ccFiltro === c ? '#fff'    : '#64748b' }}>
+              {c}
+            </button>
+          ))}
         </div>
       </div>
 
