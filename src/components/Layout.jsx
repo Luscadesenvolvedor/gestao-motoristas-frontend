@@ -18,7 +18,6 @@ const menusAcerto = [
   { path: 'levantamentos',             label: 'Levantamentos',        icon: 'ti-report-money',   recurso: 'levantamentos' },
   { path: 'levantamentos-importacoes', label: 'Importações Motoristas', icon: 'ti-file-import',    recurso: 'levantamentos' },
   { path: 'ab-medias-consumo', label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: 'levantamentos' },
-  { path: 'frota-apoio',      label: 'Frota Apoio',          icon: 'ti-car',            recurso: 'levantamentos' },
   { path: 'mapa-ineficiencia', label: 'Mapa de Ineficiência', icon: 'ti-map-pin',        recurso: 'financeiro' },
 ];
 
