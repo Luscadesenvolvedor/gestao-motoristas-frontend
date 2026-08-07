@@ -136,7 +136,8 @@ export default function FrotaApoio() {
       setShowForm(false); setEditandoId(null); setForm(FORM_VAZIO);
       carregar();
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Erro ao salvar');
+      const detalhe = err?.response?.data?.detail || err?.response?.data?.error || 'Erro ao salvar';
+      toast.error(detalhe);
     } finally { setSalvando(false); }
   }
 
