@@ -409,8 +409,8 @@ export default function FrotaApoio() {
                   </div>
                 </div>
                 <div>
-                  <label style={lbl}>Modelo</label>
-                  <input name="modelo" value={form.modelo} onChange={handleForm} placeholder="Preenchido ao selecionar" style={inp} />
+                  <label style={lbl}>Modelo — auto</label>
+                  <input name="modelo" value={form.modelo} readOnly tabIndex={-1} placeholder="Preenchido ao selecionar veículo" style={{ ...inp, background:'#f1f5f9', color:'#6b7280', cursor:'not-allowed' }} />
                 </div>
               </div>
 
