@@ -56,7 +56,11 @@ export default function FrotaApoio() {
 
   const fmt  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
   const fmtN = (v,d=2) => parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:d, maximumFractionDigits:d });
-  const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+  const fmtDt = s => {
+    if (!s) return '—';
+    const iso = s instanceof Date ? s.toISOString().slice(0,10) : String(s).slice(0,10);
+    return new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR');
+  };
 
   async function carregar() {
     try {
