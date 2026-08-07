@@ -30,7 +30,8 @@ export default function FrotaApoio() {
   const hoje = new Date();
   const [mesFiltro, setMesFiltro] = useState('');
   const [anoFiltro, setAnoFiltro] = useState(String(hoje.getFullYear()));
-  const [ccFiltro,  setCcFiltro]  = useState('');
+  const [ccFiltro,      setCcFiltro]      = useState('');
+  const [modeloFiltro,  setModeloFiltro]  = useState('');
 
   // períodos disponíveis (anos/meses com registros)
   const [periodos, setPeriodos] = useState([]);
@@ -180,14 +181,29 @@ export default function FrotaApoio() {
     catch { toast.error('Erro ao excluir'); }
   }
 
+  // modelos disponíveis nos registros atuais
+  const modelosDisponiveis = useMemo(() =>
+    [...new Set(lista.map(r => r.modelo).filter(Boolean))].sort()
+  , [lista]);
+
+  // limpa modelo se sumir dos disponíveis
+  useEffect(() => {
+    if (modeloFiltro && !modelosDisponiveis.includes(modeloFiltro)) setModeloFiltro('');
+  }, [modelosDisponiveis]);
+
+  // lista filtrada pelo modelo (client-side)
+  const listaFiltrada = useMemo(() =>
+    modeloFiltro ? lista.filter(r => r.modelo === modeloFiltro) : lista
+  , [lista, modeloFiltro]);
+
   // cards
   const cards = useMemo(() => {
-    const litragem = lista.reduce((s,r) => s + parseFloat(r.litros||0), 0);
-    const percorrido = lista.reduce((s,r) => s + parseFloat(r.distancia||0), 0);
-    const valorTotal = lista.reduce((s,r) => s + parseFloat(r.valor||0), 0);
+    const litragem   = listaFiltrada.reduce((s,r) => s + parseFloat(r.litros||0), 0);
+    const percorrido = listaFiltrada.reduce((s,r) => s + parseFloat(r.distancia||0), 0);
+    const valorTotal = listaFiltrada.reduce((s,r) => s + parseFloat(r.valor||0), 0);
     const consumoKm  = litragem > 0 && percorrido > 0 ? percorrido / litragem : 0;
     return { litragem, percorrido, valorTotal, consumoKm };
-  }, [lista]);
+  }, [listaFiltrada]);
 
   const MESES = [
     {v:'01',l:'Janeiro'},{v:'02',l:'Fevereiro'},{v:'03',l:'Março'},
@@ -254,7 +270,7 @@ export default function FrotaApoio() {
         </div>
 
         {/* Centro de Custo */}
-        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginBottom: modelosDisponiveis.length > 0 ? 10 : 0 }}>
           <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', marginRight:4 }}>Centro de Custo</span>
           <button onClick={() => setCcFiltro('')}
             style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
@@ -271,6 +287,27 @@ export default function FrotaApoio() {
             </button>
           ))}
         </div>
+
+        {/* Modelo — só aparece se houver mais de um modelo nos registros */}
+        {modelosDisponiveis.length > 1 && (
+          <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+            <span style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', marginRight:4 }}>Modelo</span>
+            <button onClick={() => setModeloFiltro('')}
+              style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                background: modeloFiltro === '' ? '#0891b2' : '#f1f5f9',
+                color:      modeloFiltro === '' ? '#fff'    : '#64748b' }}>
+              Todos
+            </button>
+            {modelosDisponiveis.map(m => (
+              <button key={m} onClick={() => setModeloFiltro(modeloFiltro === m ? '' : m)}
+                style={{ padding:'5px 14px', borderRadius:20, border:'none', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                  background: modeloFiltro === m ? '#0891b2' : '#f1f5f9',
+                  color:      modeloFiltro === m ? '#fff'    : '#64748b' }}>
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Cards */}
@@ -305,10 +342,10 @@ export default function FrotaApoio() {
               </tr>
             </thead>
             <tbody>
-              {lista.length === 0 && (
+              {listaFiltrada.length === 0 && (
                 <tr><td colSpan={15} style={{ padding:32, textAlign:'center', color:'#9ca3af' }}>Nenhum registro encontrado</td></tr>
               )}
-              {lista.map((r, idx) => (
+              {listaFiltrada.map((r, idx) => (
                 <tr key={r.id} style={{ background: idx%2===0?'#fff':'#f9fafb', borderBottom:'1px solid #f1f5f9' }}>
                   <td style={{ padding:'8px 12px', whiteSpace:'nowrap' }}>{fmtDt(r.data)}</td>
                   <td style={{ padding:'8px 12px' }}>{r.hora || '—'}</td>
