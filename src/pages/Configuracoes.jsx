@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
+import toast from 'react-hot-toast';
 
 const MENUS_DISPONIVEIS = [
   { path: 'solicitacoes', label: 'Solicitações',        recurso: 'solicitacoes' },
@@ -88,7 +91,38 @@ function Toggle({ ativo, onChange, label, descricao }) {
 
 export default function Configuracoes() {
   const { settings, update, resetar } = useSettings();
-  const { usuario, pode } = useAuth();
+  const { usuario, pode, isAdmin } = useAuth();
+  const [baixando, setBaixando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+
+  async function enviarBackupEmail() {
+    setEnviando(true);
+    try {
+      await api.post('/backup/enviar-email');
+      toast.success('Backup enviado por e-mail!');
+    } catch {
+      toast.error('Erro ao enviar e-mail. Verifique as configurações no servidor.');
+    } finally { setEnviando(false); }
+  }
+
+  async function baixarBackup() {
+    setBaixando(true);
+    try {
+      const r = await api.get('/backup', { responseType: 'blob' });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      const hoje = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `backup-${hoje}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup gerado com sucesso!');
+    } catch {
+      toast.error('Erro ao gerar backup');
+    } finally {
+      setBaixando(false);
+    }
+  }
 
   const menusPermitidos = MENUS_DISPONIVEIS.filter(m => pode(m.recurso, 'leitura'));
 
@@ -249,6 +283,44 @@ export default function Configuracoes() {
           descricao="Exibe um diálogo de confirmação antes de deletar registros"
         />
       </Secao>
+
+      {/* Backup — somente admin */}
+      {isAdmin && (
+        <Secao titulo="Backup do Sistema" descricao="Exporta todos os dados do banco em formato JSON. Guarde em local seguro.">
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <div>
+              <div style={{ fontSize:13, color:'#374151', fontWeight:500 }}>Exportar backup completo</div>
+              <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
+                Inclui solicitações, motoristas, financeiro, abastecimento e todos os módulos.
+              </div>
+            </div>
+            <button onClick={baixarBackup} disabled={baixando}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px',
+                background: baixando ? '#9ca3af' : '#16a34a', color:'#fff', border:'none',
+                borderRadius:8, fontSize:13, fontWeight:600, cursor: baixando ? 'not-allowed' : 'pointer',
+                whiteSpace:'nowrap', flexShrink:0 }}>
+              <i className={`ti ${baixando ? 'ti-loader-2' : 'ti-download'}`}></i>
+              {baixando ? 'Gerando...' : 'Baixar backup'}
+            </button>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
+            <div>
+              <div style={{ fontSize:13, color:'#374151', fontWeight:500 }}>Enviar por e-mail agora</div>
+              <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
+                Dispara o e-mail de backup imediatamente (automático todo dia às 3h).
+              </div>
+            </div>
+            <button onClick={enviarBackupEmail} disabled={enviando}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px',
+                background: enviando ? '#9ca3af' : '#2563eb', color:'#fff', border:'none',
+                borderRadius:8, fontSize:13, fontWeight:600, cursor: enviando ? 'not-allowed' : 'pointer',
+                whiteSpace:'nowrap', flexShrink:0 }}>
+              <i className={`ti ${enviando ? 'ti-loader-2' : 'ti-mail'}`}></i>
+              {enviando ? 'Enviando...' : 'Enviar por e-mail'}
+            </button>
+          </div>
+        </Secao>
+      )}
 
       {/* Resetar */}
       <div style={{ textAlign: 'right', marginTop: 8 }}>
