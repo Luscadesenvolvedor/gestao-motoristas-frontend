@@ -294,18 +294,17 @@ export default function Levantamentos() {
   const corFrota = '#10b981';
   const corMeli  = '#8b5cf6';
 
-  // Motoristas únicos reais dos importados (respeita todos os filtros ativos)
+  // Motoristas únicos dos importados — filtrado só por tempo (não por frota),
+  // pois muitas importações não têm o campo frota preenchido
   const motoristasUnicosImportados = useMemo(() => new Set(
     regsMot.filter(r => {
-      const meta = importacoesMap[r.importacaoId];
-      if (tipoFiltro && meta?.frota !== tipoFiltro) return false;
       if (mesFiltro && r.mes !== mesFiltro) return false;
       if (anoFiltro && !r.mes?.startsWith(anoFiltro)) return false;
       return true;
     }).map(r => r.motorista.trim().toUpperCase())
-  ).size, [tipoFiltro, mesFiltro, anoFiltro, regsMot, importacoesMap]);
+  ).size, [mesFiltro, anoFiltro, regsMot]);
 
-  // Denominador real: soma manual dos fechados OU contagem única dos importados
+  // Card "Motoristas Fechados": usa o campo manual se preenchido, senão conta únicos dos importados
   const motoristasCard = useMemo(() => {
     const manual = listaFiltrada.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
     return manual > 0 ? manual : motoristasUnicosImportados;
