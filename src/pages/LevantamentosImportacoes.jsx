@@ -70,6 +70,28 @@ function parseVal(v) {
   return isNaN(n) ? null : n;
 }
 
+// Exibe um nome palavra por palavra, verde se bateu com o outro nome, vermelho se não
+function TokenHighlight({ nome, referencia }) {
+  if (!nome) return <span style={{ color:'#d1d5db', fontStyle:'italic' }}>Nenhum encontrado</span>;
+  const palavras = nome.split(/\s+/).filter(Boolean);
+  const refSet = new Set((referencia || '').toLowerCase().split(/\s+/).filter(Boolean));
+  return (
+    <span style={{ display:'flex', flexWrap:'wrap', gap:3, alignItems:'center' }}>
+      {palavras.map((w, i) => {
+        const ok = refSet.has(w.toLowerCase());
+        return (
+          <span key={i} style={{
+            padding:'2px 7px', borderRadius:5, fontSize:12, fontWeight:600,
+            background: ok ? '#dcfce7' : '#fee2e2',
+            color:      ok ? '#166534' : '#991b1b',
+            border:     `1px solid ${ok ? '#bbf7d0' : '#fecaca'}`,
+          }}>{w}</span>
+        );
+      })}
+    </span>
+  );
+}
+
 // Cor do badge de status
 function corStatus(score) {
   if (score >= 1)   return { bg:'#dcfce7', color:'#166534', border:'#bbf7d0', label:'Exato' };
@@ -305,20 +327,11 @@ export default function LevantamentosImportacoes() {
                         return (
                           <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0 ? '#fff' : '#fafafa' }}>
                             <td style={{ padding:'7px 12px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
-                            <td style={{ padding:'7px 12px', color:'#374151', fontWeight:500 }}>{r.nomePlanilha}</td>
                             <td style={{ padding:'7px 12px' }}>
-                              {r.melhorMatch ? (
-                                <span style={{ color:'#374151' }}>
-                                  {r.melhorMatch}
-                                  {r.score < 1 && r.score > 0 && (
-                                    <span style={{ marginLeft:6, fontSize:10, color:'#9ca3af' }}>
-                                      {Math.round(r.score * 100)}%
-                                    </span>
-                                  )}
-                                </span>
-                              ) : (
-                                <span style={{ color:'#d1d5db', fontStyle:'italic' }}>Nenhum encontrado</span>
-                              )}
+                              <TokenHighlight nome={r.nomePlanilha} referencia={r.melhorMatch} />
+                            </td>
+                            <td style={{ padding:'7px 12px' }}>
+                              <TokenHighlight nome={r.melhorMatch} referencia={r.nomePlanilha} />
                             </td>
                             <td style={{ padding:'5px 8px' }}>
                               <input
