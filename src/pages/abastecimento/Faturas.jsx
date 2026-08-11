@@ -113,6 +113,7 @@ export default function Faturas() {
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [showPagarId, setShowPagarId] = useState(null);
   const [dataPagamento, setDataPagamento] = useState(dataHoje());
+  const [detalheAberto, setDetalheAberto] = useState({});
   // Adicionar NF a fatura existente
   const [nfFaturaId, setNfFaturaId] = useState(null);
   const [nfForm, setNfForm]         = useState({ numero:'', valor:'', arquivoNome:null, arquivoBase64:null, arquivoTipo:null });
@@ -384,6 +385,10 @@ export default function Faturas() {
                   <span style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:600, background:sc.bg, color:sc.cor, whiteSpace:'nowrap', flexShrink:0 }}>{sc.label}</span>
                   {/* Ações */}
                   <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                    <button onClick={() => setDetalheAberto(d => ({ ...d, [fatura.id]: !d[fatura.id] }))} title="Ver dados cadastrados"
+                      style={{ padding:'5px 9px', border:`1.5px solid ${detalheAberto[fatura.id] ? '#0ea5e9' : '#e5e7eb'}`, borderRadius:6, background: detalheAberto[fatura.id] ? '#e0f2fe' : '#fff', fontSize:12, cursor:'pointer', color: detalheAberto[fatura.id] ? '#0369a1' : '#9ca3af' }}>
+                      <i className="ti ti-flag-3"></i>
+                    </button>
                     <button onClick={() => setExpandidos(e => ({ ...e, [fatura.id]: !e[fatura.id] }))} title="Ver NFs"
                       style={{ padding:'5px 9px', border:'1px solid #d1d5db', borderRadius:6, background:'#f9fafb', fontSize:12, cursor:'pointer', color: exp ? '#EB3238' : '#374151' }}>
                       <i className={`ti ${exp ? 'ti-chevron-up' : 'ti-chevron-down'}`}></i>
@@ -411,6 +416,38 @@ export default function Faturas() {
                     </button>
                   </div>
                 </div>
+
+                {/* Painel Detalhes */}
+                {detalheAberto[fatura.id] && (
+                  <div style={{ borderTop:'1px solid #bae6fd', background:'#f0f9ff', padding:'14px 20px' }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#0369a1', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:12 }}>
+                      Dados cadastrados
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(170px, 1fr))', gap:'8px 20px' }}>
+                      {[
+                        { label:'Razão Social',      valor: forn?.razaoSocial },
+                        { label:'CNPJ',              valor: mascaraCNPJ(forn?.cnpj||'') },
+                        { label:'Responsável',       valor: forn?.responsavel || '—' },
+                        { label:'Contato',           valor: forn?.contato || '—' },
+                        { label:'Número da OC',      valor: forn?.numeroOC || '—' },
+                        { label:'Frota',             valor: (forn?.frota || '—').toUpperCase() },
+                        { label:'Tipo de Serviço',   valor: TIPOS.find(t => t.val === forn?.tipoServico)?.label || forn?.tipoServico || '—' },
+                        { label:'Forma Pagamento',   valor: forn?.formaPagamento === 'pix' ? 'PIX' : forn?.formaPagamento === 'boleto' ? 'Boleto' : '—' },
+                        ...(forn?.formaPagamento === 'pix' ? [{ label:'Chave PIX', valor: forn?.chavePix || '—' }] : []),
+                        { label:'Valor da Fatura',   valor: fmt(fatura.valor) },
+                        { label:'Vencimento',        valor: fmtData(fatura.dataVencimento) },
+                        ...(fatura.dataPagamento ? [{ label:'Data Pagamento', valor: fmtData(fatura.dataPagamento) }] : []),
+                        ...(fatura.observacao ? [{ label:'Observação', valor: fatura.observacao }] : []),
+                        { label:'Cadastrado em',     valor: fmtData(fatura.criadoEm) },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <div style={{ fontSize:10, fontWeight:600, color:'#0369a1', textTransform:'uppercase', letterSpacing:'0.3px', marginBottom:2 }}>{item.label}</div>
+                          <div style={{ fontSize:12, color:'#1e40af', fontWeight:500, wordBreak:'break-word' }}>{item.valor}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Painel NFs */}
                 {exp && (
