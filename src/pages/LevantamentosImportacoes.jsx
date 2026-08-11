@@ -1,4 +1,4 @@
-// v3
+// v4
 import { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../services/api';
@@ -16,19 +16,14 @@ const fmtR  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFract
 const fmtDt = s => s ? new Date(s).toLocaleDateString('pt-BR') : '—';
 
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
-
-// Tokens com mais de 2 letras (ignora partículas como "de", "da")
 const tokens = s => norm(s).split(/\s+/).filter(t => t.length > 2);
 
-// Score de similaridade entre dois nomes (0–1)
 function scoreNome(a, b) {
   const ta = tokens(a), tb = tokens(b);
   if (!ta.length || !tb.length) return 0;
   const tbSet = new Set(tb);
   const overlap = ta.filter(t => tbSet.has(t)).length;
-  // token overlap é o fator principal
   const tokenScore = overlap / Math.max(ta.length, tb.length);
-  // levenshtein normalizado como secundário
   const na = norm(a), nb = norm(b);
   const maxL = Math.max(na.length, nb.length);
   if (!maxL) return tokenScore;
@@ -42,30 +37,7 @@ function scoreNome(a, b) {
   return tokenScore * 0.7 + levScore * 0.3;
 }
 
-const THRESHOLD = 0.45; // score mínimo para considerar match
-
-// Analisa correspondências entre nomes da planilha e registros existentes
-function analisarCorrespondencias(nomesPlanilha, mapaExistentes) {
-  const exatos = [], similares = [], semMatch = [];
-  for (const nome of nomesPlanilha) {
-    const n = norm(nome);
-    if (mapaExistentes.has(n)) {
-      exatos.push({ planilha: nome, encontrado: mapaExistentes.get(n).original, veiculo: mapaExistentes.get(n).veiculo, score: 1 });
-      continue;
-    }
-    let melhorScore = 0, melhorEntry = null;
-    for (const [nk, entry] of mapaExistentes) {
-      const s = scoreNome(n, nk);
-      if (s > melhorScore) { melhorScore = s; melhorEntry = entry; }
-    }
-    if (melhorScore >= THRESHOLD && melhorEntry) {
-      similares.push({ planilha: nome, encontrado: melhorEntry.original, veiculo: melhorEntry.veiculo, score: melhorScore });
-    } else {
-      semMatch.push({ planilha: nome, melhorScore, melhorNome: melhorEntry?.original });
-    }
-  }
-  return { exatos, similares, semMatch };
-}
+const THRESHOLD = 0.45;
 
 const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12,jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12 };
 
@@ -98,14 +70,22 @@ function parseVal(v) {
   return isNaN(n) ? null : n;
 }
 
+// Cor do badge de status
+function corStatus(score) {
+  if (score >= 1)   return { bg:'#dcfce7', color:'#166534', border:'#bbf7d0', label:'Exato' };
+  if (score >= 0.7) return { bg:'#fef9c3', color:'#854d0e', border:'#fde047', label:'Provável' };
+  if (score >= THRESHOLD) return { bg:'#fef3c7', color:'#92400e', border:'#fbbf24', label:'Similar' };
+  return { bg:'#fee2e2', color:'#991b1b', border:'#fecaca', label:'Novo' };
+}
+
 export default function LevantamentosImportacoes() {
   const { isAdmin } = useAuth();
-  const [lista, setLista]         = useState([]);
+  const [lista, setLista]           = useState([]);
   const [carregando, setCarregando] = useState(true);
-  const [preview, setPreview]     = useState(null); // { nomeArquivo, registros, tipoPagamento, frota, semPlaca }
-  const [salvando, setSalvando]   = useState(false);
-  const [relatorio, setRelatorio] = useState(null); // { correspondencias, nomeArquivo }
-  const [placasEdit, setPlacasEdit] = useState({}); // { [motorista]: { valor, salvando, salvo } }
+  const [preview, setPreview]       = useState(null);
+  // preview = { nomeArquivo, registros, tipoPagamento, frota, revisao, buscando }
+  // revisao = [{ nomePlanilha, melhorMatch, nomeEditado, score, veiculo }]
+  const [salvando, setSalvando]     = useState(false);
   const fileRef = useRef();
 
   async function carregar() {
@@ -122,6 +102,7 @@ export default function LevantamentosImportacoes() {
   async function handleFile(e) {
     const file = e.target.files[0];
     if (!file) return;
+    e.target.value = '';
     try {
       const buf = await file.arrayBuffer();
       const wb  = XLSX.read(buf, { cellDates: true });
@@ -150,36 +131,54 @@ export default function LevantamentosImportacoes() {
         .filter(r => r.valor !== null);
 
       if (!registros.length) { toast.error('Nenhum registro válido'); return; }
-      setPreview({ nomeArquivo: file.name, registros, tipoPagamento: '', frota: '' });
-      toast.success(`${registros.length} registros lidos`);
-    } catch (err) { toast.error('Erro ao ler arquivo: ' + err.message); }
-    e.target.value = '';
-  }
 
-  async function handleTipoSelect(tipo) {
-    setPreview(p => ({ ...p, tipoPagamento: tipo, correspondencias: null }));
-    if (tipo === 'custoFolha' && preview?.registros?.length) {
+      // Nomes únicos na planilha
+      const nomesUnicos = [...new Set(registros.map(r => r.motorista))];
+
+      // Preview inicial enquanto busca
+      setPreview({ nomeArquivo: file.name, registros, tipoPagamento: '', frota: '', revisao: null, buscando: true });
+      toast.success(`${registros.length} registros lidos — comparando nomes...`);
+
+      // Busca motoristas existentes e monta revisão
+      let revisao;
       try {
         const { data: existentes } = await api.get('/levantamentos-motoristas');
-        // Mapa: normName → { original, veiculo } (usa o primeiro encontrado por nome)
         const mapaExistentes = new Map();
         for (const r of existentes) {
           const k = norm(r.motorista);
           if (!mapaExistentes.has(k)) mapaExistentes.set(k, { original: r.motorista, veiculo: r.veiculo });
         }
-        const nomesPlanilha = [...new Set(preview.registros.map(r => r.motorista))];
-        const correspondencias = analisarCorrespondencias(nomesPlanilha, mapaExistentes);
 
-        // Popula veiculo nos registros quando há match (exato ou similar)
-        const matchMap = new Map();
-        for (const e of correspondencias.exatos)   matchMap.set(e.planilha, e.veiculo);
-        for (const s of correspondencias.similares) matchMap.set(s.planilha, s.veiculo);
-        const registrosAtualizados = preview.registros.map(r =>
-          matchMap.has(r.motorista) ? { ...r, veiculo: matchMap.get(r.motorista) } : r
-        );
+        revisao = nomesUnicos.map(nome => {
+          const n = norm(nome);
+          // Match exato
+          if (mapaExistentes.has(n)) {
+            const entry = mapaExistentes.get(n);
+            return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: entry.original, score: 1, veiculo: entry.veiculo };
+          }
+          // Melhor match fuzzy
+          let melhorScore = 0, melhorEntry = null;
+          for (const [nk, entry] of mapaExistentes) {
+            const s = scoreNome(n, nk);
+            if (s > melhorScore) { melhorScore = s; melhorEntry = entry; }
+          }
+          if (melhorScore >= THRESHOLD && melhorEntry) {
+            return { nomePlanilha: nome, melhorMatch: melhorEntry.original, nomeEditado: melhorEntry.original, score: melhorScore, veiculo: melhorEntry.veiculo };
+          }
+          // Sem match — mantém nome original para edição
+          return { nomePlanilha: nome, melhorMatch: null, nomeEditado: nome, score: 0, veiculo: null };
+        });
+      } catch {
+        // Se falhar, monta revisão sem comparação
+        revisao = nomesUnicos.map(nome => ({
+          nomePlanilha: nome, melhorMatch: null, nomeEditado: nome, score: 0, veiculo: null,
+        }));
+      }
 
-        setPreview(p => ({ ...p, tipoPagamento: tipo, correspondencias, registros: registrosAtualizados }));
-      } catch { setPreview(p => ({ ...p, tipoPagamento: tipo })); }
+      setPreview(p => ({ ...p, revisao, buscando: false }));
+    } catch (err) {
+      toast.error('Erro ao ler arquivo: ' + err.message);
+      setPreview(null);
     }
   }
 
@@ -187,38 +186,33 @@ export default function LevantamentosImportacoes() {
     if (!preview) return;
     if (!preview.tipoPagamento) { toast.error('Selecione o tipo de pagamento'); return; }
     if (!preview.frota)         { toast.error('Selecione a frota'); return; }
+
+    // Aplica nomes editados nos registros
+    const mapaEditados = new Map(
+      (preview.revisao || []).map(r => [r.nomePlanilha, { nome: r.nomeEditado, veiculo: r.veiculo }])
+    );
+    const registrosFinais = preview.registros.map(r => {
+      const edit = mapaEditados.get(r.motorista);
+      return {
+        ...r,
+        motorista: edit?.nome || r.motorista,
+        veiculo:   r.veiculo || edit?.veiculo || null,
+      };
+    });
+
     setSalvando(true);
     try {
       await api.post('/levantamentos-motoristas/importar', {
         nomeArquivo:   preview.nomeArquivo,
-        registros:     preview.registros,
+        registros:     registrosFinais,
         tipoPagamento: preview.tipoPagamento,
         frota:         preview.frota,
       });
       toast.success('Importação salva!');
-      // Se custo folha, mantém o relatório de correspondências
-      if (preview.tipoPagamento === 'custoFolha' && preview.correspondencias) {
-        setRelatorio({ correspondencias: preview.correspondencias, nomeArquivo: preview.nomeArquivo });
-        setPlacasEdit({});
-      }
       setPreview(null);
       await carregar();
     } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
     finally { setSalvando(false); }
-  }
-
-  async function salvarPlaca(motorista) {
-    const placa = (placasEdit[motorista]?.valor || '').trim();
-    if (!placa) { toast.error('Digite a placa'); return; }
-    setPlacasEdit(p => ({ ...p, [motorista]: { ...p[motorista], salvando: true } }));
-    try {
-      await api.put('/levantamentos-motoristas/veiculo', { motorista, veiculo: placa });
-      setPlacasEdit(p => ({ ...p, [motorista]: { ...p[motorista], salvando: false, salvo: true } }));
-      toast.success(`Placa salva para ${motorista}`);
-    } catch {
-      toast.error('Erro ao salvar placa');
-      setPlacasEdit(p => ({ ...p, [motorista]: { ...p[motorista], salvando: false } }));
-    }
   }
 
   async function atualizarCampo(id, campo, valor) {
@@ -258,236 +252,136 @@ export default function LevantamentosImportacoes() {
         <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Importações — Por Motorista</h2>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
-          <button onClick={() => fileRef.current?.click()}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer' }}>
+          <button onClick={() => fileRef.current?.click()} disabled={!!preview}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: preview ? '#9ca3af' : '#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
             <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
           </button>
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Preview / Revisão */}
       {preview && (
-        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:'16px 20px', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-            <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#d97706' }}></i>
+        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 24px', marginBottom:20 }}>
+          {/* Título */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+            <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#6366f1' }}></i>
             <div>
-              <div style={{ fontWeight:600, fontSize:13, color:'#92400e' }}>{preview.nomeArquivo}</div>
-              <div style={{ fontSize:11, color:'#b45309' }}>{preview.registros.length} registros lidos — preencha os campos abaixo para salvar</div>
-            </div>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto auto', gap:10, alignItems:'end' }}>
-            <div>
-              <div style={{ fontSize:10, fontWeight:700, color:'#92400e', textTransform:'uppercase', marginBottom:4 }}>Tipo de Pagamento</div>
-              <select value={preview.tipoPagamento}
-                onChange={e => handleTipoSelect(e.target.value)}
-                style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #fbbf24', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
-                <option value="">— selecione —</option>
-                {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{ fontSize:10, fontWeight:700, color:'#92400e', textTransform:'uppercase', marginBottom:4 }}>Frota</div>
-              <select value={preview.frota}
-                onChange={e => setPreview(p => ({ ...p, frota: e.target.value }))}
-                style={{ width:'100%', padding:'7px 10px', border:'1.5px solid #fbbf24', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
-                <option value="">— selecione —</option>
-                <option value="FROTA">FROTA</option>
-                <option value="MELI">MELI</option>
-              </select>
+              <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>{preview.nomeArquivo}</div>
+              <div style={{ fontSize:12, color:'#6b7280' }}>{preview.registros.length} registros lidos</div>
             </div>
             <button onClick={() => setPreview(null)}
-              style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer', whiteSpace:'nowrap' }}>
+              style={{ marginLeft:'auto', padding:'5px 12px', border:'1px solid #e5e7eb', borderRadius:7, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>
               Cancelar
             </button>
-            <button onClick={salvar} disabled={salvando}
-              style={{ padding:'7px 16px', border:'none', borderRadius:8, background:'#16a34a', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-              {salvando ? 'Salvando...' : 'Salvar no banco'}
-            </button>
           </div>
 
-          {/* Tabela editável de nomes */}
-          <div style={{ marginTop:14 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#92400e', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>
-              Confira e edite os nomes antes de salvar
+          {/* Tabela de revisão de nomes */}
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8 }}>
+              Revisão de nomes — edite antes de salvar
             </div>
-            <div style={{ border:'1px solid #fde68a', borderRadius:8, overflow:'hidden', maxHeight:260, overflowY:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                <thead>
-                  <tr style={{ background:'#fef3c7', position:'sticky', top:0 }}>
-                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e', width:30 }}>#</th>
-                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e' }}>Motorista</th>
-                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e', width:110 }}>Veículo</th>
-                    <th style={{ padding:'7px 12px', textAlign:'right', fontWeight:700, color:'#92400e', width:110 }}>Valor</th>
-                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e', width:90 }}>Mês</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.registros.map((r, i) => (
-                    <tr key={i} style={{ borderTop:'1px solid #fde68a', background: i%2===0?'#fffbeb':'#fff' }}>
-                      <td style={{ padding:'5px 12px', color:'#9ca3af' }}>{i+1}</td>
-                      <td style={{ padding:'4px 8px' }}>
-                        <input
-                          value={r.motorista}
-                          onChange={e => setPreview(p => ({
-                            ...p,
-                            registros: p.registros.map((x, j) => j === i ? { ...x, motorista: e.target.value } : x)
-                          }))}
-                          style={{ width:'100%', padding:'3px 7px', border:'1px solid #fde68a', borderRadius:5, fontSize:12, background:'#fff', outline:'none', fontWeight:500 }}
-                        />
-                      </td>
-                      <td style={{ padding:'4px 8px' }}>
-                        <input
-                          value={r.veiculo || ''}
-                          onChange={e => setPreview(p => ({
-                            ...p,
-                            registros: p.registros.map((x, j) => j === i ? { ...x, veiculo: e.target.value.toUpperCase() } : x)
-                          }))}
-                          placeholder="—"
-                          style={{ width:'100%', padding:'3px 7px', border:'1px solid #fde68a', borderRadius:5, fontSize:12, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', background:'#fff', outline:'none' }}
-                        />
-                      </td>
-                      <td style={{ padding:'5px 12px', textAlign:'right', color:'#374151', fontWeight:600 }}>
-                        {r.valor != null ? `R$ ${parseFloat(r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'}
-                      </td>
-                      <td style={{ padding:'5px 12px', color:'#6b7280', fontFamily:'monospace', fontSize:11 }}>{r.mes || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
-          {/* Resumo de correspondências (visível já no preview) */}
-          {preview.tipoPagamento === 'custoFolha' && preview.correspondencias && (() => {
-            const { exatos, similares, semMatch } = preview.correspondencias;
-            return (
-              <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:8 }}>
-                {exatos.length > 0 && (
-                  <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#166534', display:'flex', alignItems:'center', gap:6 }}>
-                    <i className="ti ti-circle-check" style={{ fontSize:14 }}></i>
-                    <strong>{exatos.length}</strong> motorista(s) encontrados exatamente
-                  </div>
-                )}
-                {similares.length > 0 && (
-                  <div style={{ background:'#fffbeb', border:'1px solid #fbbf24', borderRadius:8, padding:'10px 14px' }}>
-                    <div style={{ fontWeight:700, fontSize:12, color:'#92400e', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
-                      <i className="ti ti-arrows-exchange" style={{ fontSize:14 }}></i>
-                      {similares.length} encontrado(s) por similaridade — verifique:
-                    </div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                      {similares.map(s => (
-                        <div key={s.planilha} style={{ fontSize:11, color:'#92400e', display:'flex', gap:6, alignItems:'center' }}>
-                          <span style={{ fontWeight:600 }}>{s.planilha}</span>
-                          <i className="ti ti-arrow-right" style={{ fontSize:10 }}></i>
-                          <span style={{ color:'#065f46', fontWeight:600 }}>{s.encontrado}</span>
-                          <span style={{ color:'#9ca3af' }}>({Math.round(s.score*100)}%)</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {semMatch.length > 0 && (
-                  <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'10px 14px' }}>
-                    <div style={{ fontWeight:700, fontSize:12, color:'#991b1b', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
-                      <i className="ti ti-x" style={{ fontSize:14 }}></i>
-                      {semMatch.length} sem correspondência — serão importados sem placa
-                    </div>
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                      {semMatch.map(s => (
-                        <span key={s.planilha} style={{ padding:'2px 8px', borderRadius:20, background:'#fee2e2', color:'#991b1b', fontSize:11, fontWeight:600 }}>{s.planilha}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {preview.buscando ? (
+              <div style={{ textAlign:'center', padding:'24px 0', color:'#9ca3af', fontSize:13 }}>
+                <i className="ti ti-loader-2" style={{ fontSize:20, display:'block', marginBottom:6 }}></i>
+                Comparando com o banco de dados...
               </div>
-            );
-          })()}
-        </div>
-      )}
-
-      {/* Relatório pós-importação */}
-      {relatorio && (() => {
-        const { exatos, similares, semMatch } = relatorio.correspondencias;
-        const total = exatos.length + similares.length + semMatch.length;
-        return (
-          <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:20, marginBottom:20 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div>
-                <div style={{ fontWeight:700, fontSize:15, color:'#1a1a2e' }}>Relatório de Correspondências — {relatorio.nomeArquivo}</div>
-                <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
-                  {exatos.length} exatos · {similares.length} por similaridade · {semMatch.length} sem correspondência · {total} total
+            ) : (
+              <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
+                <div style={{ overflowX:'auto', maxHeight:340, overflowY:'auto' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                    <thead>
+                      <tr style={{ background:'#f8fafc', position:'sticky', top:0, zIndex:1 }}>
+                        <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width:36 }}>#</th>
+                        <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Nome na planilha</th>
+                        <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Mais parecido no sistema</th>
+                        <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Nome final (editável)</th>
+                        <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width:90 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(preview.revisao || []).map((r, i) => {
+                        const st = corStatus(r.score);
+                        return (
+                          <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0 ? '#fff' : '#fafafa' }}>
+                            <td style={{ padding:'7px 12px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
+                            <td style={{ padding:'7px 12px', color:'#374151', fontWeight:500 }}>{r.nomePlanilha}</td>
+                            <td style={{ padding:'7px 12px' }}>
+                              {r.melhorMatch ? (
+                                <span style={{ color:'#374151' }}>
+                                  {r.melhorMatch}
+                                  {r.score < 1 && r.score > 0 && (
+                                    <span style={{ marginLeft:6, fontSize:10, color:'#9ca3af' }}>
+                                      {Math.round(r.score * 100)}%
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span style={{ color:'#d1d5db', fontStyle:'italic' }}>Nenhum encontrado</span>
+                              )}
+                            </td>
+                            <td style={{ padding:'5px 8px' }}>
+                              <input
+                                value={r.nomeEditado}
+                                onChange={e => setPreview(p => ({
+                                  ...p,
+                                  revisao: p.revisao.map((x, j) => j === i ? { ...x, nomeEditado: e.target.value } : x),
+                                }))}
+                                style={{
+                                  width:'100%', padding:'5px 8px',
+                                  border:'1.5px solid ' + (r.nomeEditado !== r.nomePlanilha ? '#6366f1' : '#e5e7eb'),
+                                  borderRadius:6, fontSize:13, outline:'none',
+                                  background: r.nomeEditado !== r.nomePlanilha ? '#f5f3ff' : '#fff',
+                                  fontWeight: r.nomeEditado !== r.nomePlanilha ? 600 : 400,
+                                  color:'#1a1a2e',
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding:'7px 12px', textAlign:'center' }}>
+                              <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:st.bg, color:st.color, border:`1px solid ${st.border}`, whiteSpace:'nowrap' }}>
+                                {st.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <button onClick={() => setRelatorio(null)}
-                style={{ padding:'5px 12px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>
-                Fechar
+            )}
+          </div>
+
+          {/* Tipo + Frota + Salvar */}
+          {!preview.buscando && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:10, alignItems:'end', paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Tipo de Pagamento</div>
+                <select value={preview.tipoPagamento}
+                  onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value }))}
+                  style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
+                  <option value="">— selecione —</option>
+                  {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Frota</div>
+                <select value={preview.frota}
+                  onChange={e => setPreview(p => ({ ...p, frota: e.target.value }))}
+                  style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
+                  <option value="">— selecione —</option>
+                  <option value="FROTA">FROTA</option>
+                  <option value="MELI">MELI</option>
+                </select>
+              </div>
+              <button onClick={salvar} disabled={salvando}
+                style={{ padding:'9px 22px', border:'none', borderRadius:8, background: salvando ? '#9ca3af' : '#16a34a', color:'#fff', fontSize:13, fontWeight:700, cursor: salvando ? 'not-allowed' : 'pointer', whiteSpace:'nowrap' }}>
+                {salvando ? 'Salvando...' : 'Confirmar e salvar'}
               </button>
             </div>
-
-            {/* Tabela completa */}
-            <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-                <thead>
-                  <tr style={{ background:'#f8fafc' }}>
-                    {['#','Nome na planilha','Encontrado como','Placa','Status'].map(h => (
-                      <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ...exatos.map(e => ({ ...e, status:'exato' })),
-                    ...similares.map(s => ({ ...s, status:'similar' })),
-                    ...semMatch.map(s => ({ planilha: s.planilha, encontrado: s.melhorNome, veiculo: null, score: s.melhorScore, status:'sem_match' })),
-                  ].map((row, i) => (
-                    <tr key={row.planilha+i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
-                      <td style={{ padding:'9px 14px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
-                      <td style={{ padding:'9px 14px', fontWeight:600, color:'#1a1a2e' }}>{row.planilha}</td>
-                      <td style={{ padding:'9px 14px', color:'#374151' }}>
-                        {row.encontrado || <span style={{ color:'#d1d5db' }}>—</span>}
-                        {row.status === 'similar' && <span style={{ marginLeft:6, fontSize:10, color:'#9ca3af' }}>({Math.round(row.score*100)}%)</span>}
-                      </td>
-                      <td style={{ padding:'9px 14px' }}>
-                        {row.veiculo ? (
-                          <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{row.veiculo}</span>
-                        ) : row.status === 'sem_match' ? (
-                          placasEdit[row.planilha]?.salvo ? (
-                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#dcfce7', color:'#166534', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>
-                              {placasEdit[row.planilha].valor} ✓
-                            </span>
-                          ) : (
-                            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                              <input
-                                value={placasEdit[row.planilha]?.valor || ''}
-                                onChange={e => setPlacasEdit(p => ({ ...p, [row.planilha]: { ...p[row.planilha], valor: e.target.value.toUpperCase(), salvo: false } }))}
-                                onKeyDown={e => e.key === 'Enter' && salvarPlaca(row.planilha)}
-                                placeholder="ABC-1234"
-                                style={{ width:90, padding:'4px 7px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:11, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', outline:'none' }}
-                              />
-                              <button onClick={() => salvarPlaca(row.planilha)}
-                                disabled={placasEdit[row.planilha]?.salvando}
-                                style={{ padding:'4px 8px', border:'none', borderRadius:6, background:'#6366f1', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-                                {placasEdit[row.planilha]?.salvando ? '...' : 'Salvar'}
-                              </button>
-                            </div>
-                          )
-                        ) : (
-                          <span style={{ color:'#d1d5db' }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding:'9px 14px' }}>
-                        {row.status === 'exato'    && <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#dcfce7', color:'#166534', border:'1px solid #bbf7d0' }}>Exato</span>}
-                        {row.status === 'similar'  && <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24' }}>Similar</span>}
-                        {row.status === 'sem_match'&& <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca' }}>Sem correspondência</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })()}
+          )}
+        </div>
+      )}
 
       {/* Cards por tipo */}
       {lista.length > 0 && (
@@ -501,7 +395,7 @@ export default function LevantamentosImportacoes() {
         </div>
       )}
 
-      {/* Tabela */}
+      {/* Tabela de importações */}
       {carregando ? (
         <div style={{ textAlign:'center', padding:60, color:'#9ca3af' }}>Carregando...</div>
       ) : lista.length === 0 ? (
