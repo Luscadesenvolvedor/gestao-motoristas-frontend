@@ -294,8 +294,25 @@ export default function Levantamentos() {
   const corFrota = '#10b981';
   const corMeli  = '#8b5cf6';
 
+  // Motoristas únicos reais dos importados (respeita todos os filtros ativos)
+  const motoristasUnicosImportados = useMemo(() => new Set(
+    regsMot.filter(r => {
+      const meta = importacoesMap[r.importacaoId];
+      if (tipoFiltro && meta?.frota !== tipoFiltro) return false;
+      if (mesFiltro && r.mes !== mesFiltro) return false;
+      if (anoFiltro && !r.mes?.startsWith(anoFiltro)) return false;
+      return true;
+    }).map(r => r.motorista.trim().toUpperCase())
+  ).size, [tipoFiltro, mesFiltro, anoFiltro, regsMot, importacoesMap]);
+
+  // Denominador real: soma manual dos fechados OU contagem única dos importados
+  const motoristasCard = useMemo(() => {
+    const manual = listaFiltrada.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
+    return manual > 0 ? manual : motoristasUnicosImportados;
+  }, [listaFiltrada, motoristasUnicosImportados]);
+
   const cardsMedia = tipoFiltro
-    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
+    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(motoristasCard > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasCard : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
     : [
         { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota)), cor: corFrota, icon:'ti-chart-bar' },
         { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli)),  cor: corMeli,  icon:'ti-chart-bar' },
@@ -304,7 +321,7 @@ export default function Levantamentos() {
 
   const resumo = [
     { label:'Total Geral', valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados), cor:'#EB3238', icon:'ti-cash' },
-    { label:'Motoristas Fechados', valor: listaFiltrada.reduce((s,l)=>s+(parseInt(l.motoristasFechados)||0),0) + totaisMot.motoristasFechados, cor:'#0ea5e9', icon:'ti-users' },
+    { label:'Motoristas Fechados', valor: motoristasCard, cor:'#0ea5e9', icon:'ti-users' },
     { label:'Custo Folha',       valor: fmt(soma('custoFolha') + totaisMot.custoFolha),               cor:'#3b82f6', icon:'ti-id-badge' },
     { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
     { label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),                                         cor:'#0ea5e9', icon:'ti-truck'    },
