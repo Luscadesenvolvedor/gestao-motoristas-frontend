@@ -291,36 +291,11 @@ export default function Levantamentos() {
   const listaFrota = lista.filter(l => (!anoFiltro || l.mes.startsWith(anoFiltro)) && (!mesFiltro || l.mes === mesFiltro) && l.tipo === 'FROTA');
   const listaMeli  = lista.filter(l => (!anoFiltro || l.mes.startsWith(anoFiltro)) && (!mesFiltro || l.mes === mesFiltro) && l.tipo === 'MELI');
 
-  // Média por mês para o fleet selecionado (usado quando tipoFiltro está ativo e não há mesFiltro)
-  const mediasMensais = useMemo(() => {
-    if (!tipoFiltro || mesFiltro) return [];
-    return mesesChart.map(mes => {
-      const manualEntry = lista.find(l => l.mes === mes && l.tipo === tipoFiltro);
-      const manualTotal = manualEntry ? total(manualEntry) : 0;
-      const manualMot   = manualEntry ? (parseInt(manualEntry.motoristasFechados) || 0) : 0;
-
-      const regsDoMes = regsMot.filter(r => {
-        if (r.mes !== mes) return false;
-        const meta = importacoesMap[r.importacaoId];
-        return meta?.frota === tipoFiltro;
-      });
-      const importadoTotal = regsDoMes.reduce((s, r) => s + parseFloat(r.valor || 0), 0);
-      const importadoMot   = new Set(regsDoMes.map(r => r.motorista.trim().toUpperCase())).size;
-
-      const totalMes = manualTotal + importadoTotal;
-      const totalMot = manualMot || importadoMot;
-      return { mes, label: fmtMes(mes), media: totalMot > 0 ? totalMes / totalMot : 0, totalMes };
-    }).filter(m => m.totalMes > 0);
-  }, [tipoFiltro, mesFiltro, mesesChart, lista, regsMot, importacoesMap]);
-
   const corFrota = '#10b981';
   const corMeli  = '#8b5cf6';
 
   const cardsMedia = tipoFiltro
-    ? (mesFiltro
-        ? [{ label:`Média/Mot ${tipoFiltro} — ${fmtMes(mesFiltro)}`, valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
-        : mediasMensais.map(m => ({ label:`Média/Mot ${tipoFiltro} — ${m.label}`, valor: fmt(m.media), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }))
-      )
+    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
     : [
         { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota)), cor: corFrota, icon:'ti-chart-bar' },
         { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli)),  cor: corMeli,  icon:'ti-chart-bar' },
