@@ -99,9 +99,10 @@ export default function Configuracoes() {
     setEnviando(true);
     try {
       await api.post('/backup/enviar-email');
-      toast.success('Backup enviado por e-mail!');
-    } catch {
-      toast.error('Erro ao enviar e-mail. Verifique as configurações no servidor.');
+      toast.success('Backup enviado para backupacerto53@gmail.com!');
+    } catch (err) {
+      const detalhe = err?.response?.data?.detail || err?.response?.data?.error || 'Erro desconhecido';
+      toast.error(`Erro: ${detalhe}`, { duration: 8000 });
     } finally { setEnviando(false); }
   }
 
