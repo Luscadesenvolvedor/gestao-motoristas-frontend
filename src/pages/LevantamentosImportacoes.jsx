@@ -305,6 +305,58 @@ export default function LevantamentosImportacoes() {
             </button>
           </div>
 
+          {/* Tabela editável de nomes */}
+          <div style={{ marginTop:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#92400e', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>
+              Confira e edite os nomes antes de salvar
+            </div>
+            <div style={{ border:'1px solid #fde68a', borderRadius:8, overflow:'hidden', maxHeight:260, overflowY:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ background:'#fef3c7', position:'sticky', top:0 }}>
+                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e', width:30 }}>#</th>
+                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e' }}>Motorista</th>
+                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e', width:110 }}>Veículo</th>
+                    <th style={{ padding:'7px 12px', textAlign:'right', fontWeight:700, color:'#92400e', width:110 }}>Valor</th>
+                    <th style={{ padding:'7px 12px', textAlign:'left', fontWeight:700, color:'#92400e', width:90 }}>Mês</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.registros.map((r, i) => (
+                    <tr key={i} style={{ borderTop:'1px solid #fde68a', background: i%2===0?'#fffbeb':'#fff' }}>
+                      <td style={{ padding:'5px 12px', color:'#9ca3af' }}>{i+1}</td>
+                      <td style={{ padding:'4px 8px' }}>
+                        <input
+                          value={r.motorista}
+                          onChange={e => setPreview(p => ({
+                            ...p,
+                            registros: p.registros.map((x, j) => j === i ? { ...x, motorista: e.target.value } : x)
+                          }))}
+                          style={{ width:'100%', padding:'3px 7px', border:'1px solid #fde68a', borderRadius:5, fontSize:12, background:'#fff', outline:'none', fontWeight:500 }}
+                        />
+                      </td>
+                      <td style={{ padding:'4px 8px' }}>
+                        <input
+                          value={r.veiculo || ''}
+                          onChange={e => setPreview(p => ({
+                            ...p,
+                            registros: p.registros.map((x, j) => j === i ? { ...x, veiculo: e.target.value.toUpperCase() } : x)
+                          }))}
+                          placeholder="—"
+                          style={{ width:'100%', padding:'3px 7px', border:'1px solid #fde68a', borderRadius:5, fontSize:12, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', background:'#fff', outline:'none' }}
+                        />
+                      </td>
+                      <td style={{ padding:'5px 12px', textAlign:'right', color:'#374151', fontWeight:600 }}>
+                        {r.valor != null ? `R$ ${parseFloat(r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'}
+                      </td>
+                      <td style={{ padding:'5px 12px', color:'#6b7280', fontFamily:'monospace', fontSize:11 }}>{r.mes || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* Resumo de correspondências (visível já no preview) */}
           {preview.tipoPagamento === 'custoFolha' && preview.correspondencias && (() => {
             const { exatos, similares, semMatch } = preview.correspondencias;
