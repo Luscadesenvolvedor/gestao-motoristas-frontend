@@ -52,6 +52,7 @@ export default function Levantamentos() {
   const [buscaMot, setBuscaMot]           = useState('');
   const [importacoesMot, setImportacoesMot] = useState([]);
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
+  const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -105,6 +106,27 @@ export default function Levantamentos() {
   }, [regsMot, mesFiltroMot, buscaMot]);
 
   const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
+
+  function getDetalheMotorista(motoristaNome) {
+    const key = motoristaNome.trim().toUpperCase();
+    const registros = regsMot.filter(r => {
+      if (r.motorista.trim().toUpperCase() !== key) return false;
+      if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
+      return true;
+    });
+    const map = {};
+    for (const r of registros) {
+      if (!map[r.importacaoId]) {
+        const im = importacoesMot.find(i => i.id === r.importacaoId);
+        map[r.importacaoId] = {
+          nomeArquivo: im?.nomeArquivo?.replace(/\.xlsx?$/i,'') || `Importação ${r.importacaoId}`,
+          valor: 0,
+        };
+      }
+      map[r.importacaoId].valor += parseFloat(r.valor || 0);
+    }
+    return Object.values(map).sort((a, b) => b.valor - a.valor);
+  }
 
 
 
@@ -368,52 +390,88 @@ export default function Levantamentos() {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
-                      {['Motorista','Veículo','Mês(es)','Valor Total'].map(h => (
-                        <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor Total' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                      {['Motorista','Veículo','Mês(es)','Valor Total',''].map(h => (
+                        <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor Total' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width: h==='' ? 40 : 'auto' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {regsFiltrados.map((r, i) => (
-                      <tr key={r.motorista} style={{ background: i%2===0?'#fff':'#fafafa' }}
-                        onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
-                        onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
-                        <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6' }}>{r.motorista}</td>
-                        <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6' }}>
-                          {r.veiculo ? (
-                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span>
-                          ) : placasMot[r.motorista]?.salvo ? (
-                            <span style={{ padding:'2px 8px', borderRadius:6, background:'#dcfce7', color:'#166534', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>
-                              {placasMot[r.motorista].valor} ✓
-                            </span>
-                          ) : (
-                            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
-                              <input
-                                value={placasMot[r.motorista]?.valor || ''}
-                                onChange={e => setPlacasMot(p => ({ ...p, [r.motorista]: { ...p[r.motorista], valor: e.target.value.toUpperCase(), salvo: false } }))}
-                                onKeyDown={e => e.key === 'Enter' && salvarPlacaMot(r.motorista)}
-                                placeholder="ABC-1234"
-                                style={{ width:85, padding:'3px 7px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:11, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', outline:'none' }}
-                              />
-                              <button
-                                onClick={() => salvarPlacaMot(r.motorista)}
-                                disabled={placasMot[r.motorista]?.salvando || !placasMot[r.motorista]?.valor}
-                                style={{ padding:'3px 8px', border:'none', borderRadius:6, background:'#6366f1', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                                {placasMot[r.motorista]?.salvando ? '...' : 'Salvar'}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding:'10px 16px', borderBottom:'1px solid #f3f4f6', color:'#475569', fontSize:12 }}>
-                          {[...r.meses].sort().map(m => fmtMes(m)).join(', ') || '—'}
-                        </td>
-                        <td style={{ padding:'10px 16px', textAlign:'right', fontWeight:700, color:'#EB3238', borderBottom:'1px solid #f3f4f6' }}>{fmtR(r.valor)}</td>
-                      </tr>
-                    ))}
+                    {regsFiltrados.map((r, i) => {
+                      const key = r.motorista.trim().toUpperCase();
+                      const aberto = detalheMot === key;
+                      const detalhes = aberto ? getDetalheMotorista(r.motorista) : [];
+                      return [
+                        <tr key={r.motorista} style={{ background: i%2===0?'#fff':'#fafafa' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                          onMouseLeave={e => e.currentTarget.style.background= aberto ? '#f0f9ff' : i%2===0?'#fff':'#fafafa'}>
+                          <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{r.motorista}</td>
+                          <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
+                            {r.veiculo ? (
+                              <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span>
+                            ) : placasMot[r.motorista]?.salvo ? (
+                              <span style={{ padding:'2px 8px', borderRadius:6, background:'#dcfce7', color:'#166534', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>
+                                {placasMot[r.motorista].valor} ✓
+                              </span>
+                            ) : (
+                              <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+                                <input
+                                  value={placasMot[r.motorista]?.valor || ''}
+                                  onChange={e => setPlacasMot(p => ({ ...p, [r.motorista]: { ...p[r.motorista], valor: e.target.value.toUpperCase(), salvo: false } }))}
+                                  onKeyDown={e => e.key === 'Enter' && salvarPlacaMot(r.motorista)}
+                                  placeholder="ABC-1234"
+                                  style={{ width:85, padding:'3px 7px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:11, fontFamily:'monospace', fontWeight:700, textTransform:'uppercase', outline:'none' }}
+                                />
+                                <button
+                                  onClick={() => salvarPlacaMot(r.motorista)}
+                                  disabled={placasMot[r.motorista]?.salvando || !placasMot[r.motorista]?.valor}
+                                  style={{ padding:'3px 8px', border:'none', borderRadius:6, background:'#6366f1', color:'#fff', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                                  {placasMot[r.motorista]?.salvando ? '...' : 'Salvar'}
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6', color:'#475569', fontSize:12 }}>
+                            {[...r.meses].sort().map(m => fmtMes(m)).join(', ') || '—'}
+                          </td>
+                          <td style={{ padding:'10px 16px', textAlign:'right', fontWeight:700, color:'#EB3238', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{fmtR(r.valor)}</td>
+                          <td style={{ padding:'10px 16px', textAlign:'center', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
+                            <button
+                              onClick={() => setDetalheMot(aberto ? null : key)}
+                              title="Ver composição"
+                              style={{ padding:'3px 7px', border:`1.5px solid ${aberto ? '#0ea5e9' : '#e5e7eb'}`, borderRadius:6, background: aberto ? '#e0f2fe' : '#fff', color: aberto ? '#0369a1' : '#9ca3af', fontSize:12, cursor:'pointer', lineHeight:1 }}>
+                              <i className="ti ti-flag-3"></i>
+                            </button>
+                          </td>
+                        </tr>,
+                        aberto && (
+                          <tr key={r.motorista + '_detalhe'}>
+                            <td colSpan={5} style={{ padding:'0 16px 12px 32px', background:'#f0f9ff', borderBottom:'1px solid #bae6fd' }}>
+                              <div style={{ fontSize:11, fontWeight:700, color:'#0369a1', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:6 }}>
+                                Composição do valor — {r.motorista}
+                              </div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                                {detalhes.map((d, di) => (
+                                  <div key={di} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', background:'#fff', borderRadius:6, border:'1px solid #bae6fd' }}>
+                                    <span style={{ fontSize:12, color:'#374151' }}>
+                                      <i className="ti ti-file-spreadsheet" style={{ fontSize:12, color:'#6366f1', marginRight:5 }}></i>
+                                      {d.nomeArquivo}
+                                    </span>
+                                    <span style={{ fontSize:12, fontWeight:700, color:'#0369a1' }}>{fmtR(d.valor)}</span>
+                                  </div>
+                                ))}
+                                {detalhes.length === 0 && (
+                                  <div style={{ fontSize:12, color:'#9ca3af', padding:'4px 0' }}>Nenhum registro encontrado</div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      ];
+                    })}
                   </tbody>
                   <tfoot>
                     <tr style={{ background:'#f8fafc', fontWeight:700 }}>
-                      <td colSpan={3} style={{ padding:'11px 16px', color:'#374151' }}>TOTAL</td>
+                      <td colSpan={4} style={{ padding:'11px 16px', color:'#374151' }}>TOTAL</td>
                       <td style={{ padding:'11px 16px', textAlign:'right', color:'#EB3238' }}>{fmtR(totalMot)}</td>
                     </tr>
                   </tfoot>
