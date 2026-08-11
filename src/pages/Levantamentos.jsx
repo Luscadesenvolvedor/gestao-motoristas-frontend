@@ -294,8 +294,7 @@ export default function Levantamentos() {
   const corFrota = '#10b981';
   const corMeli  = '#8b5cf6';
 
-  // Motoristas únicos dos importados — filtrado só por tempo (não por frota),
-  // pois muitas importações não têm o campo frota preenchido
+  // Motoristas únicos dos importados — filtrado só por tempo (não por frota)
   const motoristasUnicosImportados = useMemo(() => new Set(
     regsMot.filter(r => {
       if (mesFiltro && r.mes !== mesFiltro) return false;
@@ -304,14 +303,31 @@ export default function Levantamentos() {
     }).map(r => r.motorista.trim().toUpperCase())
   ).size, [mesFiltro, anoFiltro, regsMot]);
 
-  // Card "Motoristas Fechados": usa o campo manual se preenchido, senão conta únicos dos importados
+  // Card "Motoristas Fechados": mostra a MÉDIA mensal de motoristas (não a soma acumulada).
+  // Ex.: 6 meses com 50 motoristas cada → exibe 50, não 300.
   const motoristasCard = useMemo(() => {
-    const manual = listaFiltrada.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
-    return manual > 0 ? manual : motoristasUnicosImportados;
-  }, [listaFiltrada, motoristasUnicosImportados]);
+    const validos = listaFiltrada.filter(l => parseInt(l.motoristasFechados) > 0);
+    if (validos.length > 0) {
+      const soma = validos.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
+      return Math.round(soma / validos.length);
+    }
+    // Fallback 1: motoristas custo folha importados, já filtrado pelo tipoFiltro
+    if (totaisMot.motoristasFechados > 0) return totaisMot.motoristasFechados;
+    // Fallback 2: qualquer motorista importado
+    return motoristasUnicosImportados;
+  }, [listaFiltrada, totaisMot, motoristasUnicosImportados]);
+
+  // Para o DENOMINADOR da média usa a SOMA total de motoristas×meses
+  // (total / soma_motoristas = custo médio por motorista por mês)
+  const motoristasParaMedia = useMemo(() => {
+    const soma = listaFiltrada.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
+    if (soma > 0) return soma;
+    if (totaisMot.motoristasFechados > 0) return totaisMot.motoristasFechados;
+    return motoristasUnicosImportados;
+  }, [listaFiltrada, totaisMot, motoristasUnicosImportados]);
 
   const cardsMedia = tipoFiltro
-    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(motoristasCard > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasCard : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
+    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(motoristasParaMedia > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasParaMedia : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
     : [
         { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota)), cor: corFrota, icon:'ti-chart-bar' },
         { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli)),  cor: corMeli,  icon:'ti-chart-bar' },
