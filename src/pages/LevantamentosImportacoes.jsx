@@ -21,6 +21,10 @@ const tokens = s => norm(s).split(/\s+/).filter(t => t.length > 2);
 function scoreNome(a, b) {
   const ta = tokens(a), tb = tokens(b);
   if (!ta.length || !tb.length) return 0;
+
+  // Primeiro token (primeiro nome) tem que bater — se não, não é a mesma pessoa
+  if (ta[0] !== tb[0]) return 0;
+
   const tbSet = new Set(tb);
   const overlap = ta.filter(t => tbSet.has(t)).length;
   const tokenScore = overlap / Math.max(ta.length, tb.length);
