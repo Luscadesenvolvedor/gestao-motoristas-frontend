@@ -306,10 +306,25 @@ export default function Ferias() {
       )}
 
       {tab === 'ferias' && (() => {
-        const cols = ['Motorista','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])];
+        const FROTA_LABEL = { buzin:'BUZIN', meli:'MELI', lbm:'LBM', meli_buzin:'MELI/BUZIN', meli_lbm:'MELI/LBM' };
+        const FROTA_COR   = { buzin:'#7c3aed', meli:'#0891b2', lbm:'#b45309', meli_buzin:'#0891b2', meli_lbm:'#0891b2' };
+        const CATEG_LABEL = { frota:'Frota', dedicado_usiminas:'Ded. Usiminas', dedicado_arcelormittal:'Ded. Arcelormittal', patio:'Pátio', tirador_ferias:'Tirador Férias' };
+
+        const cols = ['Motorista','Frota','Categoria','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])];
         const renderLinhas = (itens) => itens.map(f=>(
           <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
             <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
+            <td style={{ padding:'10px 14px' }}>
+              {f.motorista?.frota ? (
+                <span style={{ padding:'2px 9px', borderRadius:20, fontSize:11, fontWeight:600, background: (FROTA_COR[f.motorista.frota]||'#6b7280')+'18', color: FROTA_COR[f.motorista.frota]||'#6b7280' }}>
+                  {FROTA_LABEL[f.motorista.frota] || f.motorista.frota}
+                </span>
+              ) : '—'}
+            </td>
+            <td style={{ padding:'10px 14px', fontSize:12, color:'#6b7280' }}>
+              <div>{f.motorista?.categoria ? CATEG_LABEL[f.motorista.categoria] || f.motorista.categoria : '—'}</div>
+              {f.motorista?.descricao && <div style={{ fontSize:11, color:'#9ca3af', marginTop:2 }}>{f.motorista.descricao}</div>}
+            </td>
             <td style={{ padding:'10px 14px' }}>
               <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:f.tipo==='ferias'?'#fff0f0':'#fef3c7', color:f.tipo==='ferias'?'#EB3238':'#92400e' }}>
                 {f.tipo === 'ferias' ? '🏖️ Férias' : '🏥 Atestado'}
