@@ -294,6 +294,27 @@ export default function Levantamentos() {
   const corFrota = '#10b981';
   const corMeli  = '#8b5cf6';
 
+  // Totais importados separados por frota (para calcMedia das cards FROTA e MELI sem filtro)
+  const totaisImportPorFrota = useMemo(() => {
+    const acc = { FROTA: { total: 0, motoristas: {} }, MELI: { total: 0, motoristas: {} } };
+    for (const r of regsMot) {
+      const meta = importacoesMap[r.importacaoId];
+      if (!meta?.frota || !acc[meta.frota]) continue;
+      if (mesFiltro && r.mes !== mesFiltro) continue;
+      if (anoFiltro && !r.mes?.startsWith(anoFiltro)) continue;
+      const v = parseFloat(r.valor || 0);
+      acc[meta.frota].total += v;
+      if (v > 0) {
+        const key = r.motorista.trim().toUpperCase();
+        acc[meta.frota].motoristas[key] = (acc[meta.frota].motoristas[key] || 0) + v;
+      }
+    }
+    return {
+      FROTA: { total: acc.FROTA.total, motoristas: Object.values(acc.FROTA.motoristas).filter(v => v > 0).length },
+      MELI:  { total: acc.MELI.total,  motoristas: Object.values(acc.MELI.motoristas).filter(v => v > 0).length },
+    };
+  }, [regsMot, importacoesMap, mesFiltro, anoFiltro]);
+
   // Motoristas únicos dos importados — filtrado só por tempo (não por frota)
   const motoristasUnicosImportados = useMemo(() => new Set(
     regsMot.filter(r => {
@@ -329,8 +350,8 @@ export default function Levantamentos() {
   const cardsMedia = tipoFiltro
     ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(motoristasParaMedia > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasParaMedia : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
     : [
-        { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota)), cor: corFrota, icon:'ti-chart-bar' },
-        { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli)),  cor: corMeli,  icon:'ti-chart-bar' },
+        { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota, totaisImportPorFrota.FROTA.total, totaisImportPorFrota.FROTA.motoristas)), cor: corFrota, icon:'ti-chart-bar' },
+        { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli,  totaisImportPorFrota.MELI.total,  totaisImportPorFrota.MELI.motoristas)),  cor: corMeli,  icon:'ti-chart-bar' },
         { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 

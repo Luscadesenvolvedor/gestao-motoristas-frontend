@@ -27,8 +27,11 @@ export default function Ferias() {
   const [formAfast, setFormAfast] = useState({ motoristaId:'', dataInicio:'', dataRetorno:'', indeterminado:false, observacao:'' });
   const [formAband, setFormAband] = useState({ motoristaId:'', data:'', observacao:'' });
   const [filtroMotorista, setFiltroMotorista] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroTipo, setFiltroTipo]           = useState('');
+  const [filtroStatus, setFiltroStatus]       = useState('');
+  const [filtroFrota, setFiltroFrota]         = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [filtroBusca, setFiltroBusca]         = useState('');
   const canEdit = pode('ferias', 'escrita');
 
   useEffect(() => { carregarTudo(); }, []);
@@ -121,9 +124,20 @@ export default function Ferias() {
 
   const listaFiltrada = lista.filter(f => {
     if (filtroMotorista && f.motoristaId !== filtroMotorista) return false;
-    if (filtroTipo && f.tipo !== filtroTipo) return false;
+    if (filtroTipo      && f.tipo !== filtroTipo) return false;
+    if (filtroFrota     && f.motorista?.frota !== filtroFrota) return false;
+    if (filtroCategoria && f.motorista?.categoria !== filtroCategoria) return false;
+    if (filtroBusca     && !f.motorista?.nome?.toLowerCase().includes(filtroBusca.toLowerCase())) return false;
+    if (filtroStatus === 'ativo'     && !emFerias(f))    return false;
+    if (filtroStatus === 'pendente'  && !isPendente(f))  return false;
+    if (filtroStatus === 'encerrado' && !isEncerrado(f)) return false;
     return true;
   });
+
+  function limparFiltros() {
+    setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus('');
+    setFiltroFrota(''); setFiltroCategoria(''); setFiltroBusca('');
+  }
 
   const feriasAtivas     = listaFiltrada.filter(f => emFerias(f) || isPendente(f));
   const feriasEncerradas = listaFiltrada.filter(f => isEncerrado(f));
@@ -156,43 +170,20 @@ export default function Ferias() {
 
       <div style={{ display:'flex', gap:4, marginBottom:16, background:'#f3f4f6', borderRadius:10, padding:4 }}>
         {TABS.map(t => (
-          <button key={t.key} onClick={()=>{ setTab(t.key); setShowForm(false); setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }}
+          <button key={t.key} onClick={()=>{ setTab(t.key); setShowForm(false); limparFiltros(); }}
             style={{ flex:1, padding:'8px 12px', border:'none', borderRadius:8, fontSize:13, fontWeight:tab===t.key?500:400, cursor:'pointer', background:tab===t.key?'#fff':'transparent', color:tab===t.key?'#EB3238':'#6b7280', boxShadow:tab===t.key?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
             {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{ background:'#fff', borderRadius:12, padding:'12px 16px', marginBottom:12, border:'1px solid #e5e7eb', display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap' }}>
-        <div>
-          <label style={lbl}>Motorista</label>
-          <select value={filtroMotorista} onChange={e=>setFiltroMotorista(e.target.value)} style={inp}>
-            <option value="">Todos</option>
-            {motoristas.map(m=><option key={m.id} value={m.id}>{m.nome}</option>)}
-          </select>
+      {(filtroMotorista || filtroTipo || filtroStatus || filtroFrota || filtroCategoria || filtroBusca) && (
+        <div style={{ marginBottom:8, display:'flex', justifyContent:'flex-end' }}>
+          <button onClick={limparFiltros} style={{ ...btn('#f3f4f6','#374151'), fontSize:12, display:'flex', alignItems:'center', gap:5 }}>
+            <i className="ti ti-x" style={{ fontSize:12 }}></i> Limpar filtros
+          </button>
         </div>
-        {tab === 'ferias' && (
-          <div>
-            <label style={lbl}>Tipo</label>
-            <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={inp}>
-              <option value="">Todos</option>
-              <option value="ferias">Férias</option>
-              <option value="atestado">Atestado</option>
-            </select>
-          </div>
-        )}
-        {tab === 'afastamentos' && (
-          <div>
-            <label style={lbl}>Status</label>
-            <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={inp}>
-              <option value="">Todos</option>
-              <option value="afastado">Afastado</option>
-              <option value="retornou">Retornou</option>
-            </select>
-          </div>
-        )}
-        <button onClick={()=>{ setFiltroMotorista(''); setFiltroTipo(''); setFiltroStatus(''); }} style={{ ...btn('#f3f4f6','#374151'), fontSize:12 }}>Limpar filtros</button>
-      </div>
+      )}
 
       {showForm && tab === 'ferias' && canEdit && (
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:16, border:'1px solid #e5e7eb' }}>
@@ -310,7 +301,19 @@ export default function Ferias() {
         const FROTA_COR   = { buzin:'#7c3aed', meli:'#0891b2', lbm:'#b45309', meli_buzin:'#0891b2', meli_lbm:'#0891b2' };
         const CATEG_LABEL = { frota:'Frota', dedicado_usiminas:'Ded. Usiminas', dedicado_arcelormittal:'Ded. Arcelormittal', patio:'Pátio', tirador_ferias:'Tirador Férias' };
 
-        const cols = ['Motorista','Frota','Categoria','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])];
+        const thFiltro = (children) => ({
+          padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600,
+          color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb',
+          verticalAlign:'top', background:'#f9fafb',
+          children,
+        });
+
+        const selFiltro = { width:'100%', marginTop:4, padding:'3px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:11, background:'#fff', color:'#374151', cursor:'pointer' };
+        const inpFiltro = { ...selFiltro, fontWeight:400 };
+
+        const frotasDisponiveis = [...new Set(lista.map(f => f.motorista?.frota).filter(Boolean))].sort();
+        const categDisponiveis  = [...new Set(lista.map(f => f.motorista?.categoria).filter(Boolean))].sort();
+
         const renderLinhas = (itens) => itens.map(f=>(
           <tr key={f.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
             <td style={{ padding:'10px 14px', fontWeight:500 }}>{f.motorista?.nome}</td>
@@ -357,14 +360,52 @@ export default function Ferias() {
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                 <thead>
                   <tr style={{ background:'#f9fafb' }}>
-                    {cols.map(h=>(
-                      <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                    <th style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top', minWidth:140 }}>
+                      Motorista
+                      <input value={filtroBusca} onChange={e=>setFiltroBusca(e.target.value)} placeholder="Buscar..." style={inpFiltro} />
+                    </th>
+                    <th style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top', minWidth:110 }}>
+                      Frota
+                      <select value={filtroFrota} onChange={e=>setFiltroFrota(e.target.value)} style={selFiltro}>
+                        <option value="">Todas</option>
+                        {frotasDisponiveis.map(f=><option key={f} value={f}>{FROTA_LABEL[f]||f}</option>)}
+                      </select>
+                    </th>
+                    <th style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top', minWidth:130 }}>
+                      Categoria
+                      <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)} style={selFiltro}>
+                        <option value="">Todas</option>
+                        {categDisponiveis.map(c=><option key={c} value={c}>{CATEG_LABEL[c]||c}</option>)}
+                      </select>
+                    </th>
+                    <th style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top', minWidth:100 }}>
+                      Tipo
+                      <select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)} style={selFiltro}>
+                        <option value="">Todos</option>
+                        <option value="ferias">Férias</option>
+                        <option value="atestado">Atestado</option>
+                      </select>
+                    </th>
+                    {['Início','Fim','Dias'].map(h=>(
+                      <th key={h} style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top' }}>{h}</th>
+                    ))}
+                    <th style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top', minWidth:100 }}>
+                      Status
+                      <select value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)} style={selFiltro}>
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="encerrado">Encerrado</option>
+                      </select>
+                    </th>
+                    {['Observação','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                      <th key={h} style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', verticalAlign:'top' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {renderLinhas(feriasAtivas)}
-                  {feriasAtivas.length===0 && <tr><td colSpan={cols.length} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum registro ativo</td></tr>}
+                  {feriasAtivas.length===0 && <tr><td colSpan={10+(isAdmin?1:0)} style={{ padding:40, textAlign:'center', color:'#9ca3af' }}>Nenhum registro ativo</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -383,8 +424,8 @@ export default function Ferias() {
                   <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                     <thead>
                       <tr style={{ background:'#f9fafb' }}>
-                        {cols.map(h=>(
-                          <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                        {['Motorista','Frota','Categoria','Tipo','Início','Fim','Dias','Status','Observação','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                          <th key={h} style={{ padding:'8px 10px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
