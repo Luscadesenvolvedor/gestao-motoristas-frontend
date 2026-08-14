@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const fmt       = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const fmtData   = d => d ? new Date(d.slice(0,10) + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -100,6 +101,7 @@ const vazioStep1 = { razaoSocial:'', cnpj:'', responsavel:'', contato:'', numero
 const vazioStep2 = { valor:'', dataVencimento:'', observacao:'', arquivoNome:null, arquivoBase64:null, arquivoTipo:null };
 
 export default function Faturas() {
+  const { isAdmin } = useAuth();
   const [faturas, setFaturas]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [expandidos, setExpandidos] = useState({});
@@ -123,6 +125,10 @@ export default function Faturas() {
   const [editForn, setEditForn]     = useState({});
   const [editFat, setEditFat]       = useState({});
   const [salvandoEdit, setSalvandoEdit] = useState(false);
+  // Logs de auditoria (admin only)
+  const [logs, setLogs]             = useState([]);
+  const [showLogs, setShowLogs]     = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   useEffect(() => { carregar(); }, []);
 
@@ -249,6 +255,19 @@ export default function Faturas() {
       setNfForm({ numero:'', valor:'', arquivoNome:null, arquivoBase64:null, arquivoTipo:null });
       carregar();
     } catch { toast.error('Erro ao adicionar NF'); } finally { setSalvandoNF(false); }
+  }
+
+  async function carregarLogs() {
+    setLoadingLogs(true);
+    try {
+      const { data } = await api.get('/faturas-abastecimento/logs');
+      setLogs(data);
+    } catch { toast.error('Erro ao carregar logs'); } finally { setLoadingLogs(false); }
+  }
+
+  function toggleLogs() {
+    if (!showLogs && logs.length === 0) carregarLogs();
+    setShowLogs(v => !v);
   }
 
   function abrirEdicao(fatura) {
@@ -659,6 +678,74 @@ export default function Faturas() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ══════════ PAINEL LOGS (admin) ══════════ */}
+      {isAdmin && (
+        <div style={{ marginTop:24, background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
+          <div onClick={toggleLogs} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 18px', cursor:'pointer', background:'#f8fafc', borderBottom: showLogs ? '1px solid #e5e7eb' : 'none' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <i className="ti ti-history" style={{ fontSize:16, color:'#6b7280' }}></i>
+              <span style={{ fontSize:13, fontWeight:600, color:'#374151' }}>Logs de Auditoria</span>
+              {logs.length > 0 && <span style={{ fontSize:11, background:'#f3f4f6', color:'#6b7280', borderRadius:20, padding:'1px 8px' }}>{logs.length}</span>}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              {showLogs && <button onClick={e => { e.stopPropagation(); carregarLogs(); }}
+                style={{ fontSize:11, padding:'3px 10px', border:'1px solid #d1d5db', borderRadius:6, background:'#fff', cursor:'pointer', color:'#6b7280' }}>
+                Atualizar
+              </button>}
+              <span style={{ fontSize:16, color:'#9ca3af', transform: showLogs ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}>▾</span>
+            </div>
+          </div>
+
+          {showLogs && (
+            <div style={{ padding:'0 0 4px' }}>
+              {loadingLogs ? (
+                <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:13 }}>Carregando logs...</div>
+              ) : logs.length === 0 ? (
+                <div style={{ padding:'30px', textAlign:'center', color:'#9ca3af', fontSize:13 }}>Nenhum log registrado ainda.</div>
+              ) : (
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr style={{ background:'#f9fafb' }}>
+                      {['Data/Hora','Usuário','Ação','Registro','Detalhes'].map(h => (
+                        <th key={h} style={{ padding:'8px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map(log => {
+                      const ACAO_COR = { criou:'#16a34a', editou:'#d97706', excluiu:'#dc2626', pagou:'#0891b2', reabriu:'#7c3aed', adicionou_nf:'#059669', excluiu_nf:'#dc2626' };
+                      const ACAO_LABEL = { criou:'Criou', editou:'Editou', excluiu:'Excluiu', pagou:'Pagou', reabriu:'Reabriu', adicionou_nf:'Adicionou NF', excluiu_nf:'Excluiu NF' };
+                      const cor = ACAO_COR[log.acao] || '#6b7280';
+                      const dados = log.dadosNovos || log.dadosAntigos || {};
+                      const detalhe = Object.entries(dados).map(([k,v]) => `${k}: ${v}`).join(' · ');
+                      return (
+                        <tr key={log.id} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                          <td style={{ padding:'8px 14px', color:'#6b7280', whiteSpace:'nowrap' }}>
+                            {new Date(log.criadoEm).toLocaleString('pt-BR')}
+                          </td>
+                          <td style={{ padding:'8px 14px', fontWeight:500 }}>{log.usuario?.nome || '—'}</td>
+                          <td style={{ padding:'8px 14px' }}>
+                            <span style={{ padding:'2px 9px', borderRadius:20, fontSize:11, fontWeight:600, background: cor+'18', color: cor }}>
+                              {ACAO_LABEL[log.acao] || log.acao}
+                            </span>
+                          </td>
+                          <td style={{ padding:'8px 14px', color:'#9ca3af', fontSize:11, fontFamily:'monospace' }}>
+                            {log.tabela === 'nf_abastecimento' ? 'NF' : 'Fatura'} · {log.registroId.slice(0,8)}…
+                          </td>
+                          <td style={{ padding:'8px 14px', color:'#6b7280', maxWidth:300, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {detalhe || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </div>
       )}
 
