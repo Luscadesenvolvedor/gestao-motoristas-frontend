@@ -258,6 +258,122 @@ export default function Faturas() {
     setNfForm(f => ({ ...f, arquivoNome: file.name, arquivoBase64: b64, arquivoTipo: file.type }));
   }
 
+  // ── Gerar PDF ──
+  function gerarPDF() {
+    const tipoLabel = filtroTipo === 'todos' ? 'Todos os Serviços'
+      : TIPOS.find(t => t.val === filtroTipo)?.label || filtroTipo;
+    const statusLabel = filtroStatus === 'todos' ? 'Todos os Status'
+      : STATUS[filtroStatus]?.label || filtroStatus;
+    const dataGeracao = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+    const totalGeral = listaFiltrada.reduce((s,f) => s + Number(f.valor), 0);
+
+    const linhas = listaFiltrada.map(f => {
+      const forn = f.fornecedor;
+      const sc = STATUS[f.status] || STATUS.pendente;
+      const nfs = f.notasFiscais || [];
+      const somaANFs = nfs.reduce((s,nf) => s + Number(nf.valor), 0);
+      return `
+        <tr>
+          <td>${forn?.razaoSocial || '—'}</td>
+          <td>${mascaraCNPJ(forn?.cnpj || '')}</td>
+          <td>${(forn?.frota || '—').toUpperCase()}</td>
+          <td>${forn?.numeroOC || '—'}</td>
+          <td style="text-align:center">${fmtData(f.dataVencimento)}</td>
+          <td style="text-align:center">${f.dataPagamento ? fmtData(f.dataPagamento) : '—'}</td>
+          <td style="text-align:center">
+            <span style="padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:${sc.bg};color:${sc.cor}">${sc.label}</span>
+          </td>
+          <td style="text-align:right;font-weight:600">${fmt(f.valor)}</td>
+          <td style="text-align:right;color:#0891b2">${somaANFs > 0 ? fmt(somaANFs) : '—'}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório de Faturas — ${tipoLabel}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a2e; padding: 32px 40px; }
+    .header { border-bottom: 3px solid #EB3238; padding-bottom: 16px; margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; color: #EB3238; }
+    .header .sub { font-size: 13px; color: #6b7280; margin-top: 4px; }
+    .meta { display: flex; gap: 30px; margin-bottom: 20px; }
+    .meta-item { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 16px; }
+    .meta-item .label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+    .meta-item .value { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    thead th { background: #1a1a2e; color: #fff; padding: 9px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; vertical-align: middle; }
+    .total-row { background: #EB3238 !important; }
+    .total-row td { color: #fff; font-weight: 700; font-size: 13px; padding: 10px 10px; border: none; }
+    .footer { margin-top: 24px; font-size: 10px; color: #9ca3af; text-align: right; }
+    @media print {
+      body { padding: 16px 20px; }
+      @page { margin: 15mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Relatório de Faturas — ${tipoLabel}</h1>
+    <div class="sub">Status: ${statusLabel} · Gerado em ${dataGeracao}</div>
+  </div>
+  <div class="meta">
+    <div class="meta-item">
+      <div class="label">Nº de Faturas</div>
+      <div class="value">${listaFiltrada.length}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Total Pendente</div>
+      <div class="value" style="color:#d97706">${fmt(listaFiltrada.filter(f=>f.status!=='pago').reduce((s,f)=>s+Number(f.valor),0))}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Total Pago</div>
+      <div class="value" style="color:#16a34a">${fmt(listaFiltrada.filter(f=>f.status==='pago').reduce((s,f)=>s+Number(f.valor),0))}</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Total Geral</div>
+      <div class="value" style="color:#EB3238">${fmt(totalGeral)}</div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Fornecedor</th>
+        <th>CNPJ</th>
+        <th>Frota</th>
+        <th>Nº OC</th>
+        <th style="text-align:center">Vencimento</th>
+        <th style="text-align:center">Pagamento</th>
+        <th style="text-align:center">Status</th>
+        <th style="text-align:right">Valor Fatura</th>
+        <th style="text-align:right">Soma NFs</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${linhas}
+      <tr class="total-row">
+        <td colspan="7">TOTAL</td>
+        <td style="text-align:right">${fmt(totalGeral)}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="footer">Sistema Gestão Motoristas · ${dataGeracao}</div>
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { toast.error('Permita pop-ups para gerar o PDF'); return; }
+    win.document.write(html);
+    win.document.close();
+  }
+
   // ── Filtros ──
   const listaFiltrada = useMemo(() => faturas.filter(f => {
     if (filtroStatus !== 'todos' && f.status !== filtroStatus) return false;
@@ -327,7 +443,12 @@ export default function Faturas() {
             {s === 'todos' ? 'Todos' : STATUS[s]?.label}
           </button>
         ))}
-        <span style={{ marginLeft:'auto', fontSize:12, color:'#9ca3af' }}>{listaFiltrada.length} fatura(s)</span>
+        <span style={{ fontSize:12, color:'#9ca3af' }}>{listaFiltrada.length} fatura(s)</span>
+        <button onClick={gerarPDF}
+          style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:5, padding:'5px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, fontWeight:500, cursor:'pointer', color:'#374151' }}>
+          <i className="ti ti-file-type-pdf" style={{ fontSize:15, color:'#EB3238' }}></i>
+          Gerar PDF
+        </button>
       </div>
 
       {/* Lista */}
