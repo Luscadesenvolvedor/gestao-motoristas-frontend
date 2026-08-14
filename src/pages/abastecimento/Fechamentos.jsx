@@ -125,7 +125,6 @@ export default function Fechamentos() {
               {[
                 { label:'Placas', valor: preview.placas.length, cor:'#0891b2', raw: true },
                 { label:'Total Despesas', valor: fmt(totalGeral), cor:'#1a1a2e' },
-                { label:'Estimativa Perda', valor: fmtNeg(perdaGeral), cor:'#dc2626' },
               ].map(c => (
                 <div key={c.label} style={{ textAlign:'center', background:'#fff', borderRadius:8, border:'1px solid #f3f4f6', padding:'8px 18px' }}>
                   <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', fontWeight:600, marginBottom:2 }}>{c.label}</div>
@@ -151,7 +150,7 @@ export default function Fechamentos() {
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f9fafb' }}>
-                  {['Placa','Modelo','Total Despesas','Estimativa Perda'].map(h => (
+                  {['Placa','Modelo','Total Despesas'].map(h => (
                     <th key={h} style={{ padding:'9px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                   ))}
                 </tr>
@@ -162,16 +161,12 @@ export default function Fechamentos() {
                     <td style={{ padding:'9px 16px', fontWeight:700, color:'#1a1a2e', fontFamily:'monospace', fontSize:14 }}>{p.placa}</td>
                     <td style={{ padding:'9px 16px', color:'#374151' }}>{p.modelo || '—'}</td>
                     <td style={{ padding:'9px 16px', fontWeight:600, color:'#1a1a2e' }}>{fmt(p.totalDespesas)}</td>
-                    <td style={{ padding:'9px 16px', color: Number(p.estimativaPerda) < 0 ? '#dc2626' : '#374151', fontWeight:600 }}>
-                      {p.estimativaPerda != null ? fmtNeg(p.estimativaPerda) : '—'}
-                    </td>
                   </tr>
                 ))}
                 {/* Total */}
                 <tr style={{ background:'#f9fafb', fontWeight:700 }}>
                   <td colSpan={2} style={{ padding:'10px 16px', color:'#6b7280', fontSize:12 }}>TOTAL — {preview.placas.length} placa(s)</td>
                   <td style={{ padding:'10px 16px', color:'#1a1a2e' }}>{fmt(totalGeral)}</td>
-                  <td style={{ padding:'10px 16px', color:'#dc2626' }}>{fmtNeg(perdaGeral)}</td>
                 </tr>
               </tbody>
             </table>
@@ -220,10 +215,6 @@ export default function Fechamentos() {
                       <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', fontWeight:600 }}>Total Despesas</div>
                       <div style={{ fontSize:15, fontWeight:700, color:'#1a1a2e' }}>{fmt(totalF)}</div>
                     </div>
-                    <div style={{ textAlign:'center' }}>
-                      <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', fontWeight:600 }}>Est. Perda</div>
-                      <div style={{ fontSize:15, fontWeight:700, color:'#dc2626' }}>{fmtNeg(perdaF)}</div>
-                    </div>
                   </div>
 
                   {/* Ações */}
@@ -253,7 +244,7 @@ export default function Fechamentos() {
                         <thead>
                           <tr style={{ background:'#f9fafb' }}>
                             <th style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>#</th>
-                            {['Placa','Modelo','Total Despesas','Estimativa Perda'].map(h => (
+                            {['Placa','Modelo','Total Despesas'].map(h => (
                               <th key={h} style={{ padding:'8px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                             ))}
                           </tr>
@@ -265,9 +256,6 @@ export default function Fechamentos() {
                               <td style={{ padding:'8px 16px', fontWeight:700, color:'#1a1a2e', fontFamily:'monospace', fontSize:13 }}>{p.placa}</td>
                               <td style={{ padding:'8px 16px', color:'#374151' }}>{p.modelo || '—'}</td>
                               <td style={{ padding:'8px 16px', fontWeight:600, color:'#1a1a2e' }}>{fmt(p.totalDespesas)}</td>
-                              <td style={{ padding:'8px 16px', fontWeight:600, color: Number(p.estimativaPerda) < 0 ? '#dc2626' : '#16a34a' }}>
-                                {p.estimativaPerda != null ? fmtNeg(p.estimativaPerda) : '—'}
-                              </td>
                             </tr>
                           ))}
                           {/* Total */}
@@ -275,7 +263,6 @@ export default function Fechamentos() {
                             <td></td>
                             <td colSpan={2} style={{ padding:'9px 16px', color:'#6b7280', fontSize:12 }}>TOTAL</td>
                             <td style={{ padding:'9px 16px', color:'#1a1a2e' }}>{fmt(totalF)}</td>
-                            <td style={{ padding:'9px 16px', color:'#dc2626' }}>{fmtNeg(perdaF)}</td>
                           </tr>
                         </tbody>
                       </table>
