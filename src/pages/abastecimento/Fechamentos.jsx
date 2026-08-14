@@ -3,13 +3,28 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const fmt    = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-const fmtNeg = v => {
-  const n = Number(v);
-  return (n < 0 ? '- ' : '') + `R$ ${Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-};
 const fmtData = iso => iso
   ? new Date(iso.slice(0,10) + 'T12:00:00').toLocaleDateString('pt-BR')
   : '—';
+
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function labelMes(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso.slice(0,10) + 'T12:00:00');
+  return `${MESES[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function agruparPorMes(lista) {
+  const grupos = {};
+  for (const f of lista) {
+    const chave = labelMes(f.periodoInicio);
+    if (!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(f);
+  }
+  return grupos;
+}
 
 function fileParaBase64(file) {
   return new Promise((resolve, reject) => {
@@ -86,9 +101,12 @@ export default function Fechamentos() {
     } catch { toast.error('Erro ao excluir'); }
   }
 
+  const [showDebug, setShowDebug] = useState(false);
+
   // ── Totais do preview ──
-  const totalGeral   = preview?.placas.reduce((s, p) => s + Number(p.totalDespesas), 0) ?? 0;
-  const perdaGeral   = preview?.placas.reduce((s, p) => s + Number(p.estimativaPerda ?? 0), 0) ?? 0;
+  const totalGeral = preview?.placas.reduce((s, p) => s + Number(p.totalDespesas), 0) ?? 0;
+  const duplicatas = preview?.duplicatas ?? [];
+  const linhasDebug = preview?._linhasDebug ?? [];
 
   return (
     <div style={{ maxWidth:1100, margin:'0 auto' }}>
@@ -145,6 +163,64 @@ export default function Fechamentos() {
             </div>
           </div>
 
+          {/* ── Alerta de diesel duplicado ── */}
+          {duplicatas.length > 0 && (
+            <div style={{ background:'#fffbeb', borderBottom:'1px solid #fde68a', padding:'14px 20px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize:18, color:'#d97706' }}></i>
+                <span style={{ fontWeight:700, fontSize:13, color:'#92400e' }}>
+                  {duplicatas.length} ocorrência(s) de Óleo Diesel duplicado detectada(s)
+                </span>
+                <span style={{ fontSize:12, color:'#b45309' }}>— mesmo posto, mesmo dia</span>
+              </div>
+              <div style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr style={{ background:'#fef3c7' }}>
+                      {['Placa','Fornecedor','Data','Qtde','Valor','Lançamentos'].map(h => (
+                        <th key={h} style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:600, color:'#92400e', textTransform:'uppercase', borderBottom:'1px solid #fde68a' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {duplicatas.map((d, i) => (
+                      <tr key={i} style={{ borderBottom:'1px solid #fef3c7' }}>
+                        <td style={{ padding:'7px 12px', fontWeight:700, fontFamily:'monospace', color:'#1a1a2e' }}>{d.placa}</td>
+                        <td style={{ padding:'7px 12px', color:'#374151' }}>{d.fornecedor}</td>
+                        <td style={{ padding:'7px 12px', color:'#374151', whiteSpace:'nowrap' }}>{d.data}</td>
+                        <td style={{ padding:'7px 12px', color:'#374151' }}>{d.qtde}</td>
+                        <td style={{ padding:'7px 12px', color:'#374151' }}>{d.valor}</td>
+                        <td style={{ padding:'7px 12px' }}>
+                          <span style={{ background:'#fbbf24', color:'#78350f', borderRadius:20, padding:'2px 9px', fontSize:11, fontWeight:700 }}>{d.ocorrencias}x</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── DEBUG: linhas extraídas pelo pdf-parse ── */}
+          {linhasDebug.length > 0 && (
+            <div style={{ borderTop:'1px solid #e5e7eb' }}>
+              <button onClick={() => setShowDebug(v => !v)}
+                style={{ width:'100%', padding:'8px 16px', background:'#f9fafb', border:'none', textAlign:'left', cursor:'pointer', fontSize:12, color:'#6b7280', display:'flex', alignItems:'center', gap:6 }}>
+                <i className={`ti ${showDebug ? 'ti-chevron-up' : 'ti-chevron-down'}`}></i>
+                🐛 Debug — {linhasDebug.length} linhas extraídas do PDF (clique para ver)
+              </button>
+              {showDebug && (
+                <div style={{ padding:'12px 16px', background:'#1e1e2e', overflowX:'auto', maxHeight:320, overflowY:'auto' }}>
+                  {linhasDebug.map((l, i) => (
+                    <div key={i} style={{ fontFamily:'monospace', fontSize:11, color: /diesel/i.test(l) ? '#fbbf24' : /\d{2}\/\d{2}\/\d{4}/.test(l) ? '#86efac' : '#cbd5e1', whiteSpace:'pre', marginBottom:1 }}>
+                      <span style={{ color:'#64748b', marginRight:8 }}>{String(i).padStart(3,'0')}</span>{l}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tabela preview */}
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
@@ -183,10 +259,18 @@ export default function Fechamentos() {
           Nenhum fechamento importado ainda.
         </div>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {fechamentos.map(f => {
+        <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+          {Object.entries(agruparPorMes(fechamentos)).map(([mes, lista]) => (
+            <div key={mes}>
+              {/* Separador de mês */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                <span style={{ fontSize:12, fontWeight:700, color:'#EB3238', textTransform:'uppercase', letterSpacing:'0.5px' }}>{mes}</span>
+                <div style={{ flex:1, height:1, background:'#f3f4f6' }} />
+                <span style={{ fontSize:11, color:'#9ca3af' }}>{lista.length} fechamento(s)</span>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {lista.map(f => {
             const totalF  = f.placas.reduce((s, p) => s + Number(p.totalDespesas), 0);
-            const perdaF  = f.placas.reduce((s, p) => s + Number(p.estimativaPerda ?? 0), 0);
             const exp     = expandidos[f.id];
             return (
               <div key={f.id} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden' }}>
@@ -272,6 +356,9 @@ export default function Fechamentos() {
               </div>
             );
           })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
