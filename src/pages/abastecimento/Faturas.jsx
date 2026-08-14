@@ -18,8 +18,10 @@ const STATUS = {
 };
 
 const TIPOS = [
-  { val:'lavagem',        label:'Lavagem',        icone:'ti-wash',    cor:'#0891b2', bg:'#f0f9ff' },
-  { val:'estacionamento', label:'Estacionamento', icone:'ti-parking', cor:'#7c3aed', bg:'#f5f3ff' },
+  { val:'lavagem',        label:'Lavagem',        icone:'ti-wash',         cor:'#0891b2', bg:'#f0f9ff' },
+  { val:'estacionamento', label:'Estacionamento', icone:'ti-parking',      cor:'#7c3aed', bg:'#f5f3ff' },
+  { val:'abastecimento',  label:'Abastecimento',  icone:'ti-gas-station',  cor:'#16a34a', bg:'#f0fdf4' },
+  { val:'lubrificacao',   label:'Lubrificação',   icone:'ti-droplet',      cor:'#ea580c', bg:'#fff7ed' },
 ];
 
 function mascaraCNPJ(v) {
@@ -129,6 +131,10 @@ export default function Faturas() {
   const [logs, setLogs]             = useState([]);
   const [showLogs, setShowLogs]     = useState(false);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  // Logs por linha (Ver mais)
+  const [logsRow, setLogsRow]             = useState({});
+  const [loadingLogsRow, setLoadingLogsRow] = useState(null);
+  const [showLogsRow, setShowLogsRow]     = useState(null);
 
   useEffect(() => { carregar(); }, []);
 
@@ -268,6 +274,18 @@ export default function Faturas() {
   function toggleLogs() {
     if (!showLogs && logs.length === 0) carregarLogs();
     setShowLogs(v => !v);
+  }
+
+  async function fetchLogsRow(faturaId) {
+    if (logsRow[faturaId]) { setShowLogsRow(faturaId); return; }
+    setLoadingLogsRow(faturaId);
+    try {
+      const { data } = await api.get('/faturas-abastecimento/logs');
+      const filtrado = data.filter(l => l.registroId === faturaId);
+      setLogsRow(prev => ({ ...prev, [faturaId]: filtrado }));
+      setShowLogsRow(faturaId);
+    } catch { toast.error('Erro ao carregar histórico'); }
+    finally { setLoadingLogsRow(null); }
   }
 
   function abrirEdicao(fatura) {
@@ -489,7 +507,7 @@ export default function Faturas() {
       {/* Filtros */}
       <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, padding:'10px 14px', marginBottom:14, display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
         <span style={{ fontSize:12, color:'#6b7280', fontWeight:500 }}>Serviço:</span>
-        {['todos','lavagem','estacionamento'].map(t => {
+        {['todos','lavagem','estacionamento','abastecimento','lubrificacao'].map(t => {
           const tp = TIPOS.find(x => x.val === t);
           return (
             <button key={t} onClick={() => setFiltroTipo(t)}
@@ -631,15 +649,19 @@ export default function Faturas() {
                         </td>
                         {/* Alteração — somente admin */}
                         {isAdmin && (
-                          <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap', maxWidth:200 }}>
-                            {fatura.usuario?.nome && (
+                          <td style={{ padding:'10px 14px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap', maxWidth:220 }}>
+                            {aud ? (
+                              <div>{ACAO_LABEL[aud.acao]||aud.acao} — {aud.usuario?.nome} — {new Date(aud.criadoEm).toLocaleString('pt-BR')}</div>
+                            ) : fatura.usuario?.nome ? (
                               <div>criou — {fatura.usuario.nome} — {fmtData(fatura.criadoEm)}</div>
-                            )}
-                            {aud && aud.acao !== 'criou' && (
-                              <div style={{ marginTop:2 }}>
-                                {ACAO_LABEL[aud.acao]||aud.acao} — {aud.usuario?.nome} — {new Date(aud.criadoEm).toLocaleString('pt-BR')}
-                              </div>
-                            )}
+                            ) : <div>—</div>}
+                            <button onClick={() => fetchLogsRow(fatura.id)} disabled={loadingLogsRow === fatura.id}
+                              style={{ marginTop:4, fontSize:10, color:'#0891b2', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline', display:'inline-flex', alignItems:'center', gap:3 }}>
+                              {loadingLogsRow === fatura.id
+                                ? <><i className="ti ti-loader" style={{ fontSize:10 }}></i> carregando...</>
+                                : <><i className="ti ti-history" style={{ fontSize:10 }}></i> Ver histórico</>
+                              }
+                            </button>
                           </td>
                         )}
                       </tr>
@@ -784,6 +806,52 @@ export default function Faturas() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ══════════ MODAL HISTÓRICO POR FATURA ══════════ */}
+      {showLogsRow && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:620, maxHeight:'80vh', overflowY:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding:'18px 22px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f3f4f6' }}>
+              <span style={{ fontWeight:700, fontSize:15, color:'#1a1a2e' }}>Histórico de alterações</span>
+              <button onClick={() => setShowLogsRow(null)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'#9ca3af', lineHeight:1 }}>×</button>
+            </div>
+            <div style={{ padding:'16px 22px' }}>
+              {(logsRow[showLogsRow] || []).length === 0 ? (
+                <p style={{ color:'#9ca3af', textAlign:'center', padding:'20px 0' }}>Nenhum registro encontrado.</p>
+              ) : (
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr style={{ background:'#f9fafb' }}>
+                      {['Data/Hora','Usuário','Ação','Detalhes'].map(h => (
+                        <th key={h} style={{ padding:'8px 12px', textAlign:'left', borderBottom:'1px solid #e5e7eb', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', whiteSpace:'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(logsRow[showLogsRow] || []).map((log, i) => {
+                      const ACAO_COR = { criou:['#dcfce7','#16a34a'], editou:['#dbeafe','#1d4ed8'], pagou:['#d1fae5','#065f46'], reabriu:['#fef9c3','#854d0e'], excluiu:['#fee2e2','#dc2626'], adicionou_nf:['#ede9fe','#6d28d9'], excluiu_nf:['#fee2e2','#dc2626'] };
+                      const [bg, cor] = ACAO_COR[log.acao] || ['#f3f4f6','#374151'];
+                      const det = log.dadosNovos || log.dadosAntigos;
+                      return (
+                        <tr key={i} style={{ borderBottom:'1px solid #f3f4f6' }}>
+                          <td style={{ padding:'8px 12px', color:'#374151', whiteSpace:'nowrap' }}>{new Date(log.criadoEm).toLocaleString('pt-BR')}</td>
+                          <td style={{ padding:'8px 12px', color:'#374151' }}>{log.usuario?.nome||'—'}</td>
+                          <td style={{ padding:'8px 12px' }}>
+                            <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600, background:bg, color:cor }}>{log.acao}</span>
+                          </td>
+                          <td style={{ padding:'8px 12px', color:'#6b7280', fontSize:11, maxWidth:200, wordBreak:'break-word' }}>
+                            {det ? Object.entries(det).filter(([,v]) => v != null).map(([k,v]) => `${k}: ${v}`).join(' · ').slice(0,120) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
