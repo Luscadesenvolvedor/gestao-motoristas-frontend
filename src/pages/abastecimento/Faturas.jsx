@@ -546,6 +546,16 @@ export default function Faturas() {
                       {tp && <span style={{ padding:'2px 9px', borderRadius:20, fontSize:11, fontWeight:600, background:tp.bg, color:tp.cor, flexShrink:0 }}>{tp.label}</span>}
                     </div>
                     <div style={{ fontSize:11, color:'#9ca3af' }}>CNPJ: {mascaraCNPJ(forn?.cnpj||'')} · {forn?.responsavel}</div>
+                    <div style={{ fontSize:10, color:'#c4c4cc', marginTop:2, display:'flex', gap:6, flexWrap:'wrap' }}>
+                      {fatura.usuario?.nome && (
+                        <span><i className="ti ti-user-plus" style={{ fontSize:10 }}></i> {fatura.usuario.nome} · {fmtData(fatura.criadoEm)}</span>
+                      )}
+                      {fatura.ultimaAuditoria && fatura.ultimaAuditoria.acao !== 'criou' && (
+                        <span style={{ color:'#a8a8b8' }}>
+                          · <i className="ti ti-pencil" style={{ fontSize:10 }}></i> {fatura.ultimaAuditoria.usuario?.nome} ({fatura.ultimaAuditoria.acao}) · {fmtData(fatura.ultimaAuditoria.criadoEm)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {/* Valor fatura */}
                   <div style={{ textAlign:'right', flexShrink:0 }}>
