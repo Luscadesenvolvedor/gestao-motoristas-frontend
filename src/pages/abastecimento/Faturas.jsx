@@ -118,6 +118,11 @@ export default function Faturas() {
   const [nfFaturaId, setNfFaturaId] = useState(null);
   const [nfForm, setNfForm]         = useState({ numero:'', valor:'', arquivoNome:null, arquivoBase64:null, arquivoTipo:null });
   const [salvandoNF, setSalvandoNF] = useState(false);
+  // Edição de fatura existente
+  const [editId, setEditId]         = useState(null);
+  const [editForn, setEditForn]     = useState({});
+  const [editFat, setEditFat]       = useState({});
+  const [salvandoEdit, setSalvandoEdit] = useState(false);
 
   useEffect(() => { carregar(); }, []);
 
@@ -244,6 +249,47 @@ export default function Faturas() {
       setNfForm({ numero:'', valor:'', arquivoNome:null, arquivoBase64:null, arquivoTipo:null });
       carregar();
     } catch { toast.error('Erro ao adicionar NF'); } finally { setSalvandoNF(false); }
+  }
+
+  function abrirEdicao(fatura) {
+    const forn = fatura.fornecedor || {};
+    setEditId(fatura.id);
+    setEditForn({
+      id:             forn.id,
+      razaoSocial:    forn.razaoSocial    || '',
+      cnpj:           mascaraCNPJ(forn.cnpj || ''),
+      responsavel:    forn.responsavel    || '',
+      contato:        forn.contato        || '',
+      numeroOC:       forn.numeroOC       || '',
+      tipoServico:    forn.tipoServico    || 'lavagem',
+      frota:          forn.frota          || 'buzin',
+      formaPagamento: forn.formaPagamento || 'pix',
+      chavePix:       forn.chavePix       || '',
+    });
+    setEditFat({
+      valor:          String(Number(fatura.valor).toFixed(2)).replace('.',','),
+      dataVencimento: fatura.dataVencimento ? fatura.dataVencimento.slice(0,10) : '',
+      observacao:     fatura.observacao || '',
+    });
+  }
+
+  async function salvarEdicao(e) {
+    e.preventDefault();
+    if (salvandoEdit) return;
+    const valorNum = parseMoeda(editFat.valor);
+    if (isNaN(valorNum) || valorNum <= 0) { toast.error('Valor inválido'); return; }
+    setSalvandoEdit(true);
+    try {
+      await api.put(`/faturas-abastecimento/${editId}`, {
+        valor: valorNum,
+        dataVencimento: editFat.dataVencimento,
+        observacao: editFat.observacao || null,
+        fornecedorData: { ...editForn, cnpj: editForn.cnpj.replace(/\D/g,'') },
+      });
+      toast.success('Fatura atualizada!');
+      setEditId(null);
+      carregar();
+    } catch { toast.error('Erro ao atualizar'); } finally { setSalvandoEdit(false); }
   }
 
   async function excluirNF(faturaId, nfId) {
@@ -506,6 +552,10 @@ export default function Faturas() {
                   <span style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:600, background:sc.bg, color:sc.cor, whiteSpace:'nowrap', flexShrink:0 }}>{sc.label}</span>
                   {/* Ações */}
                   <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                    <button onClick={() => abrirEdicao(fatura)} title="Editar fatura"
+                      style={{ padding:'5px 9px', border:'1px solid #fde68a', borderRadius:6, background:'#fffbeb', fontSize:12, cursor:'pointer', color:'#d97706' }}>
+                      <i className="ti ti-pencil"></i>
+                    </button>
                     <button onClick={() => setDetalheAberto(d => ({ ...d, [fatura.id]: !d[fatura.id] }))} title="Ver dados cadastrados"
                       style={{ padding:'5px 9px', border:`1.5px solid ${detalheAberto[fatura.id] ? '#0ea5e9' : '#e5e7eb'}`, borderRadius:6, background: detalheAberto[fatura.id] ? '#e0f2fe' : '#fff', fontSize:12, cursor:'pointer', color: detalheAberto[fatura.id] ? '#0369a1' : '#9ca3af' }}>
                       <i className="ti ti-flag-3"></i>
@@ -609,6 +659,106 @@ export default function Faturas() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ══════════ MODAL EDITAR FATURA ══════════ */}
+      {editId && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:560, maxHeight:'92vh', overflowY:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding:'22px 28px 0', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <h3 style={{ fontSize:17, fontWeight:700, margin:0, color:'#1a1a2e' }}>Editar Fatura</h3>
+              <button onClick={() => setEditId(null)} style={{ background:'none', border:'none', fontSize:24, cursor:'pointer', color:'#9ca3af', lineHeight:1 }}>×</button>
+            </div>
+            <form onSubmit={salvarEdicao} style={{ padding:'0 28px 28px', display:'flex', flexDirection:'column', gap:14 }}>
+
+              {/* Dados do Fornecedor */}
+              <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:12 }}>Dados do Fornecedor</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <div>
+                    <label style={lbl}>Razão Social *</label>
+                    <input value={editForn.razaoSocial} onChange={e=>setEditForn(f=>({...f,razaoSocial:e.target.value}))} style={inp} required />
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={lbl}>CNPJ *</label>
+                      <input value={editForn.cnpj} onChange={e=>setEditForn(f=>({...f,cnpj:mascaraCNPJ(e.target.value)}))} style={inp} required />
+                    </div>
+                    <div>
+                      <label style={lbl}>Nº OC</label>
+                      <input value={editForn.numeroOC} onChange={e=>setEditForn(f=>({...f,numeroOC:e.target.value}))} style={inp} placeholder="Opcional" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Responsável</label>
+                      <input value={editForn.responsavel} onChange={e=>setEditForn(f=>({...f,responsavel:e.target.value}))} style={inp} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Contato</label>
+                      <input value={editForn.contato} onChange={e=>setEditForn(f=>({...f,contato:e.target.value}))} style={inp} />
+                    </div>
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={lbl}>Tipo de Serviço</label>
+                      <select value={editForn.tipoServico} onChange={e=>setEditForn(f=>({...f,tipoServico:e.target.value}))} style={inp}>
+                        {TIPOS.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Frota</label>
+                      <select value={editForn.frota} onChange={e=>setEditForn(f=>({...f,frota:e.target.value}))} style={inp}>
+                        {[{val:'buzin',label:'BUZIN'},{val:'meli',label:'MELI'},{val:'lbm',label:'LBM'},{val:'meli_buzin',label:'MELI/BUZIN'},{val:'meli_lbm',label:'MELI/LBM'}].map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Forma de Pagamento</label>
+                      <select value={editForn.formaPagamento} onChange={e=>setEditForn(f=>({...f,formaPagamento:e.target.value}))} style={inp}>
+                        <option value="pix">PIX</option>
+                        <option value="boleto">Boleto</option>
+                      </select>
+                    </div>
+                    {editForn.formaPagamento === 'pix' && (
+                      <div>
+                        <label style={lbl}>Chave PIX</label>
+                        <input value={editForn.chavePix} onChange={e=>setEditForn(f=>({...f,chavePix:e.target.value}))} style={inp} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dados da Fatura */}
+              <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:10, padding:'14px 16px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:12 }}>Dados da Fatura</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={lbl}>Valor *</label>
+                    <input value={editFat.valor} onChange={e=>setEditFat(f=>({...f,valor:e.target.value}))} style={inp} required placeholder="0,00" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Vencimento *</label>
+                    <input type="date" value={editFat.dataVencimento} onChange={e=>setEditFat(f=>({...f,dataVencimento:e.target.value}))} style={inp} required />
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={lbl}>Observação</label>
+                    <textarea value={editFat.observacao} onChange={e=>setEditFat(f=>({...f,observacao:e.target.value}))} rows={2} style={{ ...inp, resize:'vertical' }} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:4 }}>
+                <button type="button" onClick={() => setEditId(null)}
+                  style={{ padding:'9px 20px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer', color:'#374151' }}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={salvandoEdit}
+                  style={{ padding:'9px 24px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', opacity: salvandoEdit ? 0.7 : 1 }}>
+                  {salvandoEdit ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
