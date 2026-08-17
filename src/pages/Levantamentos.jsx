@@ -82,6 +82,13 @@ export default function Levantamentos() {
 
   const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
 
+  // Tipos/frotas disponíveis (manual + importados)
+  const todosTipos = useMemo(() => {
+    const fromLista   = lista.map(l => l.tipo).filter(Boolean);
+    const fromRegsMot = regsMot.map(r => importacoesMap[r.importacaoId]?.frota).filter(Boolean);
+    return [...new Set([...fromLista, ...fromRegsMot])].sort();
+  }, [lista, regsMot, importacoesMap]);
+
   const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
       if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
@@ -525,10 +532,10 @@ export default function Levantamentos() {
       {/* ═══════════════ ABA GERAL ═══════════════ */}
       {abaAtiva === 'geral' && <>
 
-      {lista.length > 0 ? (<>
+      {(lista.length > 0 || regsMot.length > 0) ? (<>
         {/* Filtros por tipo FROTA/MELI */}
         <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
-          {['FROTA','MELI'].map(t => (
+          {todosTipos.map(t => (
             <button key={t} onClick={()=>setTipoFiltro(tipoFiltro===t ? null : t)}
               style={{ padding:'6px 20px', borderRadius:20, fontSize:12, fontWeight:700, cursor:'pointer', border:'none',
                 background: tipoFiltro===t ? (t==='FROTA' ? '#065f46' : '#1d4ed8') : '#f1f5f9',
