@@ -139,7 +139,10 @@ export default function LevantamentosImportacoes() {
       const iMot = header.findIndex(h => h.includes('motorista'));
       const iVei = header.findIndex(h => h.includes('veiculo') || h.includes('placa') || h.includes('vei'));
       const iVal = header.findIndex(h => h.includes('valor'));
-      const iMes = header.findIndex(h => h.includes('mes'));
+      const iMes = header.findIndex(h =>
+        h.includes('mes') || h.includes('periodo') || h.includes('competencia') ||
+        h.includes('data') || h.includes('referencia') || h.includes('ref')
+      );
 
       if (iMot < 0 || iVal < 0) {
         toast.error(`Colunas não encontradas. Lidos: ${header.join(', ')}`);
