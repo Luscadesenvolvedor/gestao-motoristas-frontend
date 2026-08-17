@@ -81,15 +81,17 @@ export default function Layout() {
           )}
         </div>
 
-        <nav style={{ flex:1, padding:'8px 0', overflowY:'auto' }}>
+        <nav style={{ flex:1, padding:'8px 10px', overflowY:'auto' }}>
           <NavLink to="/"
             end
             style={({ isActive }) => ({
-              display:'flex', alignItems:'center', gap:10, padding:'9px 16px',
-              color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
-              background: isActive ? 'rgba(0,0,0,0.15)' : 'transparent',
-              textDecoration:'none', fontSize:13, fontWeight: isActive ? 500 : 400,
-              borderLeft: isActive ? '2px solid #fff' : '2px solid transparent',
+              display:'flex', alignItems:'center', gap:10,
+              padding:'9px 12px', margin:'1px 0',
+              borderRadius:9,
+              color: isActive ? '#EB3238' : 'rgba(255,255,255,0.75)',
+              background: isActive ? '#fff' : 'transparent',
+              textDecoration:'none', fontSize:13, fontWeight: isActive ? 600 : 400,
+              boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
               transition:'all 0.15s'
             })}>
             <i className="ti ti-home" style={{ fontSize:17 }}></i>
@@ -100,11 +102,13 @@ export default function Layout() {
             return (
               <NavLink key={m.path} to={`/${m.path}`}
                 style={({ isActive }) => ({
-                  display:'flex', alignItems:'center', gap:10, padding:'9px 16px',
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
-                  background: isActive ? 'rgba(0,0,0,0.15)' : 'transparent',
-                  textDecoration:'none', fontSize:13, fontWeight: isActive ? 500 : 400,
-                  borderLeft: isActive ? '2px solid #fff' : '2px solid transparent',
+                  display:'flex', alignItems:'center', gap:10,
+                  padding:'9px 12px', margin:'1px 0',
+                  borderRadius:9,
+                  color: isActive ? '#EB3238' : 'rgba(255,255,255,0.75)',
+                  background: isActive ? '#fff' : 'transparent',
+                  textDecoration:'none', fontSize:13, fontWeight: isActive ? 600 : 400,
+                  boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
                   transition:'all 0.15s'
                 })}>
                 <i className={`ti ${m.icon}`} style={{ fontSize:17 }}></i>
@@ -118,11 +122,15 @@ export default function Layout() {
           {/* Link de Configurações acima do usuário */}
           <NavLink to={`/${menuConfiguracao.path}`}
             style={({ isActive }) => ({
-              display:'flex', alignItems:'center', gap:10, padding:'8px 4px',
-              color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
+              display:'flex', alignItems:'center', gap:10, padding:'8px 10px',
+              borderRadius:9,
+              color: isActive ? '#EB3238' : 'rgba(255,255,255,0.75)',
+              background: isActive ? '#fff' : 'transparent',
               textDecoration:'none', fontSize:13,
-              fontWeight: isActive ? 500 : 400,
+              fontWeight: isActive ? 600 : 400,
+              boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
               marginBottom: 8,
+              transition:'all 0.15s',
             })}>
             <i className={`ti ${menuConfiguracao.icon}`} style={{ fontSize:17 }}></i>
             {menuConfiguracao.label}
