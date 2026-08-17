@@ -176,8 +176,15 @@ export default function Levantamentos() {
   };
   const total = l => parseFloat(l.previa||0)+parseFloat(l.saldo||0)+parseFloat(l.custoFolha||0);
 
-  // anos e meses disponíveis
-  const anos = [...new Set(lista.map(l => l.mes.split('-')[0]))].sort((a,b) => b-a);
+  // anos e meses disponíveis (combinando entradas manuais + dados importados)
+  const todosMeses = useMemo(() =>
+    [...new Set([
+      ...lista.map(l => l.mes),
+      ...regsMot.map(r => r.mes).filter(m => m && m.length >= 7),
+    ])].sort(),
+    [lista, regsMot]
+  );
+  const anos = [...new Set(todosMeses.map(m => m.split('-')[0]))].filter(Boolean).sort((a,b) => b-a);
   const listaFiltrada = lista.filter(l => {
     if (tipoFiltro && l.tipo !== tipoFiltro) return false;
     if (mesFiltro) return l.mes === mesFiltro;
@@ -549,7 +556,7 @@ export default function Levantamentos() {
             </button>
           ))}
           <span style={{ width:1, height:20, background:'#e2e8f0', margin:'0 4px' }}/>
-          {[...new Set(lista.map(l => l.mes))].sort().map(mes => (
+          {todosMeses.map(mes => (
             <button key={mes} onClick={()=>setMesFiltro(mesFiltro===mes ? null : mes)}
               style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:500, cursor:'pointer',
                 border: mesFiltro===mes ? '1px solid #EB3238' : '1px solid #e2e8f0',
