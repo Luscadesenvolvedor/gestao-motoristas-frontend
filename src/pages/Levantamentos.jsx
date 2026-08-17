@@ -7,9 +7,6 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const FORM_VAZIO = { mes: '', tipo: 'FROTA', motoristasFechados: '', saldo: '', custoFolha: '', observacao: '' };
-
-
 const CustomTooltip = ({ active, payload, label, fmtVal }) => {
   if (!active || !payload?.length) return null;
   const totalVal = payload.reduce((s, p) => s + (p.value || 0), 0);
@@ -35,10 +32,7 @@ const CustomTooltip = ({ active, payload, label, fmtVal }) => {
 
 export default function Levantamentos() {
   const [lista, setLista] = useState([]);
-  const [showForm, setShowForm] = useState(false);
   const [showLista, setShowLista] = useState(false);
-  const [editandoId, setEditandoId] = useState(null);
-  const [form, setForm] = useState(FORM_VAZIO);
   const [editandoInlineId, setEditandoInlineId] = useState(null);
   const [inlineForm, setInlineForm] = useState({});
   const [anoFiltro, setAnoFiltro] = useState(null);
@@ -140,23 +134,6 @@ export default function Levantamentos() {
 
   useEffect(() => { carregar(); }, []);
 
-  function abrirNovo() { setEditandoId(null); setForm(FORM_VAZIO); setShowForm(true); }
-
-  function abrirEdicao(l) {
-    setEditandoId(l.id);
-    setForm({ mes: l.mes, tipo: l.tipo || 'FROTA', motoristasFechados: l.motoristasFechados, saldo: parseFloat(l.previa||0)+parseFloat(l.saldo||0), custoFolha: l.custoFolha, observacao: l.observacao || '' });
-    setShowForm(true);
-  }
-
-  async function salvar(e) {
-    e.preventDefault();
-    try {
-      if (editandoId) { await api.put(`/levantamentos/${editandoId}`, form); toast.success('Atualizado!'); }
-      else { await api.post('/levantamentos', form); toast.success('Registrado!'); }
-      setShowForm(false); setEditandoId(null); setForm(FORM_VAZIO); carregar();
-    } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
-  }
-
   function abrirInline(l) {
     setEditandoInlineId(l.id);
     setInlineForm({ motoristasFechados: l.motoristasFechados, saldo: parseFloat(l.previa||0)+parseFloat(l.saldo||0), custoFolha: l.custoFolha });
@@ -177,8 +154,6 @@ export default function Levantamentos() {
     catch { toast.error('Erro ao excluir'); }
   }
 
-  const lbl = { display:'block', fontSize:11, fontWeight:500, color:'#6b7280', marginBottom:4, textTransform:'uppercase' };
-  const inp = { width:'100%', padding:'8px 10px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, boxSizing:'border-box' };
   const fmt  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })}`;
   const fmtK = v => v >= 1000 ? `R$${(v/1000).toFixed(1)}k` : `R$${v.toFixed(0)}`;
   const fmtMes = mes => {
@@ -383,10 +358,6 @@ export default function Levantamentos() {
             ))}
           </div>
         </div>
-        <button onClick={abrirNovo}
-          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:'0 2px 8px rgba(235,50,56,0.3)' }}>
-          <i className="ti ti-plus"></i> Incluir
-        </button>
       </div>
 
       {/* ═══════════════ ABA POR MOTORISTA ═══════════════ */}
@@ -546,40 +517,6 @@ export default function Levantamentos() {
 
       {/* ═══════════════ ABA GERAL ═══════════════ */}
       {abaAtiva === 'geral' && <>
-
-      {/* Form */}
-      {showForm && (
-        <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:20, border:'1px solid #e5e7eb', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
-          <form onSubmit={salvar}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12 }}>
-              <div>
-                <label style={lbl}>Mês</label>
-                <input type="month" value={form.mes} onChange={e=>setForm(f=>({...f,mes:e.target.value}))} required style={inp}/>
-                {form.mes && lista.some(l=>l.mes===form.mes) && !editandoId && (
-                  <div style={{ marginTop:4, fontSize:11, color:'#f59e0b', display:'flex', alignItems:'center', gap:4 }}>
-                    <i className="ti ti-plus"></i> Os valores serão somados ao registro existente
-                  </div>
-                )}
-              </div>
-              <div>
-                <label style={lbl}>Tipo</label>
-                <select value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))} style={{...inp, cursor:'pointer'}}>
-                  <option value="FROTA">FROTA</option>
-                  <option value="MELI">MELI</option>
-                </select>
-              </div>
-              <div><label style={lbl}>Motoristas Fechados</label><input type="number" min="0" step="1" value={form.motoristasFechados} onChange={e=>setForm(f=>({...f,motoristasFechados:e.target.value}))} style={inp}/></div>
-              <div><label style={lbl}>Saldo/Prévia (R$)</label><input type="number" step="0.01" min="0" value={form.saldo} onChange={e=>setForm(f=>({...f,saldo:e.target.value}))} style={inp}/></div>
-              <div><label style={lbl}>Custo Folha (R$)</label><input type="number" step="0.01" min="0" value={form.custoFolha} onChange={e=>setForm(f=>({...f,custoFolha:e.target.value}))} style={inp}/></div>
-              <div style={{ gridColumn:'span 4' }}><label style={lbl}>Observação</label><input type="text" value={form.observacao} onChange={e=>setForm(f=>({...f,observacao:e.target.value}))} style={inp}/></div>
-            </div>
-            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:12 }}>
-              <button type="button" onClick={()=>{setShowForm(false);setEditandoId(null);}} style={{ padding:'8px 16px', border:'1px solid #d1d5db', borderRadius:8, fontSize:13, cursor:'pointer', background:'#fff' }}>Cancelar</button>
-              <button type="submit" style={{ padding:'8px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>Salvar</button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {lista.length > 0 ? (<>
         {/* Filtros por tipo FROTA/MELI */}
