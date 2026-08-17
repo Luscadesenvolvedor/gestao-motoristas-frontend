@@ -284,8 +284,13 @@ export default function Levantamentos() {
   const corMeli  = '#8b5cf6';
 
   // Totais importados separados por frota (para calcMedia das cards FROTA e MELI sem filtro)
+  // Motoristas são contados POR MÊS (e depois somados), igual ao motoristasFechados das entradas manuais.
+  // Contar únicos globais causaria denominador menor → resultado parecendo soma de médias.
   const totaisImportPorFrota = useMemo(() => {
-    const acc = { FROTA: { total: 0, motoristas: {} }, MELI: { total: 0, motoristas: {} } };
+    const acc = {
+      FROTA: { total: 0, porMes: {} },
+      MELI:  { total: 0, porMes: {} },
+    };
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.frota || !acc[meta.frota]) continue;
@@ -293,14 +298,16 @@ export default function Levantamentos() {
       if (anoFiltro && !r.mes?.startsWith(anoFiltro)) continue;
       const v = parseFloat(r.valor || 0);
       acc[meta.frota].total += v;
-      if (v > 0) {
-        const key = r.motorista.trim().toUpperCase();
-        acc[meta.frota].motoristas[key] = (acc[meta.frota].motoristas[key] || 0) + v;
+      if (v > 0 && r.mes) {
+        if (!acc[meta.frota].porMes[r.mes]) acc[meta.frota].porMes[r.mes] = new Set();
+        acc[meta.frota].porMes[r.mes].add(r.motorista.trim().toUpperCase());
       }
     }
+    // soma de motoristas únicos por mês (cada mês conta separadamente)
+    const somarMes = porMes => Object.values(porMes).reduce((s, set) => s + set.size, 0);
     return {
-      FROTA: { total: acc.FROTA.total, motoristas: Object.values(acc.FROTA.motoristas).filter(v => v > 0).length },
-      MELI:  { total: acc.MELI.total,  motoristas: Object.values(acc.MELI.motoristas).filter(v => v > 0).length },
+      FROTA: { total: acc.FROTA.total, motoristas: somarMes(acc.FROTA.porMes) },
+      MELI:  { total: acc.MELI.total,  motoristas: somarMes(acc.MELI.porMes)  },
     };
   }, [regsMot, importacoesMap, mesFiltro, anoFiltro]);
 
