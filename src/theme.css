@@ -1,42 +1,50 @@
 /* ================================================================
    DARK MODE
-   Técnica: invert(1) hue-rotate(180deg) no conteúdo principal.
-   - Branco   → preto  (fundo cards)
-   - Preto    → branco (textos)
-   - Vermelho → continua vermelho (hue 0° + 180° = 180°, invertido = 0°)
+   Técnica: brightness(0.85) invert(1) hue-rotate(180deg)
+   - brightness(0.85) ANTES do invert evita preto puro nos cards:
+       #fff → #d9d9d9 → inverte → #262626  (cinza escuro suave)
+   - O fundo #f5f5f7 (inline no Layout) inverte para ≈ #2f2f2d
+   - Vermelho continua vermelho (hue 0° → 180° → 0° após double-rotate)
    - Gráficos: double-invert para restaurar cores originais
+   NOTA: NÃO sobrescrever background aqui — #000 invertido vira #fff
+         (branco), que é exatamente o bug que fazia o fundo não escurecer.
    ================================================================ */
 
-[data-theme="escuro"] #main-content {
-  filter: invert(1) hue-rotate(180deg);
-  background: #000 !important;
+html[data-theme="escuro"],
+html[data-theme="escuro"] body {
+  background: #1c1c1e !important;
+}
+
+html[data-theme="escuro"] #main-content {
+  filter: brightness(0.85) invert(1) hue-rotate(180deg);
+  background: #f5f5f7 !important; /* inverte para ≈ #2d2d2a — fundo suave */
 }
 
 /* Restaura gráficos Recharts para cores originais */
-[data-theme="escuro"] #main-content .recharts-wrapper,
-[data-theme="escuro"] #main-content .recharts-surface,
-[data-theme="escuro"] #main-content .recharts-legend-wrapper {
-  filter: invert(1) hue-rotate(180deg);
+html[data-theme="escuro"] #main-content .recharts-wrapper,
+html[data-theme="escuro"] #main-content .recharts-surface,
+html[data-theme="escuro"] #main-content .recharts-legend-wrapper {
+  filter: brightness(1.18) invert(1) hue-rotate(180deg);
 }
 
 /* Restaura imagens */
-[data-theme="escuro"] #main-content img {
-  filter: invert(1) hue-rotate(180deg);
+html[data-theme="escuro"] #main-content img {
+  filter: brightness(1.18) invert(1) hue-rotate(180deg);
 }
 
 /* ================================================================
    TAMANHO DE FONTE (zoom no conteúdo)
    ================================================================ */
 
-[data-font="pequena"] #main-content {
+html[data-font="pequena"] #main-content {
   zoom: 0.88;
 }
 
-[data-font="media"] #main-content {
+html[data-font="media"] #main-content {
   zoom: 1;
 }
 
-[data-font="grande"] #main-content {
+html[data-font="grande"] #main-content {
   zoom: 1.13;
 }
 
@@ -44,14 +52,14 @@
    DENSIDADE DE TABELA
    ================================================================ */
 
-[data-density="compacta"] #main-content table td,
-[data-density="compacta"] #main-content table th {
+html[data-density="compacta"] #main-content table td,
+html[data-density="compacta"] #main-content table th {
   padding: 4px 10px !important;
   font-size: 12px !important;
 }
 
-[data-density="confortavel"] #main-content table td,
-[data-density="confortavel"] #main-content table th {
+html[data-density="confortavel"] #main-content table td,
+html[data-density="confortavel"] #main-content table th {
   padding: 14px 16px !important;
 }
 
@@ -62,4 +70,4 @@
 #main-content::-webkit-scrollbar { width: 6px; height: 6px; }
 #main-content::-webkit-scrollbar-track { background: transparent; }
 #main-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 3px; }
-[data-theme="escuro"] #main-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); }
+html[data-theme="escuro"] #main-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); }
