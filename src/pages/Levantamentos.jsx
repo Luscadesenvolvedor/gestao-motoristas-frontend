@@ -82,13 +82,6 @@ export default function Levantamentos() {
 
   const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
 
-  // Tipos/frotas disponíveis (manual + importados)
-  const todosTipos = useMemo(() => {
-    const fromLista   = lista.map(l => l.tipo).filter(Boolean);
-    const fromRegsMot = regsMot.map(r => importacoesMap[r.importacaoId]?.frota).filter(Boolean);
-    return [...new Set([...fromLista, ...fromRegsMot])].sort();
-  }, [lista, regsMot, importacoesMap]);
-
   const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
       if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
@@ -205,6 +198,13 @@ export default function Levantamentos() {
     for (const im of importacoesMot) map[im.id] = { tipoPagamento: im.tipoPagamento, frota: im.frota };
     return map;
   }, [importacoesMot]);
+
+  // Tipos/frotas disponíveis (manual + importados)
+  const todosTipos = useMemo(() => {
+    const fromLista   = lista.map(l => l.tipo).filter(Boolean);
+    const fromRegsMot = regsMot.map(r => importacoesMap[r.importacaoId]?.frota).filter(Boolean);
+    return [...new Set([...fromLista, ...fromRegsMot])].sort();
+  }, [lista, regsMot, importacoesMap]);
 
   // Totais por tipoPagamento respeitando filtros (para os cards)
   const totaisMot = useMemo(() => {
