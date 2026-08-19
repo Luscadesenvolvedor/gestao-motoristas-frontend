@@ -29,7 +29,7 @@ export default function FrotaApoio() {
   // filtros rápidos
   const hoje = new Date();
   const [mesFiltro, setMesFiltro] = useState('');
-  const [anoFiltro, setAnoFiltro] = useState(String(hoje.getFullYear()));
+  const [anoFiltro, setAnoFiltro] = useState('');
   const [ccFiltro,      setCcFiltro]      = useState('');
   const [modeloFiltro,  setModeloFiltro]  = useState('');
 
@@ -39,8 +39,16 @@ export default function FrotaApoio() {
   const anosDisponiveis = useMemo(() => {
     const set = [...new Set(periodos.map(p => p.ano))].sort().reverse();
     const anoAtual = String(hoje.getFullYear());
-    if (!set.includes(anoAtual)) set.unshift(anoAtual);
+    if (!set.includes(anoAtual)) set.push(anoAtual);
     return set;
+  }, [periodos]);
+
+  // seleciona automaticamente o ano mais recente com dados
+  useEffect(() => {
+    if (periodos.length > 0 && !anoFiltro) {
+      const maisRecente = [...new Set(periodos.map(p => p.ano))].sort().reverse()[0];
+      if (maisRecente) setAnoFiltro(maisRecente);
+    }
   }, [periodos]);
 
   const mesesDisponiveis = useMemo(() => {
