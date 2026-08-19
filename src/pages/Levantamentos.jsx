@@ -205,11 +205,12 @@ export default function Levantamentos() {
     return map;
   }, [importacoesMot]);
 
-  // Tipos/frotas disponíveis (manual + importados)
+  // Tipos/frotas disponíveis (manual + importados); fallback garante FROTA e MELI sempre visíveis
   const todosTipos = useMemo(() => {
     const fromLista   = lista.map(l => l.tipo).filter(Boolean);
     const fromRegsMot = regsMot.map(r => importacoesMap[r.importacaoId]?.frota).filter(Boolean);
-    return [...new Set([...fromLista, ...fromRegsMot])].sort();
+    const computed    = [...new Set([...fromLista, ...fromRegsMot])].sort();
+    return computed.length > 0 ? computed : ['FROTA', 'MELI'];
   }, [lista, regsMot, importacoesMap]);
 
   // Totais por tipoPagamento respeitando filtros (para os cards)
