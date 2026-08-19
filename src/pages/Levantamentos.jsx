@@ -48,6 +48,9 @@ export default function Levantamentos() {
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
 
+  // ── Folgas ──
+  const [regsFolgas, setRegsFolgas] = useState([]);
+
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
 
@@ -57,6 +60,9 @@ export default function Levantamentos() {
       .catch(() => {});
     api.get('/levantamentos-motoristas/importacoes')
       .then(r => setImportacoesMot(r.data))
+      .catch(() => {});
+    api.get('/levantamentos-folgas')
+      .then(r => setRegsFolgas(r.data))
       .catch(() => {});
   }, []);
 
@@ -351,6 +357,13 @@ export default function Levantamentos() {
         { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
+  // Total de folgas respeitando filtros de mês/ano
+  const totalFolgas = regsFolgas.reduce((s, r) => {
+    if (mesFiltro && r.mes !== mesFiltro) return s;
+    if (anoFiltro && !r.mes?.startsWith(anoFiltro)) return s;
+    return s + parseFloat(r.valor || 0);
+  }, 0);
+
   const resumo = [
     { label:'Total Geral', valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados), cor:'#EB3238', icon:'ti-cash' },
     { label:'Motoristas Fechados', valor: motoristasCard, cor:'#0ea5e9', icon:'ti-users' },
@@ -358,6 +371,7 @@ export default function Levantamentos() {
     { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
     { label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),                                         cor:'#0ea5e9', icon:'ti-truck'    },
     { label:'Bonificações',      valor: fmt(totaisMot.bonificacao),                                     cor:'#16a34a', icon:'ti-gift'     },
+    { label:'Folgas',            valor: fmt(totalFolgas),                                               cor:'#f59e0b', icon:'ti-beach'    },
     ...cardsMedia,
   ];
 
