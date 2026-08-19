@@ -77,6 +77,7 @@ export default function FrotaApoio() {
       if (anoFiltro) params.append('ano', anoFiltro);
       if (mesFiltro) params.append('mes', mesFiltro);
       if (ccFiltro)  params.append('centroCusto', ccFiltro);
+      params.append('_t', Date.now());
       const r = await api.get(`/frota-apoio?${params}`);
       setLista(r.data);
     } catch { toast.error('Erro ao carregar registros'); }
