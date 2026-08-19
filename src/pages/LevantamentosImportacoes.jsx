@@ -10,6 +10,7 @@ const TIPOS = [
   { key: 'diarias',    label: 'Diárias dedicados', color: '#0ea5e9' },
   { key: 'bonificacao',label: 'Bonificações',       color: '#16a34a' },
   { key: 'custoFolha', label: 'Custo Folha',        color: '#8b5cf6' },
+  { key: 'folgas',     label: 'Folgas',             color: '#f59e0b' },
 ];
 
 const fmtR  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
@@ -106,7 +107,6 @@ function corStatus(score) {
 
 export default function LevantamentosImportacoes() {
   const { isAdmin } = useAuth();
-  const [abaImport, setAbaImport]   = useState('motoristas'); // 'motoristas' | 'folgas'
   const [lista, setLista]           = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [preview, setPreview]       = useState(null);
@@ -114,13 +114,6 @@ export default function LevantamentosImportacoes() {
   // revisao = [{ nomePlanilha, melhorMatch, nomeEditado, score, veiculo }]
   const [salvando, setSalvando]     = useState(false);
   const fileRef = useRef();
-
-  // ── FOLGAS ──────────────────────────────────────────────────────────────
-  const [listaFolgas, setListaFolgas]       = useState([]);
-  const [carregandoFolgas, setCarregandoFolgas] = useState(true);
-  const [previewFolgas, setPreviewFolgas]   = useState(null);
-  const [salvandoFolgas, setSalvandoFolgas] = useState(false);
-  const fileRefFolgas = useRef();
 
   async function carregar() {
     setCarregando(true);
@@ -131,84 +124,7 @@ export default function LevantamentosImportacoes() {
     finally { setCarregando(false); }
   }
 
-  useEffect(() => { carregar(); carregarFolgas(); }, []);
-
-  // ── Funções FOLGAS ───────────────────────────────────────────────────────
-  async function carregarFolgas() {
-    setCarregandoFolgas(true);
-    try {
-      const { data } = await api.get('/levantamentos-folgas/importacoes');
-      setListaFolgas(data);
-    } catch { toast.error('Erro ao carregar importações de folgas'); }
-    finally { setCarregandoFolgas(false); }
-  }
-
-  async function handleFileFolgas(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = '';
-    try {
-      const buf = await file.arrayBuffer();
-      const wb  = XLSX.read(buf, { cellDates: true });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-
-      const header = (raw[0] || []).map(norm);
-      const iMot = header.findIndex(h => h.includes('motorista') || h.includes('nome'));
-      const iVei = header.findIndex(h => h.includes('veiculo') || h.includes('placa'));
-      const iVal = header.findIndex(h => h.includes('valor'));
-      const iMes = header.findIndex(h =>
-        h.includes('mes') || h.includes('periodo') || h.includes('competencia') ||
-        h.includes('data') || h.includes('referencia') || h.includes('ref')
-      );
-
-      if (iMot < 0 || iVal < 0) {
-        toast.error(`Colunas não encontradas. Lidos: ${header.join(', ')}`);
-        return;
-      }
-
-      const registros = raw.slice(1)
-        .filter(r => r[iMot] && String(r[iMot]).trim())
-        .map(r => ({
-          motorista: String(r[iMot]).trim(),
-          veiculo:   iVei >= 0 && r[iVei] ? String(r[iVei]).trim() : null,
-          valor:     parseVal(r[iVal]),
-          mes:       iMes >= 0 ? parseMes(r[iMes]) : null,
-        }))
-        .filter(r => r.valor !== null);
-
-      if (!registros.length) { toast.error('Nenhum registro válido'); return; }
-      setPreviewFolgas({ nomeArquivo: file.name, registros });
-      toast.success(`${registros.length} registros lidos`);
-    } catch (err) {
-      toast.error('Erro ao ler arquivo: ' + err.message);
-    }
-  }
-
-  async function salvarFolgas() {
-    if (!previewFolgas) return;
-    setSalvandoFolgas(true);
-    try {
-      await api.post('/levantamentos-folgas/importar', {
-        nomeArquivo: previewFolgas.nomeArquivo,
-        registros:   previewFolgas.registros,
-      });
-      toast.success('Importação de folgas salva!');
-      setPreviewFolgas(null);
-      await carregarFolgas();
-    } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
-    finally { setSalvandoFolgas(false); }
-  }
-
-  async function excluirFolga(id, nome) {
-    if (!confirm(`Excluir "${nome}" e todos os registros?`)) return;
-    try {
-      await api.delete(`/levantamentos-folgas/importacoes/${id}`);
-      toast.success('Removida');
-      setListaFolgas(l => l.filter(i => i.id !== id));
-    } catch { toast.error('Erro ao excluir'); }
-  }
-  // ── Fim FOLGAS ───────────────────────────────────────────────────────────
+  useEffect(() => { carregar(); }, []);
 
   async function handleFile(e) {
     const file = e.target.files[0];
@@ -351,7 +267,7 @@ export default function LevantamentosImportacoes() {
   }
 
   const totaisPorTipo = useMemo(() => {
-    const map = { saldo: 0, diarias: 0, bonificacao: 0 };
+    const map = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0, folgas: 0 };
     for (const im of lista) {
       const k = im.tipoPagamento;
       if (k && map[k] !== undefined) map[k] += parseFloat(im.totalValor || 0);
@@ -361,45 +277,17 @@ export default function LevantamentosImportacoes() {
 
   return (
     <div style={{ padding: 24 }}>
-      {/* Header com abas */}
+      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Importações</h2>
-          <div style={{ display:'flex', gap:4, background:'#f1f5f9', borderRadius:10, padding:4 }}>
-            {[{ id:'motoristas', label:'Por Motorista' }, { id:'folgas', label:'Folgas' }].map(ab => (
-              <button key={ab.id} onClick={() => setAbaImport(ab.id)}
-                style={{ padding:'5px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer',
-                  background: abaImport === ab.id ? '#fff' : 'transparent',
-                  color: abaImport === ab.id ? '#1a1a2e' : '#64748b',
-                  boxShadow: abaImport === ab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
-                {ab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Importações — Por Motorista</h2>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          {abaImport === 'motoristas' ? (
-            <>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
-              <button onClick={() => fileRef.current?.click()} disabled={!!preview}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: preview ? '#9ca3af' : '#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
-                <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
-              </button>
-            </>
-          ) : (
-            <>
-              <input ref={fileRefFolgas} type="file" accept=".xlsx,.xls" onChange={handleFileFolgas} style={{ display:'none' }} />
-              <button onClick={() => fileRefFolgas.current?.click()} disabled={!!previewFolgas}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: previewFolgas ? '#9ca3af' : '#f59e0b', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: previewFolgas ? 'not-allowed' : 'pointer' }}>
-                <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
-              </button>
-            </>
-          )}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
+          <button onClick={() => fileRef.current?.click()} disabled={!!preview}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: preview ? '#9ca3af' : '#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
+            <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
+          </button>
         </div>
       </div>
-
-      {/* ═══ ABA MOTORISTAS ═══ */}
-      {abaImport === 'motoristas' && <>
 
       {/* Preview / Revisão */}
       {preview && (
@@ -600,106 +488,6 @@ export default function LevantamentosImportacoes() {
           </table>
         </div>
       )}
-      </>}
-
-      {/* ═══ ABA FOLGAS ═══ */}
-      {abaImport === 'folgas' && <>
-
-      {/* Preview folgas */}
-      {previewFolgas && (
-        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 24px', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-            <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#f59e0b' }}></i>
-            <div>
-              <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>{previewFolgas.nomeArquivo}</div>
-              <div style={{ fontSize:12, color:'#6b7280' }}>{previewFolgas.registros.length} registros lidos</div>
-            </div>
-            <button onClick={() => setPreviewFolgas(null)}
-              style={{ marginLeft:'auto', padding:'5px 12px', border:'1px solid #e5e7eb', borderRadius:7, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>
-              Cancelar
-            </button>
-          </div>
-          <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden', marginBottom:16, maxHeight:280, overflowY:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-              <thead>
-                <tr style={{ background:'#f8fafc', position:'sticky', top:0 }}>
-                  {['Motorista','Placa','Mês','Valor'].map(h => (
-                    <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {previewFolgas.registros.map((r, i) => (
-                  <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
-                    <td style={{ padding:'7px 12px', fontWeight:600 }}>{r.motorista}</td>
-                    <td style={{ padding:'7px 12px', color:'#6b7280' }}>{r.veiculo || '—'}</td>
-                    <td style={{ padding:'7px 12px', color:'#6b7280' }}>{r.mes || '—'}</td>
-                    <td style={{ padding:'7px 12px', fontWeight:600, color:'#f59e0b' }}>{fmtR(r.valor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ display:'flex', justifyContent:'flex-end' }}>
-            <button onClick={salvarFolgas} disabled={salvandoFolgas}
-              style={{ padding:'9px 22px', border:'none', borderRadius:8, background: salvandoFolgas ? '#9ca3af' : '#16a34a', color:'#fff', fontSize:13, fontWeight:700, cursor: salvandoFolgas ? 'not-allowed' : 'pointer' }}>
-              {salvandoFolgas ? 'Salvando...' : 'Confirmar e salvar'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Lista de importações de folgas */}
-      {carregandoFolgas ? (
-        <div style={{ textAlign:'center', padding:60, color:'#9ca3af' }}>Carregando...</div>
-      ) : listaFolgas.length === 0 ? (
-        <div style={{ textAlign:'center', padding:60, color:'#9ca3af', background:'#fff', borderRadius:12, border:'1px dashed #d1d5db' }}>
-          <i className="ti ti-file-off" style={{ fontSize:36, display:'block', marginBottom:10, color:'#d1d5db' }}></i>
-          <div style={{ fontWeight:500 }}>Nenhuma importação de folgas</div>
-          <div style={{ fontSize:12, marginTop:4 }}>Clique em "Importar Planilha" para começar</div>
-        </div>
-      ) : (
-        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-            <thead>
-              <tr style={{ background:'#f8fafc' }}>
-                {['Arquivo','Data','Registros','Total',''].map(h => (
-                  <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {listaFolgas.map((im, i) => (
-                <tr key={im.id} style={{ background: i%2===0?'#fff':'#fafafa' }}
-                  onMouseEnter={e => e.currentTarget.style.background='#fffbeb'}
-                  onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
-                  <td style={{ padding:'11px 16px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <i className="ti ti-file-spreadsheet" style={{ fontSize:15, color:'#f59e0b' }}></i>
-                      {im.nomeArquivo.replace(/\.xlsx?$/i,'')}
-                    </div>
-                  </td>
-                  <td style={{ padding:'11px 16px', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{fmtDt(im.criadoEm)}</td>
-                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
-                    <span style={{ padding:'2px 8px', borderRadius:6, background:'#fef3c7', color:'#92400e', fontSize:12, fontWeight:700 }}>{im.totalRegistros}</span>
-                  </td>
-                  <td style={{ padding:'11px 16px', fontWeight:700, color:'#f59e0b', borderBottom:'1px solid #f3f4f6' }}>{fmtR(im.totalValor)}</td>
-                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6', textAlign:'right' }}>
-                    {isAdmin && (
-                      <button onClick={() => excluirFolga(im.id, im.nomeArquivo)}
-                        style={{ padding:'5px 10px', border:'1px solid #fee2e2', borderRadius:6, background:'#fff5f5', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
-                        <i className="ti ti-trash"></i>
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      </>}
-
     </div>
   );
 }

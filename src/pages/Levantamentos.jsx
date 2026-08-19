@@ -48,8 +48,6 @@ export default function Levantamentos() {
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
 
-  // ── Folgas ──
-  const [regsFolgas, setRegsFolgas] = useState([]);
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -60,9 +58,6 @@ export default function Levantamentos() {
       .catch(() => {});
     api.get('/levantamentos-motoristas/importacoes')
       .then(r => setImportacoesMot(r.data))
-      .catch(() => {});
-    api.get('/levantamentos-folgas')
-      .then(r => setRegsFolgas(r.data))
       .catch(() => {});
   }, []);
 
@@ -214,7 +209,7 @@ export default function Levantamentos() {
 
   // Totais por tipoPagamento respeitando filtros (para os cards)
   const totaisMot = useMemo(() => {
-    const result = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0 };
+    const result = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0, folgas: 0 };
     // soma por motorista para contar apenas quem tem valor > 0
     const motoristasValores = {};
     for (const r of regsMot) {
@@ -357,12 +352,6 @@ export default function Levantamentos() {
         { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
-  // Total de folgas respeitando filtros de mês/ano
-  const totalFolgas = regsFolgas.reduce((s, r) => {
-    if (mesFiltro && r.mes !== mesFiltro) return s;
-    if (anoFiltro && !r.mes?.startsWith(anoFiltro)) return s;
-    return s + parseFloat(r.valor || 0);
-  }, 0);
 
   const resumo = [
     { label:'Total Geral', valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados), cor:'#EB3238', icon:'ti-cash' },
@@ -371,7 +360,7 @@ export default function Levantamentos() {
     { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
     { label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),                                         cor:'#0ea5e9', icon:'ti-truck'    },
     { label:'Bonificações',      valor: fmt(totaisMot.bonificacao),                                     cor:'#16a34a', icon:'ti-gift'     },
-    { label:'Folgas',            valor: fmt(totalFolgas),                                               cor:'#f59e0b', icon:'ti-beach'    },
+    { label:'Folgas',            valor: fmt(totaisMot.folgas),                                          cor:'#f59e0b', icon:'ti-beach'    },
     ...cardsMedia,
   ];
 
