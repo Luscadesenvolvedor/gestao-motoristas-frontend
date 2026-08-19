@@ -359,6 +359,7 @@ export default function LevantamentosImportacoes() {
   }, [lista]);
 
   return (
+    <>
     <div style={{ padding: 24 }}>
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
@@ -690,5 +691,6 @@ export default function LevantamentosImportacoes() {
         </div>
       )}
     </div>
+    </>
   );
 }
