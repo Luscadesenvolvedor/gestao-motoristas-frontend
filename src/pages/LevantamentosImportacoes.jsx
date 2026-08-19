@@ -106,6 +106,7 @@ function corStatus(score) {
 
 export default function LevantamentosImportacoes() {
   const { isAdmin } = useAuth();
+  const [abaImport, setAbaImport]   = useState('motoristas'); // 'motoristas' | 'folgas'
   const [lista, setLista]           = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [preview, setPreview]       = useState(null);
@@ -359,19 +360,46 @@ export default function LevantamentosImportacoes() {
   }, [lista]);
 
   return (
-    <>
     <div style={{ padding: 24 }}>
-      {/* Header */}
+      {/* Header com abas */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Importações — Por Motorista</h2>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Importações</h2>
+          <div style={{ display:'flex', gap:4, background:'#f1f5f9', borderRadius:10, padding:4 }}>
+            {[{ id:'motoristas', label:'Por Motorista' }, { id:'folgas', label:'Folgas' }].map(ab => (
+              <button key={ab.id} onClick={() => setAbaImport(ab.id)}
+                style={{ padding:'5px 14px', borderRadius:7, border:'none', fontSize:12, fontWeight:600, cursor:'pointer',
+                  background: abaImport === ab.id ? '#fff' : 'transparent',
+                  color: abaImport === ab.id ? '#1a1a2e' : '#64748b',
+                  boxShadow: abaImport === ab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                {ab.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
-          <button onClick={() => fileRef.current?.click()} disabled={!!preview}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: preview ? '#9ca3af' : '#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
-            <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
-          </button>
+          {abaImport === 'motoristas' ? (
+            <>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
+              <button onClick={() => fileRef.current?.click()} disabled={!!preview}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: preview ? '#9ca3af' : '#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
+                <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
+              </button>
+            </>
+          ) : (
+            <>
+              <input ref={fileRefFolgas} type="file" accept=".xlsx,.xls" onChange={handleFileFolgas} style={{ display:'none' }} />
+              <button onClick={() => fileRefFolgas.current?.click()} disabled={!!previewFolgas}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: previewFolgas ? '#9ca3af' : '#f59e0b', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: previewFolgas ? 'not-allowed' : 'pointer' }}>
+                <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* ═══ ABA MOTORISTAS ═══ */}
+      {abaImport === 'motoristas' && <>
 
       {/* Preview / Revisão */}
       {preview && (
@@ -572,29 +600,12 @@ export default function LevantamentosImportacoes() {
           </table>
         </div>
       )}
-    </div>
+      </>}
 
-    {/* ═══════════════════════════════════════════════════════════════════
-        SEÇÃO FOLGAS
-    ═══════════════════════════════════════════════════════════════════ */}
-    <div style={{ marginTop: 40, borderTop: '2px solid #f1f5f9', paddingTop: 32 }}>
-      {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>
-          Importações — Folgas
-        </h2>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <input ref={fileRefFolgas} type="file" accept=".xlsx,.xls" onChange={handleFileFolgas} style={{ display:'none' }} />
-          <button onClick={() => fileRefFolgas.current?.click()} disabled={!!previewFolgas}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px',
-              background: previewFolgas ? '#9ca3af' : '#f59e0b', color:'#fff', border:'none',
-              borderRadius:8, fontSize:13, fontWeight:600, cursor: previewFolgas ? 'not-allowed' : 'pointer' }}>
-            <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
-          </button>
-        </div>
-      </div>
+      {/* ═══ ABA FOLGAS ═══ */}
+      {abaImport === 'folgas' && <>
 
-      {/* Preview */}
+      {/* Preview folgas */}
       {previewFolgas && (
         <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 24px', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
@@ -608,8 +619,6 @@ export default function LevantamentosImportacoes() {
               Cancelar
             </button>
           </div>
-
-          {/* Mini-tabela de preview */}
           <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden', marginBottom:16, maxHeight:280, overflowY:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
@@ -631,7 +640,6 @@ export default function LevantamentosImportacoes() {
               </tbody>
             </table>
           </div>
-
           <div style={{ display:'flex', justifyContent:'flex-end' }}>
             <button onClick={salvarFolgas} disabled={salvandoFolgas}
               style={{ padding:'9px 22px', border:'none', borderRadius:8, background: salvandoFolgas ? '#9ca3af' : '#16a34a', color:'#fff', fontSize:13, fontWeight:700, cursor: salvandoFolgas ? 'not-allowed' : 'pointer' }}>
@@ -690,7 +698,8 @@ export default function LevantamentosImportacoes() {
           </table>
         </div>
       )}
+      </>}
+
     </div>
-    </>
   );
 }
