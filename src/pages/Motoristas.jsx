@@ -269,10 +269,8 @@ export default function Motoristas() {
                   <td style={{ padding:'10px 14px', fontWeight:500 }}>{m.nome}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.cpf}</td>
                   <td style={{ padding:'10px 14px', color:'#6b7280' }}>{m.contato}</td>
-                  <td style={{ padding:'10px 14px' }}>
-                    {m.frota?.startsWith('meli')
-                      ? <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>OP. BAÚ</span>
-                      : <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0' }}>FROTA</span>}
+                  <td style={{ padding:'10px 14px', color:'#374151' }}>
+                    {FROTAS_LABEL[m.frota] || m.frota || '—'}
                   </td>
                   <td style={{ padding:'10px 14px' }}>
                     <div>{CATEGORIAS_LABEL[m.categoria]}</div>
