@@ -207,6 +207,7 @@ export default function LevantamentosImportacoes() {
         ]);
         const mapaExistentes = new Map();
         // Primeiro: nomes do banco de motoristas cadastrados
+        const motBDNorms = new Set(motBD.map(m => norm(m.nome)));
         for (const m of motBD) {
           const k = norm(m.nome);
           if (!mapaExistentes.has(k)) mapaExistentes.set(k, { original: m.nome, veiculo: null });
@@ -220,10 +221,12 @@ export default function LevantamentosImportacoes() {
 
         revisao = nomesUnicos.map(nome => {
           const n = norm(nome);
+          // Verifica se tem match no banco de motoristas cadastrados (exato ou fuzzy)
+          const emBD = motBDNorms.has(n) || [...motBDNorms].some(nk => scoreNome(n, nk) >= THRESHOLD);
           // Match exato
           if (mapaExistentes.has(n)) {
             const entry = mapaExistentes.get(n);
-            return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: nome, score: 1, veiculo: entry.veiculo };
+            return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: nome, score: 1, veiculo: entry.veiculo, semCadastro: !emBD };
           }
           // Melhor match fuzzy
           let melhorScore = 0, melhorEntry = null;
@@ -232,10 +235,9 @@ export default function LevantamentosImportacoes() {
             if (s > melhorScore) { melhorScore = s; melhorEntry = entry; }
           }
           if (melhorScore >= THRESHOLD && melhorEntry) {
-            return { nomePlanilha: nome, melhorMatch: melhorEntry.original, nomeEditado: nome, score: melhorScore, veiculo: melhorEntry.veiculo };
+            return { nomePlanilha: nome, melhorMatch: melhorEntry.original, nomeEditado: nome, score: melhorScore, veiculo: melhorEntry.veiculo, semCadastro: !emBD };
           }
-          // Sem match acima do threshold — mostra o mais próximo encontrado mas mantém nome original
-          return { nomePlanilha: nome, melhorMatch: melhorEntry?.original || null, nomeEditado: nome, score: melhorScore, veiculo: null };
+          return { nomePlanilha: nome, melhorMatch: melhorEntry?.original || null, nomeEditado: nome, score: melhorScore, veiculo: null, semCadastro: !emBD };
         });
       } catch {
         // Se falhar, monta revisão sem comparação
@@ -467,7 +469,7 @@ export default function LevantamentosImportacoes() {
             <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
               Revisão de nomes — edite antes de salvar
               {!preview.buscando && (() => {
-                const pendentes = (preview.revisao || []).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha).length;
+                const pendentes = (preview.revisao || []).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro).length;
                 const total     = (preview.revisao || []).length;
                 return pendentes > 0
                   ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700, textTransform:'none' }}>{pendentes} de {total} precisam revisão</span>
@@ -491,11 +493,12 @@ export default function LevantamentosImportacoes() {
                         <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Mais parecido no sistema</th>
                         <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Nome final (editável)</th>
                         <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>No sistema</th>
+                        <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Cadastro</th>
                         <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Match</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha).map((r, i) => {
+                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro).map((r, i) => {
                         // Score mais confiável: compara nome final vs melhor match do sistema (reativo ao editar)
                         const scoreFinal = r.melhorMatch
                           ? Math.max(r.score, scoreNome(norm(r.nomeEditado), norm(r.melhorMatch)))
@@ -547,6 +550,13 @@ export default function LevantamentosImportacoes() {
                                   Novo
                                 </span>
                               )}
+                            </td>
+                            {/* Coluna: sem cadastro no banco de motoristas */}
+                            <td style={{ padding:'7px 12px', textAlign:'center' }}>
+                              {r.semCadastro
+                                ? <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fff7ed', color:'#c2410c', border:'1px solid #fed7aa', whiteSpace:'nowrap' }}>Sem cadastro</span>
+                                : <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#dcfce7', color:'#166534', border:'1px solid #bbf7d0', whiteSpace:'nowrap' }}>✓ Cadastrado</span>
+                              }
                             </td>
                             {/* Coluna: qualidade do match */}
                             <td style={{ padding:'7px 12px', textAlign:'center' }}>
