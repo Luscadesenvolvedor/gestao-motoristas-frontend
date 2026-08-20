@@ -349,11 +349,15 @@ export default function LevantamentosImportacoes() {
                     </thead>
                     <tbody>
                       {(preview.revisao || []).map((r, i) => {
-                        const isNovo    = r.score < THRESHOLD;
-                        const matchLabel = r.score >= 1 ? 'Exato' : r.score >= 0.7 ? 'Provável' : r.score > 0 ? 'Parecido' : null;
-                        const matchStyle = r.score >= 1
+                        // Score mais confiável: compara nome final vs melhor match do sistema (reativo ao editar)
+                        const scoreFinal = r.melhorMatch
+                          ? Math.max(r.score, scoreNome(norm(r.nomeEditado), norm(r.melhorMatch)))
+                          : scoreNome(norm(r.nomeEditado), norm(r.nomePlanilha));
+                        const isNovo     = r.score < THRESHOLD;
+                        const matchLabel = scoreFinal >= 1 ? 'Exato' : scoreFinal >= 0.7 ? 'Provável' : scoreFinal > 0.1 ? 'Parecido' : null;
+                        const matchStyle = scoreFinal >= 1
                           ? { bg:'#dcfce7', color:'#166534', border:'#bbf7d0' }
-                          : r.score >= 0.7
+                          : scoreFinal >= 0.7
                           ? { bg:'#fef9c3', color:'#854d0e', border:'#fde047' }
                           : { bg:'#fef3c7', color:'#92400e', border:'#fbbf24' };
                         return (
