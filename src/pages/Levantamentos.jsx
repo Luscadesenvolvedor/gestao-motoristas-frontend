@@ -486,15 +486,10 @@ export default function Levantamentos() {
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             {(() => {
                               const bd = motoristasBDMap[r.motorista.trim().toUpperCase()];
-                              if (!bd) return <span style={{ color:'#d1d5db', fontSize:11 }}>—</span>;
-                              const frotaLabel = FROTAS_LABEL_BD[bd.frota] || bd.frota?.toUpperCase() || '—';
-                              const meli = isMeliBD(bd.frota);
-                              return (
-                                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                                  <span style={{ fontSize:11, fontWeight:700, color: meli ? '#6d28d9' : '#059669' }}>{frotaLabel}</span>
-                                  {bd.descricao && <span style={{ padding:'1px 6px', borderRadius:20, fontSize:10, fontWeight:600, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', alignSelf:'flex-start' }}>{bd.descricao}</span>}
-                                </div>
-                              );
+                              const meli = bd ? isMeliBD(bd.frota) : false;
+                              return meli
+                                ? <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>OP. BAÚ</span>
+                                : <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0' }}>FROTA</span>;
                             })()}
                           </td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
