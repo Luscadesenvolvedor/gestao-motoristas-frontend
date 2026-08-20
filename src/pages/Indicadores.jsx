@@ -6,8 +6,8 @@ const MESES_NOMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out'
 const FROTAS = [
   { key:'buzin', label:'BUZIN', cor:'#EB3238' },
   { key:'lbm',   label:'LBM',   cor:'#1a1a2e' },
-  { key:'meli_buzin',label:'MELI BUZIN',cor:'#f97316' },
-  { key:'meli_lbm',  label:'MELI LBM',  cor:'#8b5cf6' },
+  { key:'meli_buzin',label:'OP. BAÚ BUZIN',cor:'#f97316' },
+  { key:'meli_lbm',  label:'OP. BAÚ LBM',  cor:'#8b5cf6' },
 ];
 
 const TIPOS_RAPIDOS = [

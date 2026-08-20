@@ -901,7 +901,7 @@ export default function Faturas() {
                     <div>
                       <label style={lbl}>Frota</label>
                       <select value={editForn.frota} onChange={e=>setEditForn(f=>({...f,frota:e.target.value}))} style={inp}>
-                        {[{val:'buzin',label:'BUZIN'},{val:'meli',label:'MELI'},{val:'lbm',label:'LBM'},{val:'meli_buzin',label:'MELI/BUZIN'},{val:'meli_lbm',label:'MELI/LBM'}].map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
+                        {[{val:'buzin',label:'BUZIN'},{val:'meli',label:'OP. BAÚ'},{val:'lbm',label:'LBM'},{val:'meli_buzin',label:'OP. BAÚ/BUZIN'},{val:'meli_lbm',label:'OP. BAÚ/LBM'}].map(o=><option key={o.val} value={o.val}>{o.label}</option>)}
                       </select>
                     </div>
                     <div>

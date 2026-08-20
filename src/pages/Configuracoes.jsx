@@ -256,7 +256,7 @@ export default function Configuracoes() {
               { val: '', label: 'Nenhuma (todas)' },
               { val: 'buzin', label: 'BUZIN' },
               { val: 'lbm',   label: 'LBM' },
-              { val: 'meli',  label: 'MELI' },
+              { val: 'meli',  label: 'OP. BAÚ' },
             ].map(op => (
               <button
                 key={op.val}

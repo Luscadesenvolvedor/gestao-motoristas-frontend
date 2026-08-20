@@ -9,8 +9,8 @@ const parseMoeda = v => parseFloat(String(v||'').trim().replace(/\./g,'').replac
 const FROTAS = [
   { val:'buzin',      label:'BUZIN',      cor:'#7c3aed', bg:'#f5f3ff' },
   { val:'lbm',        label:'LBM',        cor:'#b45309', bg:'#fffbeb' },
-  { val:'meli_buzin', label:'MELI BUZIN', cor:'#0891b2', bg:'#e0f2fe' },
-  { val:'meli_lbm',   label:'MELI LBM',   cor:'#16a34a', bg:'#f0fdf4' },
+  { val:'meli_buzin', label:'OP. BAÚ BUZIN', cor:'#0891b2', bg:'#e0f2fe' },
+  { val:'meli_lbm',   label:'OP. BAÚ LBM',   cor:'#16a34a', bg:'#f0fdf4' },
 ];
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -202,8 +202,8 @@ export default function Lavagens() {
           { label:'Total Gasto',     valor:totalMes,  fn: fmt,     cor:'#EB3238', bg:'#fff5f5', icone:'ti-currency-dollar' },
           { label:'BUZIN',      valor:totalBuzin,     fn: fmt, cor:'#7c3aed', bg:'#f5f3ff', icone:'ti-truck' },
           { label:'LBM',        valor:totalLbm,       fn: fmt, cor:'#b45309', bg:'#fffbeb', icone:'ti-truck' },
-          { label:'MELI BUZIN', valor:totalMeliBuzin, fn: fmt, cor:'#0891b2', bg:'#e0f2fe', icone:'ti-truck' },
-          { label:'MELI LBM',   valor:totalMeliLbm,   fn: fmt, cor:'#16a34a', bg:'#f0fdf4', icone:'ti-truck' },
+          { label:'OP. BAÚ BUZIN', valor:totalMeliBuzin, fn: fmt, cor:'#0891b2', bg:'#e0f2fe', icone:'ti-truck' },
+          { label:'OP. BAÚ LBM',   valor:totalMeliLbm,   fn: fmt, cor:'#16a34a', bg:'#f0fdf4', icone:'ti-truck' },
         ].map(c => (
           <div key={c.label} style={{ background:c.bg, border:`1px solid ${c.cor}22`, borderRadius:12, padding:'16px 18px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>

@@ -94,8 +94,9 @@ export default function Levantamentos() {
     return map;
   }, [motoristasBD]);
 
-  const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'MELI BUZIN', meli_lbm:'MELI LBM' };
+  const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'OP. BAÚ BUZIN', meli_lbm:'OP. BAÚ LBM' };
   const isMeliBD = frota => frota?.startsWith('meli');
+  const labelTipo = t => t === 'MELI' ? 'OP. BAÚ' : t;
 
   const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
@@ -371,10 +372,10 @@ export default function Levantamentos() {
   }, [totaisMot, motoristasUnicosImportados]);
 
   const cardsMedia = tipoFiltro
-    ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(motoristasParaMedia > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasParaMedia : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
+    ? [{ label:`Média/Motorista ${labelTipo(tipoFiltro)}`, valor: fmt(motoristasParaMedia > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasParaMedia : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
     : [
         { label:'Média/Motorista FROTA', valor: fmt(motoristasClosedPorFrota.FROTA > 0 ? (listaFrota.reduce((s,l)=>s+total(l),0) + totaisImportPorFrota.FROTA.total) / motoristasClosedPorFrota.FROTA : 0), cor: corFrota, icon:'ti-chart-bar' },
-        { label:'Média/Motorista MELI',  valor: fmt(motoristasClosedPorFrota.MELI  > 0 ? (listaMeli.reduce((s,l)=>s+total(l),0)  + totaisImportPorFrota.MELI.total)  / motoristasClosedPorFrota.MELI  : 0), cor: corMeli,  icon:'ti-chart-bar' },
+        { label:'Média/Motorista OP. BAÚ',  valor: fmt(motoristasClosedPorFrota.MELI  > 0 ? (listaMeli.reduce((s,l)=>s+total(l),0)  + totaisImportPorFrota.MELI.total)  / motoristasClosedPorFrota.MELI  : 0), cor: corMeli,  icon:'ti-chart-bar' },
         { label:'Média/Motorista Geral', valor: fmt(motoristasCard > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasCard : 0), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
@@ -591,7 +592,7 @@ export default function Levantamentos() {
                 background: tipoFiltro===t ? (t==='FROTA' ? '#065f46' : '#1d4ed8') : '#f1f5f9',
                 color: tipoFiltro===t ? '#fff' : '#64748b',
                 boxShadow: tipoFiltro===t ? '0 2px 8px rgba(0,0,0,0.15)' : 'none' }}>
-              {t}
+              {labelTipo(t)}
             </button>
           ))}
         </div>
@@ -661,9 +662,9 @@ export default function Levantamentos() {
                 </Bar>
               )}
               {(!tipoFiltro || tipoFiltro === 'MELI') && (
-                <Bar dataKey="MELI" fill="#3b82f6" radius={[6,6,0,0]} maxBarSize={50} name="MELI">
+                <Bar dataKey="MELI" fill="#3b82f6" radius={[6,6,0,0]} maxBarSize={50} name="OP. BAÚ">
                   <LabelList dataKey="MELI" position="top" style={{ fontSize:10, fontWeight:700, fill:'#3b82f6' }} formatter={v => fmtK(v)} />
-                  <LabelList dataKey="MELI" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'MELI'} />
+                  <LabelList dataKey="MELI" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'OP. BAÚ'} />
                 </Bar>
               )}
               {tipoFiltro && (

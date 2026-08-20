@@ -586,7 +586,7 @@ export default function LevantamentosImportacoes() {
                     style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
                     <option value="">— selecione —</option>
                     <option value="FROTA">FROTA</option>
-                    <option value="MELI">MELI</option>
+                    <option value="MELI">OP. BAÚ</option>
                   </select>
                 </div>
                 {preview.tipoPagamento === 'custoFolha' && (
@@ -671,11 +671,11 @@ export default function LevantamentosImportacoes() {
                         style={{ padding:'4px 8px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
                         <option value="">— frota —</option>
                         <option value="FROTA">FROTA</option>
-                        <option value="MELI">MELI</option>
+                        <option value="MELI">OP. BAÚ</option>
                       </select>
                     ) : (
                       im.frota
-                        ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background: im.frota==='MELI'?'#dbeafe':'#d1fae5', color: im.frota==='MELI'?'#1d4ed8':'#065f46' }}>{im.frota}</span>
+                        ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background: im.frota==='MELI'?'#dbeafe':'#d1fae5', color: im.frota==='MELI'?'#1d4ed8':'#065f46' }}>{im.frota === 'MELI' ? 'OP. BAÚ' : im.frota}</span>
                         : <span style={{ color:'#d1d5db' }}>—</span>
                     )}
                   </td>

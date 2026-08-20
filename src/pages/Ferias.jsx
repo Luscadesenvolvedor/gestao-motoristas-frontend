@@ -297,7 +297,7 @@ export default function Ferias() {
       )}
 
       {tab === 'ferias' && (() => {
-        const FROTA_LABEL = { buzin:'BUZIN', meli:'MELI', lbm:'LBM', meli_buzin:'MELI/BUZIN', meli_lbm:'MELI/LBM' };
+        const FROTA_LABEL = { buzin:'BUZIN', meli:'OP. BAÚ', lbm:'LBM', meli_buzin:'OP. BAÚ/BUZIN', meli_lbm:'OP. BAÚ/LBM' };
         const FROTA_COR   = { buzin:'#7c3aed', meli:'#0891b2', lbm:'#b45309', meli_buzin:'#0891b2', meli_lbm:'#0891b2' };
         const CATEG_LABEL = { frota:'Frota', dedicado_usiminas:'Ded. Usiminas', dedicado_arcelormittal:'Ded. Arcelormittal', patio:'Pátio', tirador_ferias:'Tirador Férias' };
 

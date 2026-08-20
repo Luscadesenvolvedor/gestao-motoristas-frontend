@@ -7,7 +7,7 @@ import StickyScrollTable from '../components/StickyScrollTable';
 const CATEGORIAS = ['frota', 'dedicado_usiminas', 'dedicado_arcelormittal', 'patio', 'tirador_ferias'];
 const CATEGORIAS_LABEL = { frota: 'Frota', dedicado_usiminas: 'Ded. Usiminas', dedicado_arcelormittal: 'Ded. ArcelorMittal', patio: 'Pátio', tirador_ferias: 'Tirador Férias' };
 const FROTAS = ['buzin', 'lbm', 'meli_buzin', 'meli_lbm'];
-const FROTAS_LABEL = { buzin: 'BUZIN', lbm: 'LBM', meli_buzin: 'MELI BUZIN', meli_lbm: 'MELI LBM' };
+const FROTAS_LABEL = { buzin: 'BUZIN', lbm: 'LBM', meli_buzin: 'OP. BAÚ BUZIN', meli_lbm: 'OP. BAÚ LBM' };
 
 const vazio = { nome:'', cpf:'', contato:'', banco:'', agencia:'', conta:'', pix:'', destinatario:'', frota:'buzin', status:'ativo', categoria:'frota', dataDesligamento:'', descricao:'' };
 
