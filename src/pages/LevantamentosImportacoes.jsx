@@ -76,25 +76,33 @@ function parseVal(v) {
 }
 
 // Exibe um nome palavra por palavra, verde se bateu com o outro nome, vermelho se não
-function TokenHighlight({ nome, referencia }) {
-  if (!nome) return <span style={{ color:'#d1d5db', fontStyle:'italic' }}>Nenhum encontrado</span>;
-  const palavras = nome.split(/\s+/).filter(Boolean);
-  const refSet = new Set((referencia || '').toLowerCase().split(/\s+/).filter(Boolean));
+// Exibe palavras como blocos coloridos comparando com uma referência
+// verde = palavra existe na referência | vermelho = não existe | cinza = nome vazio
+function TokenBlocks({ nome, referencia, vazio = 'Nenhum encontrado' }) {
+  if (!nome) return <span style={{ color:'#d1d5db', fontStyle:'italic', fontSize:12 }}>{vazio}</span>;
+  const palavras = nome.trim().split(/\s+/).filter(Boolean);
+  const refSet   = new Set((referencia || '').toUpperCase().trim().split(/\s+/).filter(Boolean));
   return (
-    <span style={{ display:'flex', flexWrap:'wrap', gap:3, alignItems:'center' }}>
+    <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center' }}>
       {palavras.map((w, i) => {
-        const ok = refSet.has(w.toLowerCase());
+        const ok = refSet.has(w.toUpperCase());
         return (
           <span key={i} style={{
-            padding:'2px 7px', borderRadius:5, fontSize:12, fontWeight:600,
+            padding:'3px 9px', borderRadius:6, fontSize:12, fontWeight:700,
             background: ok ? '#dcfce7' : '#fee2e2',
             color:      ok ? '#166534' : '#991b1b',
             border:     `1px solid ${ok ? '#bbf7d0' : '#fecaca'}`,
+            letterSpacing:'0.3px',
           }}>{w}</span>
         );
       })}
-    </span>
+    </div>
   );
+}
+
+// Compatibilidade com código antigo
+function TokenHighlight({ nome, referencia }) {
+  return <TokenBlocks nome={nome} referencia={referencia} />;
 }
 
 // Cor do badge de status
@@ -482,13 +490,20 @@ export default function LevantamentosImportacoes() {
                         return (
                           <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0 ? '#fff' : '#fafafa' }}>
                             <td style={{ padding:'7px 12px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
+                            {/* Planilha: blocos comparados com o nome final */}
                             <td style={{ padding:'7px 12px' }}>
-                              <TokenHighlight nome={r.nomePlanilha} referencia={r.nomeEditado} />
+                              <TokenBlocks nome={r.nomePlanilha} referencia={r.nomeEditado} />
                             </td>
+                            {/* Sistema: blocos comparados com a planilha */}
                             <td style={{ padding:'7px 12px' }}>
-                              <TokenHighlight nome={r.melhorMatch} referencia={r.nomePlanilha} />
+                              <TokenBlocks nome={r.melhorMatch} referencia={r.nomePlanilha} vazio="—" />
                             </td>
+                            {/* Nome Final: blocos + campo editável */}
                             <td style={{ padding:'5px 8px' }}>
+                              {/* Blocos do nome final comparados com a planilha */}
+                              <div style={{ marginBottom:4 }}>
+                                <TokenBlocks nome={r.nomeEditado} referencia={r.nomePlanilha} />
+                              </div>
                               <input
                                 value={r.nomeEditado}
                                 onChange={e => setPreview(p => ({
@@ -496,12 +511,12 @@ export default function LevantamentosImportacoes() {
                                   revisao: p.revisao.map((x, j) => j === i ? { ...x, nomeEditado: e.target.value } : x),
                                 }))}
                                 style={{
-                                  width:'100%', padding:'5px 8px',
+                                  width:'100%', padding:'4px 8px',
                                   border:'1.5px solid ' + (r.nomeEditado !== r.nomePlanilha ? '#6366f1' : '#e5e7eb'),
-                                  borderRadius:6, fontSize:13, outline:'none',
+                                  borderRadius:6, fontSize:12, outline:'none',
                                   background: r.nomeEditado !== r.nomePlanilha ? '#f5f3ff' : '#fff',
                                   fontWeight: r.nomeEditado !== r.nomePlanilha ? 600 : 400,
-                                  color:'#1a1a2e',
+                                  color:'#1a1a2e', boxSizing:'border-box',
                                 }}
                               />
                             </td>
