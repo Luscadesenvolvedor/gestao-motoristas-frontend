@@ -98,6 +98,13 @@ export default function Levantamentos() {
   const isMeliBD = frota => frota?.startsWith('meli');
   const labelTipo = t => t === 'MELI' ? 'OP. BAÚ' : t;
 
+  // Map importacaoId → { tipoPagamento, frota, mesReferencia }
+  const importacoesMap = useMemo(() => {
+    const map = {};
+    for (const im of importacoesMot) map[im.id] = { tipoPagamento: im.tipoPagamento, frota: im.frota, mesReferencia: im.mesReferencia || null };
+    return map;
+  }, [importacoesMot]);
+
   const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
       if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
@@ -212,13 +219,6 @@ export default function Levantamentos() {
     if (anoFiltro) return l.mes.startsWith(anoFiltro);
     return true;
   });
-
-  // Map importacaoId → { tipoPagamento, frota }
-  const importacoesMap = useMemo(() => {
-    const map = {};
-    for (const im of importacoesMot) map[im.id] = { tipoPagamento: im.tipoPagamento, frota: im.frota, mesReferencia: im.mesReferencia || null };
-    return map;
-  }, [importacoesMot]);
 
   // Tipos/frotas disponíveis — FROTA e MELI sempre presentes + quaisquer outros do dado
   const todosTipos = useMemo(() => {
