@@ -108,12 +108,17 @@ export default function Levantamentos() {
     const map = {};
     for (const r of filtrado) {
       const key = r.motorista.trim().toUpperCase();
-      if (!map[key]) map[key] = { motorista: r.motorista, veiculo: r.veiculo, valor: 0, meses: new Set() };
-      map[key].valor += parseFloat(r.valor || 0);
+      if (!map[key]) map[key] = { motorista: r.motorista, veiculo: r.veiculo, valor: 0, faturamento: 0, meses: new Set() };
+      const meta = importacoesMap[r.importacaoId];
+      if (meta?.tipoPagamento === 'faturamento') {
+        map[key].faturamento += parseFloat(r.valor || 0);
+      } else {
+        map[key].valor += parseFloat(r.valor || 0);
+      }
       if (r.mes) map[key].meses.add(r.mes);
     }
     return Object.values(map).sort((a, b) => a.motorista.localeCompare(b.motorista));
-  }, [regsMot, mesFiltroMot, buscaMot]);
+  }, [regsMot, mesFiltroMot, buscaMot, importacoesMap]);
 
   const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
 
@@ -468,7 +473,7 @@ export default function Levantamentos() {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
-                      {['Motorista','Frota/Info','Veículo','Mês(es)','Valor Total',''].map(h => (
+                      {['Motorista','Frota/Info','Veículo','Mês(es)','Faturamento','Valor Total',''].map(h => (
                         <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor Total' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width: h==='' ? 40 : 'auto' }}>{h}</th>
                       ))}
                     </tr>
@@ -520,6 +525,9 @@ export default function Levantamentos() {
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6', color:'#475569', fontSize:12 }}>
                             {[...r.meses].sort().map(m => fmtMes(m)).join(', ') || '—'}
                           </td>
+                          <td style={{ padding:'10px 16px', textAlign:'right', fontWeight:700, color:'#0d9488', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
+                            {r.faturamento > 0 ? fmtR(r.faturamento) : <span style={{ color:'#d1d5db' }}>—</span>}
+                          </td>
                           <td style={{ padding:'10px 16px', textAlign:'right', fontWeight:700, color:'#EB3238', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{fmtR(r.valor)}</td>
                           <td style={{ padding:'10px 16px', textAlign:'center', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             <button
@@ -532,7 +540,7 @@ export default function Levantamentos() {
                         </tr>,
                         aberto && (
                           <tr key={r.motorista + '_detalhe'}>
-                            <td colSpan={6} style={{ padding:'0 16px 12px 32px', background:'#f0f9ff', borderBottom:'1px solid #bae6fd' }}>
+                            <td colSpan={7} style={{ padding:'0 16px 12px 32px', background:'#f0f9ff', borderBottom:'1px solid #bae6fd' }}>
                               <div style={{ fontSize:11, fontWeight:700, color:'#0369a1', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:6 }}>
                                 Composição do valor — {r.motorista}
                               </div>
@@ -559,6 +567,7 @@ export default function Levantamentos() {
                   <tfoot>
                     <tr style={{ background:'#f8fafc', fontWeight:700 }}>
                       <td colSpan={5} style={{ padding:'11px 16px', color:'#374151' }}>TOTAL</td>
+                      <td style={{ padding:'11px 16px', textAlign:'right', color:'#0d9488' }}>{fmtR(regsFiltrados.reduce((s, r) => s + r.faturamento, 0))}</td>
                       <td style={{ padding:'11px 16px', textAlign:'right', color:'#EB3238' }}>{fmtR(totalMot)}</td>
                     </tr>
                   </tfoot>

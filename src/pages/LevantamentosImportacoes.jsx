@@ -6,11 +6,12 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 const TIPOS = [
-  { key: 'saldo',      label: 'Saldo/Prévia',      color: '#EB3238' },
-  { key: 'diarias',    label: 'Diárias dedicados', color: '#0ea5e9' },
-  { key: 'bonificacao',label: 'Bonificações',       color: '#16a34a' },
-  { key: 'custoFolha', label: 'Custo Folha',        color: '#8b5cf6' },
-  { key: 'folgas',     label: 'Folgas',             color: '#f59e0b' },
+  { key: 'saldo',       label: 'Saldo/Prévia',      color: '#EB3238' },
+  { key: 'diarias',     label: 'Diárias dedicados', color: '#0ea5e9' },
+  { key: 'bonificacao', label: 'Bonificações',       color: '#16a34a' },
+  { key: 'custoFolha',  label: 'Custo Folha',        color: '#8b5cf6' },
+  { key: 'folgas',      label: 'Folgas',             color: '#f59e0b' },
+  { key: 'faturamento', label: 'Faturamento',        color: '#0d9488' },
 ];
 
 const fmtR  = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
@@ -152,7 +153,7 @@ export default function LevantamentosImportacoes() {
       const header = (raw[0] || []).map(norm);
       const iMot = header.findIndex(h => h.includes('motorista'));
       const iVei = header.findIndex(h => h.includes('veiculo') || h.includes('placa') || h.includes('vei'));
-      const iVal = header.findIndex(h => h.includes('valor'));
+      const iVal = header.findIndex(h => h.includes('valor') || h.includes('faturamento'));
       const iMes = header.findIndex(h =>
         h.includes('mes') || h.includes('periodo') || h.includes('competencia') ||
         h.includes('data') || h.includes('referencia') || h.includes('ref')
@@ -341,7 +342,7 @@ export default function LevantamentosImportacoes() {
   , [nomes, buscaNomes]);
 
   const totaisPorTipo = useMemo(() => {
-    const map = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0, folgas: 0 };
+    const map = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0, folgas: 0, faturamento: 0 };
     for (const im of lista) {
       const k = im.tipoPagamento;
       if (k && map[k] !== undefined) map[k] += parseFloat(im.totalValor || 0);
