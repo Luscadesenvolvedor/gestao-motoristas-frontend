@@ -199,7 +199,7 @@ export default function LevantamentosImportacoes() {
           // Match exato
           if (mapaExistentes.has(n)) {
             const entry = mapaExistentes.get(n);
-            return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: entry.original, score: 1, veiculo: entry.veiculo };
+            return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: nome, score: 1, veiculo: entry.veiculo };
           }
           // Melhor match fuzzy
           let melhorScore = 0, melhorEntry = null;
@@ -208,7 +208,7 @@ export default function LevantamentosImportacoes() {
             if (s > melhorScore) { melhorScore = s; melhorEntry = entry; }
           }
           if (melhorScore >= THRESHOLD && melhorEntry) {
-            return { nomePlanilha: nome, melhorMatch: melhorEntry.original, nomeEditado: melhorEntry.original, score: melhorScore, veiculo: melhorEntry.veiculo };
+            return { nomePlanilha: nome, melhorMatch: melhorEntry.original, nomeEditado: nome, score: melhorScore, veiculo: melhorEntry.veiculo };
           }
           // Sem match acima do threshold — mostra o mais próximo encontrado mas mantém nome original
           return { nomePlanilha: nome, melhorMatch: melhorEntry?.original || null, nomeEditado: nome, score: melhorScore, veiculo: null };
@@ -364,7 +364,7 @@ export default function LevantamentosImportacoes() {
                           <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0 ? '#fff' : '#fafafa' }}>
                             <td style={{ padding:'7px 12px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
                             <td style={{ padding:'7px 12px' }}>
-                              <TokenHighlight nome={r.nomePlanilha} referencia={r.melhorMatch} />
+                              <TokenHighlight nome={r.nomePlanilha} referencia={r.nomeEditado} />
                             </td>
                             <td style={{ padding:'7px 12px' }}>
                               <TokenHighlight nome={r.melhorMatch} referencia={r.nomePlanilha} />
