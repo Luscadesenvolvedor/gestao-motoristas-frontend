@@ -267,7 +267,7 @@ export default function Levantamentos() {
   const soma = key => listaFiltrada.reduce((s,l) => s + parseFloat(l[key]||0), 0);
 
   // soma dos dados importados (todos os tipos) — inclui no Total Geral e Média
-  const totalImportados = (totaisMot.saldo || 0) + (totaisMot.diarias || 0) + (totaisMot.bonificacao || 0) + (totaisMot.custoFolha || 0);
+  const totalImportados = (totaisMot.saldo || 0) + (totaisMot.diarias || 0) + (totaisMot.bonificacao || 0) + (totaisMot.custoFolha || 0) + (totaisMot.folgas || 0);
 
   const calcMedia = (registros, extraTotal = 0, extraMot = 0) => {
     // desconsiderar entradas com total = 0 na média
