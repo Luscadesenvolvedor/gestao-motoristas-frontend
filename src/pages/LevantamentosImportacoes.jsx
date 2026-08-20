@@ -113,6 +113,11 @@ export default function LevantamentosImportacoes() {
   // preview = { nomeArquivo, registros, tipoPagamento, frota, revisao, buscando }
   // revisao = [{ nomePlanilha, melhorMatch, nomeEditado, score, veiculo }]
   const [salvando, setSalvando]     = useState(false);
+  const [gerenciar, setGerenciar]   = useState(false); // painel gerenciar nomes
+  const [nomes, setNomes]           = useState([]);    // [{ nome, total, nomeEditado, alterado }]
+  const [carregandoNomes, setCarregandoNomes] = useState(false);
+  const [salvandoNomes, setSalvandoNomes]     = useState(false);
+  const [buscaNomes, setBuscaNomes] = useState('');
   const fileRef = useRef();
 
   async function carregar() {
@@ -283,6 +288,47 @@ export default function LevantamentosImportacoes() {
     } catch { toast.error('Erro ao excluir'); }
   }
 
+  async function abrirGerenciar() {
+    setGerenciar(true);
+    setBuscaNomes('');
+    setCarregandoNomes(true);
+    try {
+      const { data } = await api.get('/levantamentos-motoristas/nomes-unicos');
+      // Para cada nome, encontra o mais parecido entre os outros
+      const lista = data.map(r => ({ ...r, nomeEditado: r.nome, alterado: false, sugestao: null }));
+      // Marca sugestões de duplicatas (nomes similares entre si)
+      for (let i = 0; i < lista.length; i++) {
+        let melhorScore = 0, melhorNome = null;
+        for (let j = 0; j < lista.length; j++) {
+          if (i === j) continue;
+          const s = scoreNome(norm(lista[i].nome), norm(lista[j].nome));
+          if (s > melhorScore && s >= 0.6) { melhorScore = s; melhorNome = lista[j].nome; }
+        }
+        if (melhorNome) lista[i].sugestao = { nome: melhorNome, score: melhorScore };
+      }
+      setNomes(lista);
+    } catch { toast.error('Erro ao carregar nomes'); }
+    finally { setCarregandoNomes(false); }
+  }
+
+  async function salvarNomes() {
+    const alterados = nomes.filter(r => r.alterado && r.nomeEditado.trim() && r.nomeEditado.trim() !== r.nome);
+    if (!alterados.length) { toast('Nenhuma alteração para salvar'); return; }
+    setSalvandoNomes(true);
+    try {
+      for (const r of alterados) {
+        await api.put('/levantamentos-motoristas/renomear', { de: r.nome, para: r.nomeEditado.trim() });
+      }
+      toast.success(`${alterados.length} nome(s) atualizado(s)`);
+      setGerenciar(false);
+    } catch { toast.error('Erro ao salvar nomes'); }
+    finally { setSalvandoNomes(false); }
+  }
+
+  const nomesFiltrados = useMemo(() =>
+    nomes.filter(r => !buscaNomes || norm(r.nome).includes(norm(buscaNomes)) || norm(r.nomeEditado).includes(norm(buscaNomes)))
+  , [nomes, buscaNomes]);
+
   const totaisPorTipo = useMemo(() => {
     const map = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0, folgas: 0 };
     for (const im of lista) {
@@ -299,12 +345,85 @@ export default function LevantamentosImportacoes() {
         <h2 style={{ fontSize:20, fontWeight:700, color:'#1a1a2e', margin:0 }}>Importações — Por Motorista</h2>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
+          {isAdmin && (
+            <button onClick={abrirGerenciar} disabled={!!preview}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background:'#fff', color:'#374151', border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
+              <i className="ti ti-pencil" style={{ fontSize:14 }}></i> Gerenciar Nomes
+            </button>
+          )}
           <button onClick={() => fileRef.current?.click()} disabled={!!preview}
             style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background: preview ? '#9ca3af' : '#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor: preview ? 'not-allowed' : 'pointer' }}>
             <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar Planilha
           </button>
         </div>
       </div>
+
+      {/* Painel Gerenciar Nomes */}
+      {gerenciar && (
+        <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'20px 24px', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+            <i className="ti ti-pencil" style={{ fontSize:18, color:'#6366f1' }}></i>
+            <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Gerenciar Nomes Importados</div>
+            <div style={{ fontSize:12, color:'#6b7280', marginLeft:4 }}>{nomes.length} nomes únicos</div>
+            <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+              <input value={buscaNomes} onChange={e => setBuscaNomes(e.target.value)} placeholder="Buscar nome..." style={{ padding:'6px 10px', border:'1px solid #e5e7eb', borderRadius:7, fontSize:13, outline:'none', width:180 }} />
+              <button onClick={() => setGerenciar(false)} style={{ padding:'6px 12px', border:'1px solid #e5e7eb', borderRadius:7, background:'#fff', fontSize:12, cursor:'pointer', color:'#6b7280' }}>Fechar</button>
+              <button onClick={salvarNomes} disabled={salvandoNomes || !nomes.some(r => r.alterado)}
+                style={{ padding:'6px 14px', border:'none', borderRadius:7, background: nomes.some(r => r.alterado) ? '#16a34a' : '#9ca3af', color:'#fff', fontSize:12, fontWeight:700, cursor: nomes.some(r => r.alterado) ? 'pointer' : 'not-allowed' }}>
+                {salvandoNomes ? 'Salvando...' : `Salvar${nomes.filter(r=>r.alterado).length > 0 ? ` (${nomes.filter(r=>r.alterado).length})` : ''}`}
+              </button>
+            </div>
+          </div>
+
+          {carregandoNomes ? (
+            <div style={{ textAlign:'center', padding:'32px 0', color:'#9ca3af' }}>Carregando nomes...</div>
+          ) : (
+            <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
+              <div style={{ maxHeight:420, overflowY:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                  <thead>
+                    <tr style={{ background:'#f8fafc', position:'sticky', top:0, zIndex:1 }}>
+                      <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb' }}>Nome atual no banco</th>
+                      <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb' }}>Nome similar encontrado</th>
+                      <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb' }}>Nome final (editável)</th>
+                      <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', width:60 }}>Regs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nomesFiltrados.map((r, i) => (
+                      <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: r.alterado ? '#f5f3ff' : i%2===0 ? '#fff' : '#fafafa' }}>
+                        <td style={{ padding:'7px 12px', color:'#374151', fontWeight: r.alterado ? 600 : 400 }}>{r.nome}</td>
+                        <td style={{ padding:'7px 12px' }}>
+                          {r.sugestao ? (
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              <span style={{ color:'#92400e', fontSize:12 }}>{r.sugestao.nome}</span>
+                              <span style={{ fontSize:10, padding:'1px 6px', borderRadius:10, background:'#fef9c3', color:'#854d0e', border:'1px solid #fde047', fontWeight:700 }}>
+                                {Math.round(r.sugestao.score * 100)}%
+                              </span>
+                              <button onClick={() => setNomes(ns => ns.map((x,j) => j===i ? { ...x, nomeEditado: r.sugestao.nome, alterado: r.sugestao.nome !== x.nome } : x))}
+                                style={{ fontSize:10, padding:'2px 7px', border:'1px solid #d1d5db', borderRadius:5, background:'#fff', cursor:'pointer', color:'#374151' }}>
+                                Usar
+                              </button>
+                            </div>
+                          ) : <span style={{ color:'#d1d5db' }}>—</span>}
+                        </td>
+                        <td style={{ padding:'5px 8px' }}>
+                          <input
+                            value={r.nomeEditado}
+                            onChange={e => setNomes(ns => ns.map((x,j) => j===i ? { ...x, nomeEditado: e.target.value, alterado: e.target.value.trim() !== x.nome } : x))}
+                            style={{ width:'100%', padding:'5px 8px', border:`1.5px solid ${r.alterado ? '#6366f1' : '#e5e7eb'}`, borderRadius:6, fontSize:13, outline:'none', background: r.alterado ? '#f5f3ff' : '#fff', color:'#1a1a2e', fontWeight: r.alterado ? 600 : 400, boxSizing:'border-box' }}
+                          />
+                        </td>
+                        <td style={{ padding:'7px 12px', textAlign:'center', color:'#9ca3af', fontSize:12 }}>{r.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Preview / Revisão */}
       {preview && (
