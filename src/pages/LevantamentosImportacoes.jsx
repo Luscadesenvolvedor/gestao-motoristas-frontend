@@ -459,7 +459,7 @@ export default function LevantamentosImportacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {['Arquivo','Título','Data','Registros','Total','Tipo','Frota',''].map(h => (
+                {['Arquivo','Data','Registros','Total','Tipo','Frota',''].map(h => (
                   <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -474,18 +474,6 @@ export default function LevantamentosImportacoes() {
                       <i className="ti ti-file-spreadsheet" style={{ fontSize:15, color:'#6366f1' }}></i>
                       {im.nomeArquivo.replace(/\.xlsx?$/i,'')}
                     </div>
-                  </td>
-                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6', maxWidth:200 }}>
-                    {isAdmin ? (
-                      <input
-                        defaultValue={im.titulo || ''}
-                        onBlur={e => { if (e.target.value !== (im.titulo || '')) atualizarCampo(im.id, 'titulo', e.target.value); }}
-                        placeholder="—"
-                        style={{ width:'100%', padding:'4px 8px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', outline:'none', boxSizing:'border-box' }}
-                      />
-                    ) : (
-                      <span style={{ color: im.titulo ? '#374151' : '#d1d5db', fontSize:12 }}>{im.titulo || '—'}</span>
-                    )}
                   </td>
                   <td style={{ padding:'11px 16px', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{fmtDt(im.criadoEm)}</td>
                   <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
