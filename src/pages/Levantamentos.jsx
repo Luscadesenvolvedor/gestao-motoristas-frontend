@@ -321,28 +321,15 @@ export default function Levantamentos() {
     }).map(r => r.motorista.trim().toUpperCase())
   ).size, [mesFiltro, anoFiltro, regsMot]);
 
-  // Card "Motoristas Fechados": fonte primária = planilha Custo Folha importada.
-  // Fallback: registros manuais de fechamento. Último fallback: qualquer importação.
+  // Card "Motoristas Fechados": exclusivamente da planilha Custo Folha importada.
   const motoristasCard = useMemo(() => {
-    // 1º: motoristas únicos na importação de Custo Folha (filtrado por frota/mes/ano)
-    if (totaisMot.motoristasFechados > 0) return totaisMot.motoristasFechados;
-    // 2º: média dos registros manuais de fechamento
-    const validos = listaFiltrada.filter(l => parseInt(l.motoristasFechados) > 0);
-    if (validos.length > 0) {
-      const soma = validos.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
-      return Math.round(soma / validos.length);
-    }
-    // 3º: qualquer motorista importado
-    return motoristasUnicosImportados;
-  }, [listaFiltrada, totaisMot, motoristasUnicosImportados]);
+    return totaisMot.motoristasFechados || 0;
+  }, [totaisMot]);
 
-  // Para o DENOMINADOR da média usa a SOMA total de motoristas×meses
+  // Para o DENOMINADOR da média
   const motoristasParaMedia = useMemo(() => {
-    if (totaisMot.motoristasFechados > 0) return totaisMot.motoristasFechados;
-    const soma = listaFiltrada.reduce((s,l) => s + (parseInt(l.motoristasFechados)||0), 0);
-    if (soma > 0) return soma;
-    return motoristasUnicosImportados;
-  }, [listaFiltrada, totaisMot, motoristasUnicosImportados]);
+    return totaisMot.motoristasFechados || motoristasUnicosImportados || 1;
+  }, [totaisMot, motoristasUnicosImportados]);
 
   const cardsMedia = tipoFiltro
     ? [{ label:`Média/Motorista ${tipoFiltro}`, valor: fmt(motoristasParaMedia > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasParaMedia : 0), cor: tipoFiltro === 'FROTA' ? corFrota : corMeli, icon:'ti-chart-bar' }]
