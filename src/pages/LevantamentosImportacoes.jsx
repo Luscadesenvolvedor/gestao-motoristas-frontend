@@ -343,12 +343,19 @@ export default function LevantamentosImportacoes() {
                         <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Nome na planilha</th>
                         <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Mais parecido no sistema</th>
                         <th style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Nome final (editável)</th>
-                        <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width:90 }}>Status</th>
+                        <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>No sistema</th>
+                        <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Match</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(preview.revisao || []).map((r, i) => {
-                        const st = corStatus(r.score);
+                        const isNovo    = r.score < THRESHOLD;
+                        const matchLabel = r.score >= 1 ? 'Exato' : r.score >= 0.7 ? 'Provável' : r.score > 0 ? 'Parecido' : null;
+                        const matchStyle = r.score >= 1
+                          ? { bg:'#dcfce7', color:'#166534', border:'#bbf7d0' }
+                          : r.score >= 0.7
+                          ? { bg:'#fef9c3', color:'#854d0e', border:'#fde047' }
+                          : { bg:'#fef3c7', color:'#92400e', border:'#fbbf24' };
                         return (
                           <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0 ? '#fff' : '#fafafa' }}>
                             <td style={{ padding:'7px 12px', color:'#9ca3af', fontSize:12 }}>{i+1}</td>
@@ -375,10 +382,21 @@ export default function LevantamentosImportacoes() {
                                 }}
                               />
                             </td>
+                            {/* Coluna: Novo no sistema? */}
                             <td style={{ padding:'7px 12px', textAlign:'center' }}>
-                              <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:st.bg, color:st.color, border:`1px solid ${st.border}`, whiteSpace:'nowrap' }}>
-                                {st.label}
-                              </span>
+                              {isNovo && (
+                                <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', whiteSpace:'nowrap' }}>
+                                  Novo
+                                </span>
+                              )}
+                            </td>
+                            {/* Coluna: qualidade do match */}
+                            <td style={{ padding:'7px 12px', textAlign:'center' }}>
+                              {matchLabel && (
+                                <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:matchStyle.bg, color:matchStyle.color, border:`1px solid ${matchStyle.border}`, whiteSpace:'nowrap' }}>
+                                  {matchLabel}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );
