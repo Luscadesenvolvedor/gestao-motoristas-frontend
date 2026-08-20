@@ -576,6 +576,30 @@ export default function LevantamentosImportacoes() {
             )}
           </div>
 
+          {/* Aviso: motoristas sem cadastro no banco */}
+          {!preview.buscando && (preview.revisao || []).some(r => r.semCadastro) && (
+            <div style={{ background:'#fff7ed', border:'1.5px solid #fb923c', borderRadius:10, padding:'14px 16px', marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <i className="ti ti-user-exclamation" style={{ fontSize:18, color:'#ea580c', flexShrink:0 }}></i>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#9a3412' }}>
+                    {(preview.revisao || []).filter(r => r.semCadastro).length} motorista(s) sem cadastro no banco
+                  </div>
+                  <div style={{ fontSize:12, color:'#c2410c', marginTop:2 }}>
+                    Eles serão tratados como <strong>FROTA</strong>. Se algum for OP. BAÚ, cadastre-o primeiro na aba Motoristas antes de importar.
+                  </div>
+                </div>
+              </div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {(preview.revisao || []).filter(r => r.semCadastro).map((r, i) => (
+                  <span key={i} style={{ padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:600, background:'#fff', color:'#9a3412', border:'1.5px solid #fb923c' }}>
+                    {r.nomeEditado || r.nomePlanilha}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Aviso de duplicata */}
           {preview.tituloDuplicado && (
             <div style={{ display:'flex', alignItems:'center', gap:10, background:'#fffbeb', border:'1.5px solid #fbbf24', borderRadius:8, padding:'10px 14px', marginBottom:12 }}>
