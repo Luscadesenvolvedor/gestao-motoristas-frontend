@@ -47,6 +47,7 @@ export default function Levantamentos() {
   const [importacoesMot, setImportacoesMot] = useState([]);
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
+  const [motoristasBD, setMotoristasBD]   = useState([]); // motoristas do banco para cruzar frota/info
 
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
@@ -58,6 +59,9 @@ export default function Levantamentos() {
       .catch(() => {});
     api.get('/levantamentos-motoristas/importacoes')
       .then(r => setImportacoesMot(r.data))
+      .catch(() => {});
+    api.get('/motoristas')
+      .then(r => setMotoristasBD(r.data))
       .catch(() => {});
   }, []);
 
@@ -82,6 +86,16 @@ export default function Levantamentos() {
   }
 
   const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
+
+  // Mapa nome normalizado → motorista do banco (para cruzar frota/info na aba Por Motorista)
+  const motoristasBDMap = useMemo(() => {
+    const map = {};
+    for (const m of motoristasBD) map[m.nome.trim().toUpperCase()] = m;
+    return map;
+  }, [motoristasBD]);
+
+  const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'MELI BUZIN', meli_lbm:'MELI LBM' };
+  const isMeliBD = frota => frota?.startsWith('meli');
 
   const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
@@ -453,7 +467,7 @@ export default function Levantamentos() {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
-                      {['Motorista','Veículo','Mês(es)','Valor Total',''].map(h => (
+                      {['Motorista','Frota/Info','Veículo','Mês(es)','Valor Total',''].map(h => (
                         <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor Total' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width: h==='' ? 40 : 'auto' }}>{h}</th>
                       ))}
                     </tr>
@@ -468,6 +482,20 @@ export default function Levantamentos() {
                           onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
                           onMouseLeave={e => e.currentTarget.style.background= aberto ? '#f0f9ff' : i%2===0?'#fff':'#fafafa'}>
                           <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{r.motorista}</td>
+                          <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
+                            {(() => {
+                              const bd = motoristasBDMap[r.motorista.trim().toUpperCase()];
+                              if (!bd) return <span style={{ color:'#d1d5db', fontSize:11 }}>—</span>;
+                              const frotaLabel = FROTAS_LABEL_BD[bd.frota] || bd.frota?.toUpperCase() || '—';
+                              const meli = isMeliBD(bd.frota);
+                              return (
+                                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                                  <span style={{ fontSize:11, fontWeight:700, color: meli ? '#6d28d9' : '#059669' }}>{frotaLabel}</span>
+                                  {bd.descricao && <span style={{ padding:'1px 6px', borderRadius:20, fontSize:10, fontWeight:600, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', alignSelf:'flex-start' }}>{bd.descricao}</span>}
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             {r.veiculo ? (
                               <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{r.veiculo}</span>
@@ -508,7 +536,7 @@ export default function Levantamentos() {
                         </tr>,
                         aberto && (
                           <tr key={r.motorista + '_detalhe'}>
-                            <td colSpan={5} style={{ padding:'0 16px 12px 32px', background:'#f0f9ff', borderBottom:'1px solid #bae6fd' }}>
+                            <td colSpan={6} style={{ padding:'0 16px 12px 32px', background:'#f0f9ff', borderBottom:'1px solid #bae6fd' }}>
                               <div style={{ fontSize:11, fontWeight:700, color:'#0369a1', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:6 }}>
                                 Composição do valor — {r.motorista}
                               </div>
@@ -534,7 +562,7 @@ export default function Levantamentos() {
                   </tbody>
                   <tfoot>
                     <tr style={{ background:'#f8fafc', fontWeight:700 }}>
-                      <td colSpan={4} style={{ padding:'11px 16px', color:'#374151' }}>TOTAL</td>
+                      <td colSpan={5} style={{ padding:'11px 16px', color:'#374151' }}>TOTAL</td>
                       <td style={{ padding:'11px 16px', textAlign:'right', color:'#EB3238' }}>{fmtR(totalMot)}</td>
                     </tr>
                   </tfoot>
