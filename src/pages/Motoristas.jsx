@@ -279,7 +279,7 @@ export default function Motoristas() {
                   </td>
                   <td style={{ padding:'10px 14px' }}>
                     {m.descricao
-                      ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>{m.descricao}</span>
+                      ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>{m.descricao.toUpperCase() === 'MELI' ? 'OP. BAÚ' : m.descricao}</span>
                       : <span style={{ color:'#d1d5db' }}>—</span>
                     }
                   </td>
