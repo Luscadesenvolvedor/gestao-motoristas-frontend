@@ -1,0 +1,13 @@
+@tailwind components;
+@tailwind utilities;
+
+/* Variáveis do tema dark do Painel Operacional */
+.painel-root {
+  --tw-bg:        #0a0b0e;
+  --tw-fg:        #f0ede8;
+  --tw-card:      #111318;
+  --tw-border:    #2a2d35;
+  --tw-secondary: #1c1e24;
+  --tw-muted:     #161820;
+  --tw-muted-fg:  #7a7d8a;
+}
