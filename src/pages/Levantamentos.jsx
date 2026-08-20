@@ -342,7 +342,7 @@ export default function Levantamentos() {
 
   const resumo = [
     { label:'Total Geral', valor: fmt(listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados), cor:'#EB3238', icon:'ti-cash' },
-    { label:'Motoristas Fechados', valor: motoristasCard, cor:'#0ea5e9', icon:'ti-users' },
+    ...(mesFiltro ? [{ label:'Motoristas Fechados', valor: motoristasCard, cor:'#0ea5e9', icon:'ti-users' }] : []),
     { label:'Custo Folha',       valor: fmt(soma('custoFolha') + totaisMot.custoFolha),               cor:'#3b82f6', icon:'ti-id-badge' },
     { label:'Saldo/Prévia',      valor: fmt(soma('saldo') + soma('previa') + totaisMot.saldo),          cor:'#06b6d4', icon:'ti-wallet'   },
     { label:'Diárias Dedicados', valor: fmt(totaisMot.diarias),                                         cor:'#0ea5e9', icon:'ti-truck'    },
