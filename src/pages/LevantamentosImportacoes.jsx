@@ -254,7 +254,6 @@ export default function LevantamentosImportacoes() {
   async function salvar() {
     if (!preview) return;
     if (!preview.tipoPagamento) { toast.error('Selecione o tipo de pagamento'); return; }
-    if (!preview.frota)         { toast.error('Selecione a frota'); return; }
     if (preview.tipoPagamento === 'custoFolha' && !preview.mesReferencia) { toast.error('Selecione o mês de referência para Custo Folha'); return; }
 
     // Aplica nomes editados nos registros
@@ -277,7 +276,7 @@ export default function LevantamentosImportacoes() {
         registros:     registrosFinais,
         titulo:        preview.titulo?.trim() || null,
         tipoPagamento: preview.tipoPagamento,
-        frota:         preview.frota,
+        frota:         null,
         mesReferencia: preview.mesReferencia || null,
       });
       toast.success('Importação salva!');
@@ -580,7 +579,7 @@ export default function LevantamentosImportacoes() {
           {/* Tipo + Frota + Mês Referência + Salvar */}
           {!preview.buscando && (
             <div style={{ paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
-              <div style={{ display:'grid', gridTemplateColumns: preview.tipoPagamento === 'custoFolha' ? '1fr 1fr 1fr auto' : '1fr 1fr auto', gap:10, alignItems:'end' }}>
+              <div style={{ display:'grid', gridTemplateColumns: preview.tipoPagamento === 'custoFolha' ? '1fr 1fr auto' : '1fr auto', gap:10, alignItems:'end' }}>
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Tipo de Pagamento</div>
                   <select value={preview.tipoPagamento}
@@ -588,16 +587,6 @@ export default function LevantamentosImportacoes() {
                     style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
                     <option value="">— selecione —</option>
                     {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Frota</div>
-                  <select value={preview.frota}
-                    onChange={e => setPreview(p => ({ ...p, frota: e.target.value }))}
-                    style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
-                    <option value="">— selecione —</option>
-                    <option value="FROTA">FROTA</option>
-                    <option value="MELI">OP. BAÚ</option>
                   </select>
                 </div>
                 {preview.tipoPagamento === 'custoFolha' && (
@@ -644,7 +633,7 @@ export default function LevantamentosImportacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {['Arquivo','Data','Registros','Total','Tipo','Frota','Mês Ref.',''].map(h => (
+                {['Arquivo','Data','Registros','Total','Tipo','Mês Ref.',''].map(h => (
                   <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -674,20 +663,6 @@ export default function LevantamentosImportacoes() {
                       </select>
                     ) : (
                       (() => { const t = TIPOS.find(x => x.key === im.tipoPagamento); return t ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background:t.color+'18', color:t.color, border:`1px solid ${t.color}40` }}>{t.label}</span> : <span style={{ color:'#d1d5db' }}>—</span>; })()
-                    )}
-                  </td>
-                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
-                    {isAdmin ? (
-                      <select value={im.frota || ''} onChange={e => atualizarCampo(im.id, 'frota', e.target.value)}
-                        style={{ padding:'4px 8px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', cursor:'pointer', outline:'none' }}>
-                        <option value="">— frota —</option>
-                        <option value="FROTA">FROTA</option>
-                        <option value="MELI">OP. BAÚ</option>
-                      </select>
-                    ) : (
-                      im.frota
-                        ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background: im.frota==='MELI'?'#dbeafe':'#d1fae5', color: im.frota==='MELI'?'#1d4ed8':'#065f46' }}>{im.frota === 'MELI' ? 'OP. BAÚ' : im.frota}</span>
-                        : <span style={{ color:'#d1d5db' }}>—</span>
                     )}
                   </td>
                   <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
