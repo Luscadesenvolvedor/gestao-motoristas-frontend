@@ -18,8 +18,7 @@ const menusAcerto = [
   { path: 'levantamentos',             label: 'Levantamentos',        icon: 'ti-report-money',   recurso: 'levantamentos' },
   { path: 'levantamentos-importacoes', label: 'Importações Motoristas', icon: 'ti-file-import',    recurso: 'levantamentos' },
   { path: 'ab-medias-consumo', label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: 'levantamentos' },
-  { path: 'mapa-ineficiencia',    label: 'Mapa de Ineficiência', icon: 'ti-map-pin',        recurso: 'financeiro' },
-  { path: 'painel-operacional',   label: 'Painel Operacional',   icon: 'ti-layout-dashboard', recurso: 'levantamentos' },
+  { path: 'mapa-ineficiencia', label: 'Mapa de Ineficiência', icon: 'ti-map-pin', recurso: 'financeiro' },
 ];
 
 const menusAbastecimento = [
