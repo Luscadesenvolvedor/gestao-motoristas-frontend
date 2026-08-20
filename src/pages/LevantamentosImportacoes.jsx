@@ -451,8 +451,15 @@ export default function LevantamentosImportacoes() {
 
           {/* Tabela de revisão de nomes */}
           <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
               Revisão de nomes — edite antes de salvar
+              {!preview.buscando && (() => {
+                const pendentes = (preview.revisao || []).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha).length;
+                const total     = (preview.revisao || []).length;
+                return pendentes > 0
+                  ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700, textTransform:'none' }}>{pendentes} de {total} precisam revisão</span>
+                  : <span style={{ padding:'2px 8px', borderRadius:10, background:'#dcfce7', color:'#16a34a', border:'1px solid #bbf7d0', fontSize:11, fontWeight:700, textTransform:'none' }}>Todos exatos ✓</span>;
+              })()}
             </div>
 
             {preview.buscando ? (
@@ -475,7 +482,7 @@ export default function LevantamentosImportacoes() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(preview.revisao || []).map((r, i) => {
+                      {(preview.revisao || []).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha).map((r, i) => {
                         // Score mais confiável: compara nome final vs melhor match do sistema (reativo ao editar)
                         const scoreFinal = r.melhorMatch
                           ? Math.max(r.score, scoreNome(norm(r.nomeEditado), norm(r.melhorMatch)))
