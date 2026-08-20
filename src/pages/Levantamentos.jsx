@@ -97,6 +97,11 @@ export default function Levantamentos() {
   const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'OP. BAÚ BUZIN', meli_lbm:'OP. BAÚ LBM' };
   const isMeliBD = frota => frota?.startsWith('meli');
   const labelTipo = t => t === 'MELI' ? 'OP. BAÚ' : t;
+  // Retorna 'MELI' se motorista tiver descricao=MELI no banco, senão 'FROTA'
+  const getFrotaReal = motoristaNome => {
+    const bd = motoristasBDMap[motoristaNome?.trim().toUpperCase()];
+    return bd?.descricao?.toUpperCase() === 'MELI' ? 'MELI' : 'FROTA';
+  };
 
   // Map importacaoId → { tipoPagamento, frota, mesReferencia }
   const importacoesMap = useMemo(() => {
@@ -235,7 +240,7 @@ export default function Levantamentos() {
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.tipoPagamento) continue;
-      if (tipoFiltro && meta.frota !== tipoFiltro) continue;
+      if (tipoFiltro && getFrotaReal(r.motorista) !== tipoFiltro) continue;
       const mesEfetivo = r.mes || meta.mesReferencia || '';
       if (mesFiltro  && mesEfetivo !== mesFiltro) continue;
       if (anoFiltro  && mesEfetivo && !mesEfetivo.startsWith(anoFiltro)) continue;
@@ -251,22 +256,23 @@ export default function Levantamentos() {
     // soma de motoristas únicos por mês (não únicos globais) para média mensal correta
     const motoristasFechados = Object.values(motoristasPorMes).reduce((s, set) => s + set.size, 0);
     return { ...result, motoristasFechados };
-  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, motoristasBDMap]);
 
   // Totais por frota agrupados por mês (para o gráfico — soma nas barras FROTA/MELI)
   const chartMotData = useMemo(() => {
     const map = {};
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
-      if (!meta?.frota) continue;
-      if (tipoFiltro && meta.frota !== tipoFiltro) continue;
+      if (!meta) continue;
+      const frotaReal = getFrotaReal(r.motorista);
+      if (tipoFiltro && frotaReal !== tipoFiltro) continue;
       if (mesFiltro  && r.mes !== mesFiltro) continue;
       if (anoFiltro  && !r.mes?.startsWith(anoFiltro)) continue;
       if (!map[r.mes]) map[r.mes] = { FROTA: 0, MELI: 0 };
-      map[r.mes][meta.frota] = (map[r.mes][meta.frota] || 0) + parseFloat(r.valor || 0);
+      map[r.mes][frotaReal] = (map[r.mes][frotaReal] || 0) + parseFloat(r.valor || 0);
     }
     return map;
-  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, motoristasBDMap]);
 
   const mesesChart = [...new Set([
     ...listaFiltrada.map(l => l.mes),
@@ -316,16 +322,18 @@ export default function Levantamentos() {
     };
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
-      if (!meta?.frota || !acc[meta.frota]) continue;
+      if (!meta) continue;
+      if (meta.tipoPagamento === 'faturamento') continue; // faturamento é receita, não entra na média de custo
+      const frotaReal = getFrotaReal(r.motorista);
       const mesEf2 = r.mes || meta.mesReferencia || '';
       if (mesFiltro && mesEf2 !== mesFiltro) continue;
       if (anoFiltro && mesEf2 && !mesEf2.startsWith(anoFiltro)) continue;
       const v = parseFloat(r.valor || 0);
-      acc[meta.frota].total += v;
+      acc[frotaReal].total += v;
       if (v > 0) {
         const mk2 = mesEf2 || '_';
-        if (!acc[meta.frota].porMes[mk2]) acc[meta.frota].porMes[mk2] = new Set();
-        acc[meta.frota].porMes[mk2].add(r.motorista.trim().toUpperCase());
+        if (!acc[frotaReal].porMes[mk2]) acc[frotaReal].porMes[mk2] = new Set();
+        acc[frotaReal].porMes[mk2].add(r.motorista.trim().toUpperCase());
       }
     }
     // soma de motoristas únicos por mês (cada mês conta separadamente)
@@ -334,7 +342,7 @@ export default function Levantamentos() {
       FROTA: { total: acc.FROTA.total, motoristas: somarMes(acc.FROTA.porMes) },
       MELI:  { total: acc.MELI.total,  motoristas: somarMes(acc.MELI.porMes)  },
     };
-  }, [regsMot, importacoesMap, mesFiltro, anoFiltro]);
+  }, [regsMot, importacoesMap, mesFiltro, anoFiltro, motoristasBDMap]);
 
   // Motoristas únicos dos importados — filtrado só por tempo (não por frota)
   const motoristasUnicosImportados = useMemo(() => new Set(
@@ -351,20 +359,20 @@ export default function Levantamentos() {
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (meta?.tipoPagamento !== 'custoFolha') continue;
-      if (!meta?.frota || !porMes[meta.frota]) continue;
-      if (tipoFiltro && meta.frota !== tipoFiltro) continue;
+      const frotaReal = getFrotaReal(r.motorista);
+      if (tipoFiltro && frotaReal !== tipoFiltro) continue;
       const mesEf = r.mes || meta.mesReferencia || '';
       if (mesFiltro  && mesEf !== mesFiltro) continue;
       if (anoFiltro  && mesEf && !mesEf.startsWith(anoFiltro)) continue;
       if (parseFloat(r.valor || 0) > 0) {
         const mk = mesEf || '_';
-        if (!porMes[meta.frota][mk]) porMes[meta.frota][mk] = new Set();
-        porMes[meta.frota][mk].add(r.motorista.trim().toUpperCase());
+        if (!porMes[frotaReal][mk]) porMes[frotaReal][mk] = new Set();
+        porMes[frotaReal][mk].add(r.motorista.trim().toUpperCase());
       }
     }
     const sum = f => Object.values(porMes[f]).reduce((s, set) => s + set.size, 0);
     return { FROTA: sum('FROTA'), MELI: sum('MELI') };
-  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, motoristasBDMap]);
 
   // Card "Motoristas Fechados": exclusivamente da planilha Custo Folha importada.
   const motoristasCard = useMemo(() => {
