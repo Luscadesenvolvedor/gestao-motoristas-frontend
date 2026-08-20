@@ -144,6 +144,7 @@ export default function LevantamentosImportacoes() {
         h.includes('mes') || h.includes('periodo') || h.includes('competencia') ||
         h.includes('data') || h.includes('referencia') || h.includes('ref')
       );
+      const iTit = header.findIndex(h => h.includes('titulo') || h.includes('title'));
 
       if (iMot < 0 || iVal < 0) {
         toast.error(`Colunas não encontradas. Lidos: ${header.join(', ')}`);
@@ -162,12 +163,26 @@ export default function LevantamentosImportacoes() {
 
       if (!registros.length) { toast.error('Nenhum registro válido'); return; }
 
+      // Título: lê da coluna "titulo" (1ª linha de dados) ou usa nome do arquivo sem extensão
+      const tituloDetectado = iTit >= 0 && raw[1]?.[iTit]
+        ? String(raw[1][iTit]).trim()
+        : file.name.replace(/\.xlsx?$/i, '');
+
       // Nomes únicos na planilha
       const nomesUnicos = [...new Set(registros.map(r => r.motorista))];
 
       // Preview inicial enquanto busca
-      setPreview({ nomeArquivo: file.name, registros, tipoPagamento: '', frota: '', revisao: null, buscando: true });
+      setPreview({ nomeArquivo: file.name, registros, titulo: tituloDetectado, tipoPagamento: '', frota: '', revisao: null, buscando: true, tituloDuplicado: null });
       toast.success(`${registros.length} registros lidos — comparando nomes...`);
+
+      // Verifica duplicata de título em paralelo
+      api.get('/levantamentos-motoristas/verificar-titulo', { params: { titulo: tituloDetectado } })
+        .then(({ data }) => {
+          if (data.existe) {
+            setPreview(p => p ? ({ ...p, tituloDuplicado: { nomeArquivo: data.nomeArquivo, criadoEm: data.criadoEm } }) : p);
+          }
+        })
+        .catch(() => {}); // silencioso
 
       // Busca motoristas existentes e monta revisão
       let revisao;
@@ -235,6 +250,7 @@ export default function LevantamentosImportacoes() {
       await api.post('/levantamentos-motoristas/importar', {
         nomeArquivo:   preview.nomeArquivo,
         registros:     registrosFinais,
+        titulo:        preview.titulo?.trim() || null,
         tipoPagamento: preview.tipoPagamento,
         frota:         preview.frota,
       });
@@ -249,6 +265,7 @@ export default function LevantamentosImportacoes() {
     try {
       const atual = lista.find(i => i.id === id) || {};
       const payload = {
+        titulo:        campo === 'titulo'        ? valor : atual.titulo,
         tipoPagamento: campo === 'tipoPagamento' ? valor : atual.tipoPagamento,
         frota:         campo === 'frota'         ? valor : atual.frota,
       };
@@ -373,32 +390,70 @@ export default function LevantamentosImportacoes() {
             )}
           </div>
 
-          {/* Tipo + Frota + Salvar */}
+          {/* Aviso de duplicata */}
+          {preview.tituloDuplicado && (
+            <div style={{ display:'flex', alignItems:'center', gap:10, background:'#fffbeb', border:'1.5px solid #fbbf24', borderRadius:8, padding:'10px 14px', marginBottom:12 }}>
+              <i className="ti ti-alert-triangle" style={{ fontSize:18, color:'#d97706', flexShrink:0 }}></i>
+              <div style={{ fontSize:13, color:'#92400e' }}>
+                <strong>Título já importado!</strong> A planilha &quot;<strong>{preview.tituloDuplicado.nomeArquivo}</strong>&quot; com este título foi importada em {preview.tituloDuplicado.criadoEm}. Verifique se não é uma duplicata antes de salvar.
+              </div>
+            </div>
+          )}
+
+          {/* Título + Tipo + Frota + Salvar */}
           {!preview.buscando && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:10, alignItems:'end', paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
-              <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Tipo de Pagamento</div>
-                <select value={preview.tipoPagamento}
-                  onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value }))}
-                  style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
-                  <option value="">— selecione —</option>
-                  {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-                </select>
+            <div style={{ paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
+              {/* Campo Título */}
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>
+                  Título <span style={{ fontWeight:400, color:'#9ca3af', textTransform:'none', letterSpacing:0 }}>(identificador da planilha)</span>
+                </div>
+                <input
+                  value={preview.titulo || ''}
+                  onChange={e => {
+                    setPreview(p => ({ ...p, titulo: e.target.value, tituloDuplicado: null }));
+                    // Re-verifica duplicata ao editar o título
+                    if (e.target.value.trim()) {
+                      api.get('/levantamentos-motoristas/verificar-titulo', { params: { titulo: e.target.value.trim() } })
+                        .then(({ data }) => {
+                          if (data.existe) setPreview(p => p ? ({ ...p, tituloDuplicado: { nomeArquivo: data.nomeArquivo, criadoEm: data.criadoEm } }) : p);
+                        }).catch(() => {});
+                    }
+                  }}
+                  placeholder="Ex: Saldo Junho 2025 — FROTA"
+                  style={{
+                    width:'100%', padding:'8px 10px', boxSizing:'border-box',
+                    border: `1.5px solid ${preview.tituloDuplicado ? '#fbbf24' : '#e5e7eb'}`,
+                    borderRadius:8, fontSize:13, outline:'none',
+                    background: preview.tituloDuplicado ? '#fffbeb' : '#fff',
+                  }}
+                />
               </div>
-              <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Frota</div>
-                <select value={preview.frota}
-                  onChange={e => setPreview(p => ({ ...p, frota: e.target.value }))}
-                  style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
-                  <option value="">— selecione —</option>
-                  <option value="FROTA">FROTA</option>
-                  <option value="MELI">MELI</option>
-                </select>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:10, alignItems:'end' }}>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Tipo de Pagamento</div>
+                  <select value={preview.tipoPagamento}
+                    onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value }))}
+                    style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
+                    <option value="">— selecione —</option>
+                    {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Frota</div>
+                  <select value={preview.frota}
+                    onChange={e => setPreview(p => ({ ...p, frota: e.target.value }))}
+                    style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
+                    <option value="">— selecione —</option>
+                    <option value="FROTA">FROTA</option>
+                    <option value="MELI">MELI</option>
+                  </select>
+                </div>
+                <button onClick={salvar} disabled={salvando}
+                  style={{ padding:'9px 22px', border:'none', borderRadius:8, background: salvando ? '#9ca3af' : '#16a34a', color:'#fff', fontSize:13, fontWeight:700, cursor: salvando ? 'not-allowed' : 'pointer', whiteSpace:'nowrap' }}>
+                  {salvando ? 'Salvando...' : 'Confirmar e salvar'}
+                </button>
               </div>
-              <button onClick={salvar} disabled={salvando}
-                style={{ padding:'9px 22px', border:'none', borderRadius:8, background: salvando ? '#9ca3af' : '#16a34a', color:'#fff', fontSize:13, fontWeight:700, cursor: salvando ? 'not-allowed' : 'pointer', whiteSpace:'nowrap' }}>
-                {salvando ? 'Salvando...' : 'Confirmar e salvar'}
-              </button>
             </div>
           )}
         </div>
@@ -430,7 +485,7 @@ export default function LevantamentosImportacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {['Arquivo','Data','Registros','Total','Tipo','Frota',''].map(h => (
+                {['Arquivo','Título','Data','Registros','Total','Tipo','Frota',''].map(h => (
                   <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -445,6 +500,18 @@ export default function LevantamentosImportacoes() {
                       <i className="ti ti-file-spreadsheet" style={{ fontSize:15, color:'#6366f1' }}></i>
                       {im.nomeArquivo.replace(/\.xlsx?$/i,'')}
                     </div>
+                  </td>
+                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6', maxWidth:200 }}>
+                    {isAdmin ? (
+                      <input
+                        defaultValue={im.titulo || ''}
+                        onBlur={e => { if (e.target.value !== (im.titulo || '')) atualizarCampo(im.id, 'titulo', e.target.value); }}
+                        placeholder="—"
+                        style={{ width:'100%', padding:'4px 8px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', outline:'none', boxSizing:'border-box' }}
+                      />
+                    ) : (
+                      <span style={{ color: im.titulo ? '#374151' : '#d1d5db', fontSize:12 }}>{im.titulo || '—'}</span>
+                    )}
                   </td>
                   <td style={{ padding:'11px 16px', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{fmtDt(im.criadoEm)}</td>
                   <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
