@@ -482,7 +482,7 @@ export default function LevantamentosImportacoes() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(preview.revisao || []).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha).map((r, i) => {
+                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha).map((r, i) => {
                         // Score mais confiável: compara nome final vs melhor match do sistema (reativo ao editar)
                         const scoreFinal = r.melhorMatch
                           ? Math.max(r.score, scoreNome(norm(r.nomeEditado), norm(r.melhorMatch)))
@@ -515,7 +515,7 @@ export default function LevantamentosImportacoes() {
                                 value={r.nomeEditado}
                                 onChange={e => setPreview(p => ({
                                   ...p,
-                                  revisao: p.revisao.map((x, j) => j === i ? { ...x, nomeEditado: e.target.value } : x),
+                                  revisao: p.revisao.map((x, j) => j === r.origIdx ? { ...x, nomeEditado: e.target.value } : x),
                                 }))}
                                 style={{
                                   width:'100%', padding:'4px 8px',
