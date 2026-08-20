@@ -395,40 +395,14 @@ export default function LevantamentosImportacoes() {
             <div style={{ display:'flex', alignItems:'center', gap:10, background:'#fffbeb', border:'1.5px solid #fbbf24', borderRadius:8, padding:'10px 14px', marginBottom:12 }}>
               <i className="ti ti-alert-triangle" style={{ fontSize:18, color:'#d97706', flexShrink:0 }}></i>
               <div style={{ fontSize:13, color:'#92400e' }}>
-                <strong>Título já importado!</strong> A planilha &quot;<strong>{preview.tituloDuplicado.nomeArquivo}</strong>&quot; com este título foi importada em {preview.tituloDuplicado.criadoEm}. Verifique se não é uma duplicata antes de salvar.
+                <strong>Título &quot;{preview.titulo}&quot; já foi importado!</strong> Arquivo original: <strong>{preview.tituloDuplicado.nomeArquivo}</strong> em {preview.tituloDuplicado.criadoEm}. Verifique se não é uma duplicata antes de salvar.
               </div>
             </div>
           )}
 
-          {/* Título + Tipo + Frota + Salvar */}
+          {/* Tipo + Frota + Salvar */}
           {!preview.buscando && (
             <div style={{ paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
-              {/* Campo Título */}
-              <div style={{ marginBottom:12 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>
-                  Título <span style={{ fontWeight:400, color:'#9ca3af', textTransform:'none', letterSpacing:0 }}>(identificador da planilha)</span>
-                </div>
-                <input
-                  value={preview.titulo || ''}
-                  onChange={e => {
-                    setPreview(p => ({ ...p, titulo: e.target.value, tituloDuplicado: null }));
-                    // Re-verifica duplicata ao editar o título
-                    if (e.target.value.trim()) {
-                      api.get('/levantamentos-motoristas/verificar-titulo', { params: { titulo: e.target.value.trim() } })
-                        .then(({ data }) => {
-                          if (data.existe) setPreview(p => p ? ({ ...p, tituloDuplicado: { nomeArquivo: data.nomeArquivo, criadoEm: data.criadoEm } }) : p);
-                        }).catch(() => {});
-                    }
-                  }}
-                  placeholder="Ex: Saldo Junho 2025 — FROTA"
-                  style={{
-                    width:'100%', padding:'8px 10px', boxSizing:'border-box',
-                    border: `1.5px solid ${preview.tituloDuplicado ? '#fbbf24' : '#e5e7eb'}`,
-                    borderRadius:8, fontSize:13, outline:'none',
-                    background: preview.tituloDuplicado ? '#fffbeb' : '#fff',
-                  }}
-                />
-              </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:10, alignItems:'end' }}>
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Tipo de Pagamento</div>
