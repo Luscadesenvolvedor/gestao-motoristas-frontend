@@ -336,7 +336,7 @@ export default function Levantamentos() {
     : [
         { label:'Média/Motorista FROTA', valor: fmt(calcMedia(listaFrota, totaisImportPorFrota.FROTA.total, totaisImportPorFrota.FROTA.motoristas)), cor: corFrota, icon:'ti-chart-bar' },
         { label:'Média/Motorista MELI',  valor: fmt(calcMedia(listaMeli,  totaisImportPorFrota.MELI.total,  totaisImportPorFrota.MELI.motoristas)),  cor: corMeli,  icon:'ti-chart-bar' },
-        { label:'Média/Motorista Geral', valor: fmt(calcMedia(listaFiltrada, totalImportados, totaisMot.motoristasFechados)), cor:'#f59e0b', icon:'ti-chart-bar' },
+        { label:'Média/Motorista Geral', valor: fmt(motoristasCard > 0 ? (listaFiltrada.reduce((s,l)=>s+total(l),0) + totalImportados) / motoristasCard : 0), cor:'#f59e0b', icon:'ti-chart-bar' },
       ];
 
 
