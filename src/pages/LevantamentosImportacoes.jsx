@@ -244,6 +244,7 @@ export default function LevantamentosImportacoes() {
     if (!preview) return;
     if (!preview.tipoPagamento) { toast.error('Selecione o tipo de pagamento'); return; }
     if (!preview.frota)         { toast.error('Selecione a frota'); return; }
+    if (preview.tipoPagamento === 'custoFolha' && !preview.mesReferencia) { toast.error('Selecione o mês de referência para Custo Folha'); return; }
 
     // Aplica nomes editados nos registros
     const mapaEditados = new Map(
@@ -266,6 +267,7 @@ export default function LevantamentosImportacoes() {
         titulo:        preview.titulo?.trim() || null,
         tipoPagamento: preview.tipoPagamento,
         frota:         preview.frota,
+        mesReferencia: preview.mesReferencia || null,
       });
       toast.success('Importação salva!');
       setPreview(null);
@@ -278,9 +280,10 @@ export default function LevantamentosImportacoes() {
     try {
       const atual = lista.find(i => i.id === id) || {};
       const payload = {
-        titulo:        campo === 'titulo'        ? valor : atual.titulo,
-        tipoPagamento: campo === 'tipoPagamento' ? valor : atual.tipoPagamento,
-        frota:         campo === 'frota'         ? valor : atual.frota,
+        titulo:         campo === 'titulo'         ? valor : atual.titulo,
+        tipoPagamento:  campo === 'tipoPagamento'  ? valor : atual.tipoPagamento,
+        frota:          campo === 'frota'          ? valor : atual.frota,
+        mesReferencia:  campo === 'mesReferencia'  ? valor : atual.mesReferencia,
       };
       await api.put(`/levantamentos-motoristas/importacoes/${id}`, payload);
       setLista(l => l.map(i => i.id === id ? { ...i, [campo]: valor || null } : i));
@@ -563,14 +566,14 @@ export default function LevantamentosImportacoes() {
             </div>
           )}
 
-          {/* Tipo + Frota + Salvar */}
+          {/* Tipo + Frota + Mês Referência + Salvar */}
           {!preview.buscando && (
             <div style={{ paddingTop:16, borderTop:'1px solid #f1f5f9' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:10, alignItems:'end' }}>
+              <div style={{ display:'grid', gridTemplateColumns: preview.tipoPagamento === 'custoFolha' ? '1fr 1fr 1fr auto' : '1fr 1fr auto', gap:10, alignItems:'end' }}>
                 <div>
                   <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Tipo de Pagamento</div>
                   <select value={preview.tipoPagamento}
-                    onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value }))}
+                    onChange={e => setPreview(p => ({ ...p, tipoPagamento: e.target.value, mesReferencia: '' }))}
                     style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', cursor:'pointer', outline:'none' }}>
                     <option value="">— selecione —</option>
                     {TIPOS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
@@ -586,6 +589,14 @@ export default function LevantamentosImportacoes() {
                     <option value="MELI">MELI</option>
                   </select>
                 </div>
+                {preview.tipoPagamento === 'custoFolha' && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5 }}>Mês Referência</div>
+                    <input type="month" value={preview.mesReferencia || ''}
+                      onChange={e => setPreview(p => ({ ...p, mesReferencia: e.target.value }))}
+                      style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, background:'#fff', outline:'none' }} />
+                  </div>
+                )}
                 <button onClick={salvar} disabled={salvando}
                   style={{ padding:'9px 22px', border:'none', borderRadius:8, background: salvando ? '#9ca3af' : '#16a34a', color:'#fff', fontSize:13, fontWeight:700, cursor: salvando ? 'not-allowed' : 'pointer', whiteSpace:'nowrap' }}>
                   {salvando ? 'Salvando...' : 'Confirmar e salvar'}
@@ -622,7 +633,7 @@ export default function LevantamentosImportacoes() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {['Arquivo','Data','Registros','Total','Tipo','Frota',''].map(h => (
+                {['Arquivo','Data','Registros','Total','Tipo','Frota','Mês Ref.',''].map(h => (
                   <th key={h} style={{ padding:'10px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -667,6 +678,19 @@ export default function LevantamentosImportacoes() {
                         ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:700, background: im.frota==='MELI'?'#dbeafe':'#d1fae5', color: im.frota==='MELI'?'#1d4ed8':'#065f46' }}>{im.frota}</span>
                         : <span style={{ color:'#d1d5db' }}>—</span>
                     )}
+                  </td>
+                  <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6' }}>
+                    {im.tipoPagamento === 'custoFolha' ? (
+                      isAdmin ? (
+                        <input type="month" value={im.mesReferencia || ''}
+                          onChange={e => atualizarCampo(im.id, 'mesReferencia', e.target.value)}
+                          style={{ padding:'3px 6px', border:'1.5px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151', background:'#fff', outline:'none' }} />
+                      ) : (
+                        im.mesReferencia
+                          ? <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:12, fontWeight:700 }}>{im.mesReferencia}</span>
+                          : <span style={{ color:'#d1d5db' }}>—</span>
+                      )
+                    ) : <span style={{ color:'#d1d5db' }}>—</span>}
                   </td>
                   <td style={{ padding:'11px 16px', borderBottom:'1px solid #f3f4f6', textAlign:'right' }}>
                     <button onClick={() => excluir(im.id, im.nomeArquivo)}

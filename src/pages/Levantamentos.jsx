@@ -196,7 +196,7 @@ export default function Levantamentos() {
   // Map importacaoId → { tipoPagamento, frota }
   const importacoesMap = useMemo(() => {
     const map = {};
-    for (const im of importacoesMot) map[im.id] = { tipoPagamento: im.tipoPagamento, frota: im.frota };
+    for (const im of importacoesMot) map[im.id] = { tipoPagamento: im.tipoPagamento, frota: im.frota, mesReferencia: im.mesReferencia || null };
     return map;
   }, [importacoesMot]);
 
@@ -216,8 +216,9 @@ export default function Levantamentos() {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.tipoPagamento) continue;
       if (tipoFiltro && meta.frota !== tipoFiltro) continue;
-      if (mesFiltro  && r.mes !== mesFiltro) continue;
-      if (anoFiltro  && r.mes && !r.mes.startsWith(anoFiltro)) continue;
+      const mesEfetivo = r.mes || meta.mesReferencia || '';
+      if (mesFiltro  && mesEfetivo !== mesFiltro) continue;
+      if (anoFiltro  && mesEfetivo && !mesEfetivo.startsWith(anoFiltro)) continue;
       const k = meta.tipoPagamento;
       const v = parseFloat(r.valor || 0);
       if (result[k] !== undefined) result[k] += v;
@@ -329,8 +330,9 @@ export default function Levantamentos() {
       if (meta?.tipoPagamento !== 'custoFolha') continue;
       if (!meta?.frota || !acc[meta.frota]) continue;
       if (tipoFiltro && meta.frota !== tipoFiltro) continue;
-      if (mesFiltro  && r.mes !== mesFiltro) continue;
-      if (anoFiltro  && !r.mes?.startsWith(anoFiltro)) continue;
+      const mesEf = r.mes || meta.mesReferencia || '';
+      if (mesFiltro  && mesEf !== mesFiltro) continue;
+      if (anoFiltro  && mesEf && !mesEf.startsWith(anoFiltro)) continue;
       if (parseFloat(r.valor || 0) > 0) acc[meta.frota].add(r.motorista.trim().toUpperCase());
     }
     return { FROTA: acc.FROTA.size, MELI: acc.MELI.size };
