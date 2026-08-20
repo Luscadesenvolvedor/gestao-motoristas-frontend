@@ -258,7 +258,7 @@ export default function Motoristas() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
               <tr style={{ background:'#f9fafb' }}>
-                {['Nome','CPF','Contato','Frota','Categoria','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
+                {['Nome','CPF','Contato','Frota','Categoria','Info','Status','Ações',...(isAdmin?['Alteração']:[])].map(h=>(
                   <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.5px', borderBottom:'1px solid #e5e7eb' }}>{h}</th>
                 ))}
               </tr>
@@ -272,7 +272,12 @@ export default function Motoristas() {
                   <td style={{ padding:'10px 14px', fontSize:12 }}>{FROTAS_LABEL[m.frota] || m.frota?.toUpperCase()}</td>
                   <td style={{ padding:'10px 14px' }}>
                     <div>{CATEGORIAS_LABEL[m.categoria]}</div>
-                    {m.descricao && <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>{m.descricao}</div>}
+                  </td>
+                  <td style={{ padding:'10px 14px' }}>
+                    {m.descricao
+                      ? <span style={{ padding:'2px 8px', borderRadius:20, fontSize:11, fontWeight:600, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>{m.descricao}</span>
+                      : <span style={{ color:'#d1d5db' }}>—</span>
+                    }
                   </td>
                   <td style={{ padding:'10px 14px' }}>
                     <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:500, background:m.status==='ativo'?'#dcfce7':'#fee2e2', color:m.status==='ativo'?'#166534':'#991b1b' }}>
