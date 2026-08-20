@@ -48,6 +48,7 @@ export default function Levantamentos() {
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
   const [motoristasBD, setMotoristasBD]   = useState([]); // motoristas do banco para cruzar frota/info
+  const [sortMot, setSortMot]             = useState({ col: 'motorista', dir: 'asc' });
 
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
@@ -129,8 +130,16 @@ export default function Levantamentos() {
       }
       if (r.mes) map[key].meses.add(r.mes);
     }
-    return Object.values(map).sort((a, b) => a.motorista.localeCompare(b.motorista));
-  }, [regsMot, mesFiltroMot, buscaMot, importacoesMap]);
+    const rows = Object.values(map);
+    rows.sort((a, b) => {
+      let va, vb;
+      if (sortMot.col === 'motorista') { va = a.motorista; vb = b.motorista; return sortMot.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va); }
+      if (sortMot.col === 'faturamento') { va = a.faturamento; vb = b.faturamento; }
+      if (sortMot.col === 'valor') { va = a.valor; vb = b.valor; }
+      return sortMot.dir === 'asc' ? va - vb : vb - va;
+    });
+    return rows;
+  }, [regsMot, mesFiltroMot, buscaMot, importacoesMap, sortMot]);
 
   const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
 
@@ -481,8 +490,26 @@ export default function Levantamentos() {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
-                      {['Motorista','Frota/Info','Veículo','Mês(es)','Faturamento','Valor Total',''].map(h => (
-                        <th key={h} style={{ padding:'10px 16px', textAlign: h==='Valor Total' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width: h==='' ? 40 : 'auto' }}>{h}</th>
+                      {[
+                        { label:'Motorista', col:'motorista' },
+                        { label:'Frota/Info', col:null },
+                        { label:'Veículo', col:null },
+                        { label:'Mês(es)', col:null },
+                        { label:'Faturamento', col:'faturamento' },
+                        { label:'Valor Total', col:'valor' },
+                        { label:'', col:null },
+                      ].map(({ label, col }) => (
+                        <th key={label} style={{ padding:'10px 16px', textAlign: label==='Valor Total'||label==='Faturamento' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width: label==='' ? 40 : 'auto' }}>
+                          {col ? (
+                            <button onClick={() => setSortMot(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }))}
+                              style={{ background:'none', border:'none', cursor:'pointer', padding:0, fontSize:11, fontWeight:700, color: sortMot.col === col ? '#EB3238' : '#374151', textTransform:'uppercase', letterSpacing:'0.4px', display:'flex', alignItems:'center', gap:4 }}>
+                              {label}
+                              <span style={{ fontSize:10, color: sortMot.col === col ? '#EB3238' : '#9ca3af' }}>
+                                {sortMot.col === col ? (sortMot.dir === 'asc' ? '▲' : '▼') : '⇅'}
+                              </span>
+                            </button>
+                          ) : label}
+                        </th>
                       ))}
                     </tr>
                   </thead>
