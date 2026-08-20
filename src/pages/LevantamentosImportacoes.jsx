@@ -210,8 +210,8 @@ export default function LevantamentosImportacoes() {
           if (melhorScore >= THRESHOLD && melhorEntry) {
             return { nomePlanilha: nome, melhorMatch: melhorEntry.original, nomeEditado: melhorEntry.original, score: melhorScore, veiculo: melhorEntry.veiculo };
           }
-          // Sem match — mantém nome original para edição
-          return { nomePlanilha: nome, melhorMatch: null, nomeEditado: nome, score: 0, veiculo: null };
+          // Sem match acima do threshold — mostra o mais próximo encontrado mas mantém nome original
+          return { nomePlanilha: nome, melhorMatch: melhorEntry?.original || null, nomeEditado: nome, score: melhorScore, veiculo: null };
         });
       } catch {
         // Se falhar, monta revisão sem comparação
