@@ -201,11 +201,21 @@ export default function LevantamentosImportacoes() {
       // Busca motoristas existentes e monta revisão
       let revisao;
       try {
-        const { data: existentes } = await api.get('/levantamentos-motoristas');
+        const [{ data: existentes }, { data: motBD }] = await Promise.all([
+          api.get('/levantamentos-motoristas'),
+          api.get('/motoristas'),
+        ]);
         const mapaExistentes = new Map();
+        // Primeiro: nomes do banco de motoristas cadastrados
+        for (const m of motBD) {
+          const k = norm(m.nome);
+          if (!mapaExistentes.has(k)) mapaExistentes.set(k, { original: m.nome, veiculo: null });
+        }
+        // Depois: nomes já importados (sobrescreve com veiculo se houver)
         for (const r of existentes) {
           const k = norm(r.motorista);
           if (!mapaExistentes.has(k)) mapaExistentes.set(k, { original: r.motorista, veiculo: r.veiculo });
+          else if (r.veiculo) mapaExistentes.set(k, { ...mapaExistentes.get(k), veiculo: r.veiculo });
         }
 
         revisao = nomesUnicos.map(nome => {
