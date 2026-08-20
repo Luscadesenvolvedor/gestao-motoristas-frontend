@@ -211,7 +211,7 @@ export default function Levantamentos() {
   const totaisMot = useMemo(() => {
     const result = { saldo: 0, diarias: 0, bonificacao: 0, custoFolha: 0, folgas: 0 };
     // soma por motorista para contar apenas quem tem valor > 0
-    const motoristasValores = {};
+    const motoristasPorMes = {}; // { mes: Set<nome> } — soma por mês para calcular média corretamente
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.tipoPagamento) continue;
@@ -222,13 +222,14 @@ export default function Levantamentos() {
       const k = meta.tipoPagamento;
       const v = parseFloat(r.valor || 0);
       if (result[k] !== undefined) result[k] += v;
-      if (k === 'custoFolha') {
-        const key = r.motorista.trim().toUpperCase();
-        motoristasValores[key] = (motoristasValores[key] || 0) + v;
+      if (k === 'custoFolha' && v > 0) {
+        const mk = mesEfetivo || '_';
+        if (!motoristasPorMes[mk]) motoristasPorMes[mk] = new Set();
+        motoristasPorMes[mk].add(r.motorista.trim().toUpperCase());
       }
     }
-    // conta apenas motoristas com valor total > 0
-    const motoristasFechados = Object.values(motoristasValores).filter(v => v > 0).length;
+    // soma de motoristas únicos por mês (não únicos globais) para média mensal correta
+    const motoristasFechados = Object.values(motoristasPorMes).reduce((s, set) => s + set.size, 0);
     return { ...result, motoristasFechados };
   }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
 
@@ -296,13 +297,15 @@ export default function Levantamentos() {
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.frota || !acc[meta.frota]) continue;
-      if (mesFiltro && r.mes !== mesFiltro) continue;
-      if (anoFiltro && !r.mes?.startsWith(anoFiltro)) continue;
+      const mesEf2 = r.mes || meta.mesReferencia || '';
+      if (mesFiltro && mesEf2 !== mesFiltro) continue;
+      if (anoFiltro && mesEf2 && !mesEf2.startsWith(anoFiltro)) continue;
       const v = parseFloat(r.valor || 0);
       acc[meta.frota].total += v;
-      if (v > 0 && r.mes) {
-        if (!acc[meta.frota].porMes[r.mes]) acc[meta.frota].porMes[r.mes] = new Set();
-        acc[meta.frota].porMes[r.mes].add(r.motorista.trim().toUpperCase());
+      if (v > 0) {
+        const mk2 = mesEf2 || '_';
+        if (!acc[meta.frota].porMes[mk2]) acc[meta.frota].porMes[mk2] = new Set();
+        acc[meta.frota].porMes[mk2].add(r.motorista.trim().toUpperCase());
       }
     }
     // soma de motoristas únicos por mês (cada mês conta separadamente)
@@ -324,18 +327,23 @@ export default function Levantamentos() {
 
   // Motoristas fechados por frota — só da custo folha, por frota da importação
   const motoristasClosedPorFrota = useMemo(() => {
-    const acc = { FROTA: new Set(), MELI: new Set() };
+    const porMes = { FROTA: {}, MELI: {} };
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (meta?.tipoPagamento !== 'custoFolha') continue;
-      if (!meta?.frota || !acc[meta.frota]) continue;
+      if (!meta?.frota || !porMes[meta.frota]) continue;
       if (tipoFiltro && meta.frota !== tipoFiltro) continue;
       const mesEf = r.mes || meta.mesReferencia || '';
       if (mesFiltro  && mesEf !== mesFiltro) continue;
       if (anoFiltro  && mesEf && !mesEf.startsWith(anoFiltro)) continue;
-      if (parseFloat(r.valor || 0) > 0) acc[meta.frota].add(r.motorista.trim().toUpperCase());
+      if (parseFloat(r.valor || 0) > 0) {
+        const mk = mesEf || '_';
+        if (!porMes[meta.frota][mk]) porMes[meta.frota][mk] = new Set();
+        porMes[meta.frota][mk].add(r.motorista.trim().toUpperCase());
+      }
     }
-    return { FROTA: acc.FROTA.size, MELI: acc.MELI.size };
+    const sum = f => Object.values(porMes[f]).reduce((s, set) => s + set.size, 0);
+    return { FROTA: sum('FROTA'), MELI: sum('MELI') };
   }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro]);
 
   // Card "Motoristas Fechados": exclusivamente da planilha Custo Folha importada.
