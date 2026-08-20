@@ -502,10 +502,11 @@ export default function Levantamentos() {
                         <th key={label} style={{ padding:'10px 16px', textAlign: label==='Valor Total'||label==='Faturamento' ? 'right' : 'left', fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap', width: label==='' ? 40 : 'auto' }}>
                           {col ? (
                             <button onClick={() => setSortMot(s => ({ col, dir: s.col === col && s.dir === 'asc' ? 'desc' : 'asc' }))}
-                              style={{ background: sortMot.col === col ? '#EB323812' : '#f1f5f9', border: `1.5px solid ${sortMot.col === col ? '#EB3238' : '#d1d5db'}`, borderRadius:6, cursor:'pointer', padding:'3px 8px', fontSize:11, fontWeight:700, color: sortMot.col === col ? '#EB3238' : '#374151', textTransform:'uppercase', letterSpacing:'0.4px', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
-                              {label}
-                              <span style={{ fontSize:12, fontWeight:900, color: sortMot.col === col ? '#EB3238' : '#6b7280' }}>
-                                {sortMot.col === col ? (sortMot.dir === 'asc' ? '▲' : '▼') : '⇅'}
+                              style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', alignItems:'center', gap:6 }}>
+                              <span style={{ fontSize:11, fontWeight:700, color: sortMot.col === col ? '#EB3238' : '#6b7280', textTransform:'uppercase', letterSpacing:'0.4px' }}>{label}</span>
+                              <span style={{ display:'flex', flexDirection:'column', gap:1 }}>
+                                <span style={{ fontSize:8, lineHeight:1, color: sortMot.col === col && sortMot.dir === 'asc' ? '#EB3238' : '#cbd5e1', fontWeight:900 }}>▲</span>
+                                <span style={{ fontSize:8, lineHeight:1, color: sortMot.col === col && sortMot.dir === 'desc' ? '#EB3238' : '#cbd5e1', fontWeight:900 }}>▼</span>
                               </span>
                             </button>
                           ) : label}
