@@ -4,57 +4,74 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import {
-  Truck, Package, MapPin, Navigation, Clock, Award, Wallet,
-  Bell, ArrowUpRight, ArrowDownRight, TrendingUp, Settings,
+  Truck, Package, Navigation, Clock, Award, Wallet,
+  ArrowUpRight, ArrowDownRight, TrendingUp,
   ChevronDown, Fuel, Route, AlertCircle, CheckCircle2, Radio,
 } from "lucide-react";
 import "../painel.css";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Dados ────────────────────────────────────────────────────────────────────
 const allMonthData = {
-  Jan: { faturamento: 312400, diarias: 18, saldo: 74200, folga: 5, bonificacoes: 9800,  meta: 320000, viagens: 142, km: 87400,  entregas: 389, motoristasAtivos: 34 },
-  Fev: { faturamento: 289700, diarias: 16, saldo: 62100, folga: 7, bonificacoes: 7200,  meta: 300000, viagens: 128, km: 79200,  entregas: 341, motoristasAtivos: 32 },
-  Mar: { faturamento: 358900, diarias: 20, saldo: 89300, folga: 4, bonificacoes: 14500, meta: 340000, viagens: 167, km: 102600, entregas: 451, motoristasAtivos: 37 },
-  Abr: { faturamento: 334200, diarias: 19, saldo: 81000, folga: 6, bonificacoes: 11200, meta: 340000, viagens: 154, km: 94800,  entregas: 412, motoristasAtivos: 35 },
-  Mai: { faturamento: 371500, diarias: 21, saldo: 93700, folga: 3, bonificacoes: 15800, meta: 360000, viagens: 178, km: 109300, entregas: 487, motoristasAtivos: 38 },
+  Jan: { faturamento: 312400, diarias: 18, saldo: 74200,  folga: 5, bonificacoes: 9800,  meta: 320000, viagens: 142, km: 87400,  entregas: 389, motoristasAtivos: 34 },
+  Fev: { faturamento: 289700, diarias: 16, saldo: 62100,  folga: 7, bonificacoes: 7200,  meta: 300000, viagens: 128, km: 79200,  entregas: 341, motoristasAtivos: 32 },
+  Mar: { faturamento: 358900, diarias: 20, saldo: 89300,  folga: 4, bonificacoes: 14500, meta: 340000, viagens: 167, km: 102600, entregas: 451, motoristasAtivos: 37 },
+  Abr: { faturamento: 334200, diarias: 19, saldo: 81000,  folga: 6, bonificacoes: 11200, meta: 340000, viagens: 154, km: 94800,  entregas: 412, motoristasAtivos: 35 },
+  Mai: { faturamento: 371500, diarias: 21, saldo: 93700,  folga: 3, bonificacoes: 15800, meta: 360000, viagens: 178, km: 109300, entregas: 487, motoristasAtivos: 38 },
   Jun: { faturamento: 402800, diarias: 22, saldo: 107400, folga: 8, bonificacoes: 19200, meta: 380000, viagens: 191, km: 117500, entregas: 523, motoristasAtivos: 40 },
-  Jul: { faturamento: 388100, diarias: 20, saldo: 98200, folga: 6, bonificacoes: 16400, meta: 390000, viagens: 184, km: 113200, entregas: 501, motoristasAtivos: 39 },
+  Jul: { faturamento: 388100, diarias: 20, saldo: 98200,  folga: 6, bonificacoes: 16400, meta: 390000, viagens: 184, km: 113200, entregas: 501, motoristasAtivos: 39 },
   Ago: { faturamento: 431600, diarias: 23, saldo: 118900, folga: 8, bonificacoes: 22300, meta: 410000, viagens: 203, km: 124800, entregas: 558, motoristasAtivos: 41 },
 };
 const months = Object.keys(allMonthData);
 const chartData = months.map((mes) => ({ mes, ...allMonthData[mes] }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(v);
+const fmt     = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(v);
 const fmtShort = (v) => {
   if (v >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `R$${(v / 1_000).toFixed(0)}k`;
+  if (v >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`;
   return `R$${v}`;
 };
-const fmtKm = (v) => new Intl.NumberFormat("pt-BR").format(v) + " km";
-const pct = (curr, prev) => prev === 0 ? 0 : ((curr - prev) / prev) * 100;
+const fmtKm  = (v) => new Intl.NumberFormat("pt-BR").format(v) + " km";
+const pct    = (curr, prev) => prev === 0 ? 0 : ((curr - prev) / prev) * 100;
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub-componentes ──────────────────────────────────────────────────────────
 function StatusDot({ active }) {
   return (
-    <span className="relative flex h-2 w-2">
-      {active && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f97316] opacity-60" />}
-      <span className={`relative inline-flex rounded-full h-2 w-2 ${active ? "bg-[#f97316]" : "bg-[#7a7d8a]"}`} />
+    <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8 }}>
+      {active && (
+        <span style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: "#f97316", opacity: 0.5,
+          animation: "ping 1.2s cubic-bezier(0,0,0.2,1) infinite",
+        }} />
+      )}
+      <span style={{
+        position: "relative", display: "inline-flex", borderRadius: "50%",
+        width: 8, height: 8,
+        background: active ? "#f97316" : "#7a7d8a",
+      }} />
     </span>
   );
 }
 
 function Tag({ children, color = "orange" }) {
-  const c = {
-    orange: "bg-[#f973161a] text-[#f97316] border-[#f9731630]",
-    yellow: "bg-[#facc151a] text-[#facc15] border-[#facc1530]",
-    blue:   "bg-[#3b82f61a] text-[#3b82f6] border-[#3b82f630]",
-    green:  "bg-[#10b9811a] text-[#10b981] border-[#10b98130]",
-    red:    "bg-[#ef44441a] text-[#ef4444] border-[#ef444430]",
-    gray:   "bg-[#7a7d8a1a] text-[#7a7d8a] border-[#7a7d8a30]",
-  }[color];
+  const palettes = {
+    orange: { bg: "#f973161a", color: "#f97316", border: "#f9731630" },
+    yellow: { bg: "#facc151a", color: "#facc15", border: "#facc1530" },
+    blue:   { bg: "#3b82f61a", color: "#3b82f6", border: "#3b82f630" },
+    green:  { bg: "#10b9811a", color: "#10b981", border: "#10b98130" },
+    red:    { bg: "#ef44441a", color: "#ef4444", border: "#ef444430" },
+    gray:   { bg: "#7a7d8a1a", color: "#7a7d8a", border: "#7a7d8a30" },
+  };
+  const p = palettes[color] || palettes.orange;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border rounded ${c}`}>
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 3,
+      padding: "2px 8px", fontSize: 10, fontWeight: 700,
+      fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em",
+      background: p.bg, color: p.color,
+      border: `1px solid ${p.border}`, borderRadius: 4,
+    }}>
       {children}
     </span>
   );
@@ -64,7 +81,10 @@ function Delta({ delta }) {
   const pos = delta >= 0;
   return (
     <Tag color={pos ? "green" : "red"}>
-      {pos ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+      {pos
+        ? <ArrowUpRight style={{ width: 10, height: 10 }} />
+        : <ArrowDownRight style={{ width: 10, height: 10 }} />
+      }
       {Math.abs(delta).toFixed(1)}%
     </Tag>
   );
@@ -73,19 +93,25 @@ function Delta({ delta }) {
 const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded border border-[#f9731620] shadow-2xl p-4" style={{ background: "#111318", minWidth: 210 }}>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-1 h-4 rounded-full bg-[#f97316]" />
-        <p className="text-[#7a7d8a] font-mono text-xs uppercase tracking-widest">{label} · 2026</p>
+    <div style={{
+      background: "#111318", border: "1px solid #f9731620",
+      borderRadius: 8, padding: "12px 16px", minWidth: 180,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 3, height: 14, borderRadius: 2, background: "#f97316" }} />
+        <p style={{ color: "#7a7d8a", fontFamily: "monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          {label} · 2026
+        </p>
       </div>
       {payload.map((e) => (
-        <div key={e.dataKey} className="flex items-center justify-between gap-8 mb-1.5">
-          <span className="flex items-center gap-1.5 text-[#7a7d8a] text-xs font-mono">
-            <span className="w-2 h-2 rounded-sm inline-block" style={{ background: e.color }} />
+        <div key={e.dataKey} style={{ display: "flex", justifyContent: "space-between", gap: 24, marginBottom: 4, alignItems: "center" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, color: "#7a7d8a", fontSize: 11, fontFamily: "monospace" }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: e.color, display: "inline-block" }} />
             {e.name}
           </span>
-          <span className="font-mono font-bold text-[#f0ede8] text-xs">
-            {e.dataKey === "viagens" ? `${e.value} viagens` : e.dataKey === "diarias" ? `${e.value} diárias` : fmtShort(e.value)}
+          <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#f0ede8", fontSize: 12 }}>
+            {e.dataKey === "viagens" ? `${e.value}` : fmtShort(e.value)}
           </span>
         </div>
       ))}
@@ -93,415 +119,416 @@ const ChartTooltip = ({ active, payload, label }) => {
   );
 };
 
-function TruckSilhouette() {
+// ─── Card escuro base ─────────────────────────────────────────────────────────
+function DCard({ accentColor, children, style = {} }) {
   return (
-    <svg viewBox="0 0 120 48" fill="none" className="w-24 h-10 opacity-10">
-      <rect x="2" y="14" width="72" height="28" rx="2" fill="#f97316" />
-      <rect x="74" y="22" width="34" height="20" rx="2" fill="#f97316" />
-      <path d="M74 22 L88 14 L108 14 L108 22 Z" fill="#f97316" />
-      <circle cx="20" cy="42" r="5" fill="#0a0b0e" stroke="#f97316" strokeWidth="2" />
-      <circle cx="56" cy="42" r="5" fill="#0a0b0e" stroke="#f97316" strokeWidth="2" />
-      <circle cx="96" cy="42" r="5" fill="#0a0b0e" stroke="#f97316" strokeWidth="2" />
-      <rect x="90" y="24" width="12" height="10" rx="1" fill="#0a0b0e" opacity="0.4" />
-    </svg>
+    <div style={{
+      position: "relative", borderRadius: 10, overflow: "hidden",
+      background: "#111318", border: "1px solid #2a2d35",
+      transition: "border-color 0.2s",
+      ...style,
+    }}>
+      <div style={{ position: "absolute", top: 0, left: 0, width: 3, height: "100%", background: accentColor, borderRadius: "10px 0 0 10px" }} />
+      <div style={{ paddingLeft: 18, paddingRight: 18, paddingTop: 18, paddingBottom: 16 }}>
+        {children}
+      </div>
+    </div>
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Página Principal ─────────────────────────────────────────────────────────
 export default function PainelOperacional() {
   const [selectedMonth, setSelectedMonth] = useState("Ago");
   const [chartMode, setChartMode] = useState("faturamento");
   const [dropdown, setDropdown] = useState(false);
 
-  const d = allMonthData[selectedMonth];
-  const prevKey = months[months.indexOf(selectedMonth) - 1];
-  const p = prevKey ? allMonthData[prevKey] : null;
+  const d    = allMonthData[selectedMonth];
+  const prev = months[months.indexOf(selectedMonth) - 1];
+  const p    = prev ? allMonthData[prev] : null;
 
   const fatDelta  = p ? pct(d.faturamento,  p.faturamento)  : 0;
   const bonDelta  = p ? pct(d.bonificacoes, p.bonificacoes) : 0;
   const saldoDelta = p ? pct(d.saldo,       p.saldo)        : 0;
 
-  const metaPct   = Math.min(100, Math.round((d.faturamento / d.meta) * 100));
+  const metaPct    = Math.min(100, Math.round((d.faturamento / d.meta) * 100));
   const folgaUsada = 10 - d.folga;
+
   const ytdIdx    = months.indexOf(selectedMonth) + 1;
   const ytdFat    = months.slice(0, ytdIdx).reduce((a, m) => a + allMonthData[m].faturamento, 0);
   const ytdKm     = months.slice(0, ytdIdx).reduce((a, m) => a + allMonthData[m].km, 0);
   const ytdViagens = months.slice(0, ytdIdx).reduce((a, m) => a + allMonthData[m].viagens, 0);
+  const ytdBon    = months.slice(0, ytdIdx).reduce((a, m) => a + allMonthData[m].bonificacoes, 0);
 
   return (
-    <div
-      className="painel-root min-h-screen bg-[#0a0b0e]"
-      style={{ fontFamily: "'Barlow', sans-serif" }}
-      onClick={() => dropdown && setDropdown(false)}
-    >
-      {/* Road-stripe accent */}
-      <div className="fixed top-0 left-0 right-0 h-1 z-50 flex">
-        {Array.from({ length: 40 }).map((_, i) => (
-          <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-[#f97316]" : "bg-transparent"}`} />
-        ))}
-      </div>
-      {/* Diagonal grid texture */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.025]"
-        style={{ backgroundImage: "repeating-linear-gradient(45deg,#f97316 0px,#f97316 1px,transparent 0px,transparent 50%)", backgroundSize: "28px 28px" }}
-      />
+    <div className="painel-root" onClick={() => dropdown && setDropdown(false)}
+      style={{ fontFamily: "'Barlow', 'Inter', sans-serif" }}>
 
-      {/* ── Header ── */}
-      <header className="sticky top-1 z-40 border-b border-[#2a2d35]" style={{ background: "rgba(10,11,14,0.92)", backdropFilter: "blur(24px)" }}>
-        <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          {/* Brand */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded bg-[#f97316] flex items-center justify-center">
-              <Truck className="w-5 h-5 text-[#0a0b0e]" strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="font-black text-[#f0ede8] text-base tracking-tight leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, letterSpacing: "0.04em" }}>
-                TRANSFOLHA
-              </p>
-              <p className="text-[#f97316] text-[9px] font-mono font-bold uppercase tracking-[0.2em] leading-none mt-0.5">
-                Sistema de Gestão
-              </p>
-            </div>
-          </div>
-          {/* Nav */}
-          <nav className="hidden lg:flex items-center gap-0.5">
-            {["Painel", "Frota", "Motoristas", "Rotas", "Relatórios"].map((item, i) => (
-              <button key={item} className={`px-4 py-2 text-sm font-semibold transition-all rounded ${i === 0 ? "bg-[#f973161a] text-[#f97316] border border-[#f9731625]" : "text-[#7a7d8a] hover:text-[#f0ede8]"}`}>
-                {item}
-              </button>
-            ))}
-          </nav>
-          {/* Controls */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded border border-[#f9731625] bg-[#f973160a]">
-              <StatusDot active />
-              <span className="text-[11px] font-mono font-bold text-[#f97316] uppercase tracking-wider">{d.motoristasAtivos} em rota</span>
-            </div>
-            <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setDropdown(!dropdown); }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded border border-[#2a2d35] text-sm text-[#7a7d8a] hover:text-[#f0ede8] hover:border-[#f9731640] transition-all">
-                <Clock className="w-3.5 h-3.5" />
-                <span className="font-mono font-semibold">{selectedMonth}/2026</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
-              {dropdown && (
-                <div className="absolute right-0 top-full mt-2 bg-[#111318] border border-[#2a2d35] rounded shadow-2xl p-2 z-50 grid grid-cols-4 gap-1 w-44" onClick={(e) => e.stopPropagation()}>
-                  {months.map((m) => (
-                    <button key={m} onClick={() => { setSelectedMonth(m); setDropdown(false); }}
-                      className={`px-2 py-1.5 rounded text-xs font-mono font-bold transition-all ${m === selectedMonth ? "bg-[#f97316] text-[#0a0b0e]" : "text-[#7a7d8a] hover:text-[#f0ede8] hover:bg-[#1c1e24]"}`}>
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button className="relative p-2 rounded border border-[#2a2d35] text-[#7a7d8a] hover:text-[#f0ede8] transition-all">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#f97316]" />
-            </button>
-            <button className="p-2 rounded border border-[#2a2d35] text-[#7a7d8a] hover:text-[#f0ede8] transition-all">
-              <Settings className="w-4 h-4" />
-            </button>
-            <div className="w-8 h-8 rounded bg-gradient-to-br from-[#f97316] to-[#ea580c] flex items-center justify-center text-xs font-black text-[#0a0b0e]">JR</div>
-          </div>
-        </div>
-      </header>
+      <style>{`
+        @keyframes ping { 75%,100%{transform:scale(2);opacity:0} }
+        .painel-card:hover { border-color: #f9731640 !important; }
+      `}</style>
 
-      {/* ── Main ── */}
-      <main className="max-w-[1440px] mx-auto px-6 py-7 relative z-10">
-        {/* Title bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
-          <div className="flex items-center gap-4">
-            <TruckSilhouette />
-            <div>
-              <h1 className="text-[#f0ede8] font-black leading-none uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 28, letterSpacing: "0.05em" }}>
-                Painel Operacional
-              </h1>
-              <p className="text-[#7a7d8a] text-sm font-medium mt-1">
-                Competência: <span className="text-[#f97316] font-mono font-bold">{selectedMonth} / 2026</span>
-                <span className="mx-2 text-[#2a2d35]">·</span>
-                <span className="text-[#f0ede8] font-semibold">{d.motoristasAtivos} motoristas ativos</span>
-              </p>
-            </div>
+      {/* ── Cabeçalho da página ── */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: 12, marginBottom: 20,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 8, background: "#f97316",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}>
+            <Truck style={{ width: 20, height: 20, color: "#0a0b0e" }} strokeWidth={2.5} />
           </div>
-          <div className="flex items-center gap-1 bg-[#161820] p-1 rounded overflow-x-auto">
-            {months.map((m) => (
-              <button key={m} onClick={() => setSelectedMonth(m)}
-                className={`px-3 py-1.5 rounded text-xs font-mono font-bold whitespace-nowrap transition-all ${m === selectedMonth ? "bg-[#f97316] text-[#0a0b0e]" : "text-[#7a7d8a] hover:text-[#f0ede8]"}`}>
-                {m}
-              </button>
-            ))}
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1f2937", letterSpacing: "0.01em" }}>
+              Painel Operacional
+            </h1>
+            <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
+              Competência: <strong style={{ color: "#f97316" }}>{selectedMonth}/2026</strong>
+              &nbsp;·&nbsp;{d.motoristasAtivos} motoristas ativos
+            </p>
           </div>
         </div>
 
-        {/* Live status strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          {[
-            { label: "Veículos em Rota",       value: `${d.motoristasAtivos}`, icon: <Radio className="w-3.5 h-3.5" />,       color: "#f97316", live: true  },
-            { label: "KM Rodados no Mês",       value: fmtKm(d.km),            icon: <Navigation className="w-3.5 h-3.5" />,  color: "#facc15", live: false },
-            { label: "Entregas Realizadas",     value: `${d.entregas}`,        icon: <Package className="w-3.5 h-3.5" />,     color: "#10b981", live: false },
-            { label: "Índice de Pontualidade",  value: "96,4%",                icon: <CheckCircle2 className="w-3.5 h-3.5" />,color: "#3b82f6", live: false },
-          ].map(({ label, value, icon, color, live }) => (
-            <div key={label} className="flex items-center gap-3 px-4 py-3 rounded border border-[#2a2d35] bg-[#111318]">
-              <div className="w-8 h-8 rounded flex items-center justify-center shrink-0" style={{ background: `${color}1a`, color }}>
-                {icon}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-[#7a7d8a] font-semibold uppercase tracking-wider truncate">{label}</p>
-                <div className="flex items-center gap-1.5">
-                  <p className="font-mono font-bold text-[#f0ede8] text-sm">{value}</p>
-                  {live && <StatusDot active />}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
-          {/* FATURAMENTO */}
-          <div className="xl:col-span-2 relative rounded border border-[#f9731625] bg-[#111318] overflow-hidden hover:border-[#f9731660] hover:shadow-[0_0_48px_rgba(249,115,22,0.10)] transition-all duration-300">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#f97316]" />
-            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-[#f97316] opacity-[0.04] -translate-y-1/2 translate-x-1/2" />
-            <div className="pl-5 pr-5 pt-5 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded bg-[#f973161a] flex items-center justify-center">
-                    <Truck style={{ width: 18, height: 18, color: "#f97316" }} strokeWidth={2} />
-                  </div>
-                  <div>
-                    <p className="text-[#7a7d8a] text-[11px] font-bold uppercase tracking-widest">Faturamento</p>
-                    <p className="text-[10px] text-[#7a7d8a] font-mono">Fretes · {selectedMonth} 2026</p>
-                  </div>
-                </div>
-                <Delta delta={fatDelta} />
-              </div>
-              <p className="font-black text-[#f0ede8] leading-none mb-1" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 36, letterSpacing: "-0.01em" }}>
-                {fmt(d.faturamento)}
-              </p>
-              <div className="flex items-center justify-between mt-3 mb-2">
-                <p className="text-[#7a7d8a] text-xs font-medium">
-                  Meta: <span className="text-[#f0ede8] font-mono font-bold">{fmt(d.meta)}</span>
-                </p>
-                <Tag color={metaPct >= 100 ? "green" : "orange"}>{metaPct}% da meta</Tag>
-              </div>
-              <div className="h-1.5 bg-[#1c1e24] rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${metaPct}%`, background: metaPct >= 100 ? "#10b981" : "#f97316" }} />
-              </div>
-            </div>
-          </div>
-
-          {/* DIÁRIAS */}
-          <div className="relative rounded border border-[#2a2d35] bg-[#111318] overflow-hidden hover:border-[#facc1540] hover:shadow-[0_0_32px_rgba(250,204,21,0.07)] transition-all duration-300">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#facc15]" />
-            <div className="pl-5 pr-4 pt-5 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-9 h-9 rounded bg-[#facc151a] flex items-center justify-center">
-                  <Fuel className="w-4 h-4 text-[#facc15]" />
-                </div>
-                <Tag color="yellow">Diárias</Tag>
-              </div>
-              <p className="font-black text-[#f0ede8] leading-none mb-1" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 42 }}>{d.diarias}</p>
-              <p className="text-[#7a7d8a] text-xs font-semibold uppercase tracking-wide mb-3">pernoites / viagens longas</p>
-              <div className="flex items-center gap-1.5 text-xs text-[#7a7d8a]">
-                <MapPin className="w-3.5 h-3.5 text-[#facc15]" />
-                <span>{d.viagens} viagens este mês</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SALDO */}
-          <div className="relative rounded border border-[#2a2d35] bg-[#111318] overflow-hidden hover:border-[#3b82f640] hover:shadow-[0_0_32px_rgba(59,130,246,0.07)] transition-all duration-300">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#3b82f6]" />
-            <div className="pl-5 pr-4 pt-5 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-9 h-9 rounded bg-[#3b82f61a] flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-[#3b82f6]" />
-                </div>
-                <Delta delta={saldoDelta} />
-              </div>
-              <p className="font-black text-[#f0ede8] leading-none mb-1" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26 }}>{fmt(d.saldo)}</p>
-              <p className="text-[#7a7d8a] text-xs font-semibold uppercase tracking-wide mb-3">saldo / prévia</p>
-              <p className="text-xs text-[#3b82f6] font-semibold">Liberação prevista em 5 dias</p>
-            </div>
-          </div>
-
-          {/* FOLGA */}
-          <div className="relative rounded border border-[#2a2d35] bg-[#111318] overflow-hidden hover:border-[#10b98140] hover:shadow-[0_0_32px_rgba(16,185,129,0.07)] transition-all duration-300">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#10b981]" />
-            <div className="pl-5 pr-4 pt-5 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-9 h-9 rounded bg-[#10b9811a] flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-[#10b981]" />
-                </div>
-                <Tag color="green">Folga</Tag>
-              </div>
-              <p className="font-black text-[#f0ede8] leading-none mb-1" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 42 }}>{d.folga}</p>
-              <p className="text-[#7a7d8a] text-xs font-semibold uppercase tracking-wide mb-3">dias disponíveis</p>
-              <div className="flex gap-1">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="h-2 flex-1 rounded-sm" style={{ background: i < folgaUsada ? "#10b981" : "#1c1e24" }} />
-                ))}
-              </div>
-              <p className="text-[10px] text-[#7a7d8a] font-mono mt-1.5">{folgaUsada} usado · {d.folga} restante</p>
-            </div>
-          </div>
-
-          {/* BONIFICAÇÕES */}
-          <div className="xl:col-span-2 relative rounded border border-[#2a2d35] bg-[#111318] overflow-hidden hover:border-[#f9731640] hover:shadow-[0_0_32px_rgba(249,115,22,0.07)] transition-all duration-300">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#f97316]" />
-            <div className="pl-5 pr-5 pt-5 pb-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded bg-[#f973161a] flex items-center justify-center">
-                    <Award className="w-4 h-4 text-[#f97316]" />
-                  </div>
-                  <div>
-                    <p className="text-[#7a7d8a] text-[11px] font-bold uppercase tracking-widest">Bonificações</p>
-                    <p className="text-[10px] text-[#7a7d8a] font-mono">Performance · {selectedMonth} 2026</p>
-                  </div>
-                </div>
-                <Delta delta={bonDelta} />
-              </div>
-              <p className="font-black text-[#f0ede8] leading-none mb-3" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 34 }}>{fmt(d.bonificacoes)}</p>
-              <div className="flex items-center gap-5 flex-wrap">
-                <div className="flex items-center gap-1.5 text-xs text-[#7a7d8a]">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#10b981]" />
-                  <span>Melhor mês: <span className="text-[#f0ede8] font-mono font-bold">{fmt(Math.max(...Object.values(allMonthData).map((v) => v.bonificacoes)))}</span></span>
-                </div>
-                <div className="w-px h-3 bg-[#2a2d35]" />
-                <div className="flex items-center gap-1.5 text-xs text-[#7a7d8a]">
-                  <Award className="w-3.5 h-3.5 text-[#f97316]" />
-                  <span>Acumulado: <span className="text-[#f0ede8] font-mono font-bold">{fmt(months.slice(0, months.indexOf(selectedMonth) + 1).reduce((a, m) => a + allMonthData[m].bonificacoes, 0))}</span></span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* YTD */}
-          <div className="xl:col-span-3 relative rounded border border-[#2a2d35] bg-[#111318] overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#facc15]" />
-            <div className="pl-5 pr-5 pt-5 pb-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded bg-[#facc151a] flex items-center justify-center">
-                    <Route className="w-4 h-4 text-[#facc15]" />
-                  </div>
-                  <div>
-                    <p className="text-[#7a7d8a] text-[11px] font-bold uppercase tracking-widest">Acumulado 2026</p>
-                    <p className="text-[10px] text-[#7a7d8a] font-mono">Jan — {selectedMonth}</p>
-                  </div>
-                </div>
-                <Tag color="yellow">YTD</Tag>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: "Faturamento", value: fmtShort(ytdFat),     color: "#f97316" },
-                  { label: "KM Rodados",  value: fmtKm(ytdKm),         color: "#facc15" },
-                  { label: "Viagens",     value: `${ytdViagens}`,      color: "#10b981" },
-                ].map(({ label, value, color }) => (
-                  <div key={label}>
-                    <p className="text-[#7a7d8a] text-[10px] font-semibold uppercase tracking-wider mb-1">{label}</p>
-                    <p className="font-black leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, color }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <div className="rounded border border-[#2a2d35] bg-[#111318] overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-[#2a2d35]">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-6 rounded-full bg-[#f97316]" />
-              <div>
-                <h2 className="text-[#f0ede8] font-black leading-tight uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, letterSpacing: "0.05em" }}>
-                  Evolução Mensal — Jan a Ago 2026
-                </h2>
-                <p className="text-[#7a7d8a] text-xs font-medium mt-0.5">Faturamento de fretes e bonificações por período</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {["faturamento", "viagens"].map((tab) => (
-                <button key={tab} onClick={() => setChartMode(tab)}
-                  className={`px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wide transition-all ${chartMode === tab ? "bg-[#f973161a] text-[#f97316] border border-[#f9731630]" : "text-[#7a7d8a] border border-transparent hover:text-[#f0ede8]"}`}>
-                  {tab === "faturamento" ? "Faturamento" : "Viagens"}
+        {/* Seletor de mês */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setDropdown(!dropdown); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "7px 12px", borderRadius: 8,
+              border: "1px solid #e5e7eb", background: "#fff",
+              fontSize: 13, fontWeight: 600, color: "#374151",
+              cursor: "pointer", fontFamily: "monospace",
+            }}>
+            <Clock style={{ width: 14, height: 14 }} />
+            {selectedMonth}/2026
+            <ChevronDown style={{ width: 12, height: 12 }} />
+          </button>
+          {dropdown && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute", right: 0, top: "calc(100% + 6px)",
+                background: "#fff", border: "1px solid #e5e7eb",
+                borderRadius: 8, boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+                display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 4, padding: 8, zIndex: 50, width: 176,
+              }}>
+              {months.map((m) => (
+                <button key={m}
+                  onClick={() => { setSelectedMonth(m); setDropdown(false); }}
+                  style={{
+                    padding: "6px 4px", borderRadius: 6, border: "none",
+                    fontFamily: "monospace", fontSize: 12, fontWeight: 700,
+                    cursor: "pointer",
+                    background: m === selectedMonth ? "#f97316" : "transparent",
+                    color: m === selectedMonth ? "#fff" : "#6b7280",
+                  }}>
+                  {m}
                 </button>
               ))}
             </div>
-          </div>
-          <div className="flex items-center gap-6 px-6 py-3 border-b border-[#2a2d35]">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded bg-[#f97316]" />
-              <span className="text-[11px] text-[#7a7d8a] font-semibold uppercase tracking-wide">{chartMode === "faturamento" ? "Faturamento" : "Viagens"}</span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Status strip ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap: 12, marginBottom: 16,
+      }}>
+        {[
+          { label: "Veículos em Rota",     value: `${d.motoristasAtivos}`,  icon: <Radio style={{ width: 15, height: 15 }} />,        color: "#f97316", live: true  },
+          { label: "KM Rodados no Mês",    value: fmtKm(d.km),             icon: <Navigation style={{ width: 15, height: 15 }} />,   color: "#facc15", live: false },
+          { label: "Entregas Realizadas",  value: `${d.entregas}`,         icon: <Package style={{ width: 15, height: 15 }} />,      color: "#10b981", live: false },
+          { label: "Pontualidade",         value: "96,4%",                  icon: <CheckCircle2 style={{ width: 15, height: 15 }} />, color: "#3b82f6", live: false },
+        ].map(({ label, value, icon, color, live }) => (
+          <div key={label} style={{
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "12px 16px", borderRadius: 10,
+            background: "#111318", border: "1px solid #2a2d35",
+          }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: `${color}1a`, color,
+            }}>
+              {icon}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-2 rounded bg-[#facc15]" />
-              <span className="text-[11px] text-[#7a7d8a] font-semibold uppercase tracking-wide">Bonificações</span>
-            </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <AlertCircle className="w-3.5 h-3.5 text-[#7a7d8a]" />
-              <span className="text-[11px] text-[#7a7d8a]">Linha pontilhada = Meta mensal</span>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 10, color: "#7a7d8a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <p style={{ margin: 0, fontFamily: "monospace", fontWeight: 700, color: "#f0ede8", fontSize: 14 }}>{value}</p>
+                {live && <StatusDot active />}
+              </div>
             </div>
           </div>
-          <div className="px-4 pt-4 pb-2 h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradOrange" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f97316" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#f97316" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="mes" tick={{ fill: "#7a7d8a", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }} axisLine={false} tickLine={false} dy={8} />
-                <YAxis tick={{ fill: "#7a7d8a", fontSize: 10, fontFamily: "monospace" }} axisLine={false} tickLine={false}
-                  tickFormatter={chartMode === "faturamento" ? fmtShort : (v) => `${v}`}
-                  width={chartMode === "faturamento" ? 62 : 36} />
-                <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(249,115,22,0.08)", strokeWidth: 20, strokeLinecap: "butt" }} />
-                <ReferenceLine y={chartMode === "faturamento" ? d.meta : undefined} stroke="#f97316" strokeDasharray="6 4" strokeOpacity={0.35} strokeWidth={1.5} />
-                <Area type="monotone" dataKey={chartMode === "faturamento" ? "faturamento" : "viagens"}
-                  name={chartMode === "faturamento" ? "Faturamento" : "Viagens"}
-                  stroke="#f97316" strokeWidth={2.5} fill="url(#gradOrange)"
-                  dot={(props) => {
-                    const sel = props.payload.mes === selectedMonth;
-                    return <circle key={props.key} cx={props.cx} cy={props.cy} r={sel ? 6 : 3} fill={sel ? "#f97316" : "#0a0b0e"} stroke="#f97316" strokeWidth={sel ? 0 : 2} />;
-                  }}
-                  activeDot={{ r: 6, fill: "#f97316", stroke: "#0a0b0e", strokeWidth: 2 }}
-                />
-                <Bar dataKey="bonificacoes" name="Bonificações" fill="#facc15" fillOpacity={0.65} radius={[3, 3, 0, 0]} barSize={14} />
-              </ComposedChart>
-            </ResponsiveContainer>
+        ))}
+      </div>
+
+      {/* ── Cards KPI principais ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: 12, marginBottom: 16,
+      }}>
+        {/* Faturamento */}
+        <DCard accentColor="#f97316" style={{ gridColumn: "span 2", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#f973161a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Truck style={{ width: 18, height: 18, color: "#f97316" }} strokeWidth={2} />
+              </div>
+              <div>
+                <p style={{ margin: 0, color: "#7a7d8a", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Faturamento</p>
+                <p style={{ margin: 0, color: "#7a7d8a", fontSize: 10, fontFamily: "monospace" }}>Fretes · {selectedMonth} 2026</p>
+              </div>
+            </div>
+            <Delta delta={fatDelta} />
           </div>
-          <div className="grid grid-cols-8 gap-0 border-t border-[#2a2d35]">
-            {chartData.map((row) => {
-              const sel = row.mes === selectedMonth;
-              const peak = row.faturamento === Math.max(...chartData.map((r) => r.faturamento));
-              return (
-                <button key={row.mes} onClick={() => setSelectedMonth(row.mes)}
-                  className={`flex flex-col items-center gap-1 py-3 px-2 transition-all border-r border-[#2a2d35] last:border-r-0 ${sel ? "bg-[#f973160d]" : "hover:bg-[#1c1e24]"}`}>
-                  <span className={`text-[10px] font-mono font-bold ${sel ? "text-[#f97316]" : "text-[#7a7d8a]"}`}>{row.mes}</span>
-                  <span className={`text-[9px] font-mono font-semibold ${sel ? "text-[#f97316]" : "text-[#f0ede8]"}`}>{fmtShort(row.faturamento)}</span>
-                  {peak && <span className="text-[8px] font-mono font-black text-[#facc15] uppercase">▲ pico</span>}
-                  {sel && <div className="w-4 h-0.5 rounded-full bg-[#f97316] mt-0.5" />}
-                </button>
-              );
-            })}
+          <p style={{ margin: "0 0 10px", fontWeight: 900, color: "#f0ede8", fontSize: 32, fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif", letterSpacing: "-0.01em", lineHeight: 1 }}>
+            {fmt(d.faturamento)}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <p style={{ margin: 0, color: "#7a7d8a", fontSize: 11 }}>
+              Meta: <span style={{ color: "#f0ede8", fontFamily: "monospace", fontWeight: 700 }}>{fmt(d.meta)}</span>
+            </p>
+            <Tag color={metaPct >= 100 ? "green" : "orange"}>{metaPct}% da meta</Tag>
+          </div>
+          <div style={{ height: 6, background: "#1c1e24", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ height: "100%", borderRadius: 3, transition: "width 0.6s", width: `${metaPct}%`, background: metaPct >= 100 ? "#10b981" : "#f97316" }} />
+          </div>
+        </DCard>
+
+        {/* Diárias */}
+        <DCard accentColor="#facc15">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: "#facc151a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Fuel style={{ width: 16, height: 16, color: "#facc15" }} />
+            </div>
+            <Tag color="yellow">Diárias</Tag>
+          </div>
+          <p style={{ margin: "0 0 4px", fontWeight: 900, color: "#f0ede8", fontSize: 38, fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif", lineHeight: 1 }}>{d.diarias}</p>
+          <p style={{ margin: "0 0 10px", color: "#7a7d8a", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>pernoites / longas</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#7a7d8a" }}>
+            <Navigation style={{ width: 12, height: 12, color: "#facc15" }} />
+            {d.viagens} viagens este mês
+          </div>
+        </DCard>
+
+        {/* Saldo */}
+        <DCard accentColor="#3b82f6">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: "#3b82f61a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Wallet style={{ width: 16, height: 16, color: "#3b82f6" }} />
+            </div>
+            <Delta delta={saldoDelta} />
+          </div>
+          <p style={{ margin: "0 0 4px", fontWeight: 900, color: "#f0ede8", fontSize: 22, fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif", lineHeight: 1 }}>{fmt(d.saldo)}</p>
+          <p style={{ margin: "0 0 10px", color: "#7a7d8a", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>saldo / prévia</p>
+          <p style={{ margin: 0, fontSize: 11, color: "#3b82f6", fontWeight: 600 }}>Liberação prevista em 5 dias</p>
+        </DCard>
+
+        {/* Folga */}
+        <DCard accentColor="#10b981">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: "#10b9811a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Clock style={{ width: 16, height: 16, color: "#10b981" }} />
+            </div>
+            <Tag color="green">Folga</Tag>
+          </div>
+          <p style={{ margin: "0 0 4px", fontWeight: 900, color: "#f0ede8", fontSize: 38, fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif", lineHeight: 1 }}>{d.folga}</p>
+          <p style={{ margin: "0 0 10px", color: "#7a7d8a", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>dias disponíveis</p>
+          <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} style={{ height: 6, flex: 1, borderRadius: 3, background: i < folgaUsada ? "#10b981" : "#1c1e24" }} />
+            ))}
+          </div>
+          <p style={{ margin: 0, fontSize: 10, color: "#7a7d8a", fontFamily: "monospace" }}>{folgaUsada} usado · {d.folga} restante</p>
+        </DCard>
+      </div>
+
+      {/* ── Cards secundários: Bonificações + YTD ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: 12, marginBottom: 16,
+      }}>
+        {/* Bonificações */}
+        <DCard accentColor="#f97316">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#f973161a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Award style={{ width: 16, height: 16, color: "#f97316" }} />
+              </div>
+              <div>
+                <p style={{ margin: 0, color: "#7a7d8a", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Bonificações</p>
+                <p style={{ margin: 0, color: "#7a7d8a", fontSize: 10, fontFamily: "monospace" }}>Performance · {selectedMonth} 2026</p>
+              </div>
+            </div>
+            <Delta delta={bonDelta} />
+          </div>
+          <p style={{ margin: "0 0 12px", fontWeight: 900, color: "#f0ede8", fontSize: 26, fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif", lineHeight: 1 }}>{fmt(d.bonificacoes)}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, fontSize: 11, color: "#7a7d8a" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <TrendingUp style={{ width: 12, height: 12, color: "#10b981" }} />
+              Melhor: <span style={{ color: "#f0ede8", fontFamily: "monospace", fontWeight: 700, marginLeft: 3 }}>{fmt(Math.max(...Object.values(allMonthData).map(v => v.bonificacoes)))}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <Award style={{ width: 12, height: 12, color: "#f97316" }} />
+              Acum.: <span style={{ color: "#f0ede8", fontFamily: "monospace", fontWeight: 700, marginLeft: 3 }}>{fmt(ytdBon)}</span>
+            </div>
+          </div>
+        </DCard>
+
+        {/* YTD */}
+        <DCard accentColor="#facc15">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#facc151a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Route style={{ width: 16, height: 16, color: "#facc15" }} />
+              </div>
+              <div>
+                <p style={{ margin: 0, color: "#7a7d8a", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>Acumulado 2026</p>
+                <p style={{ margin: 0, color: "#7a7d8a", fontSize: 10, fontFamily: "monospace" }}>Jan — {selectedMonth}</p>
+              </div>
+            </div>
+            <Tag color="yellow">YTD</Tag>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {[
+              { label: "Faturamento", value: fmtShort(ytdFat),  color: "#f97316" },
+              { label: "KM Rodados",  value: fmtKm(ytdKm),      color: "#facc15" },
+              { label: "Viagens",     value: `${ytdViagens}`,   color: "#10b981" },
+            ].map(({ label, value, color }) => (
+              <div key={label}>
+                <p style={{ margin: "0 0 2px", color: "#7a7d8a", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+                <p style={{ margin: 0, fontWeight: 900, fontSize: 18, fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif", color }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </DCard>
+      </div>
+
+      {/* ── Gráfico ── */}
+      <div style={{ borderRadius: 10, background: "#111318", border: "1px solid #2a2d35", overflow: "hidden" }}>
+        {/* Header do gráfico */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexWrap: "wrap", gap: 10,
+          padding: "16px 20px", borderBottom: "1px solid #2a2d35",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 3, height: 20, borderRadius: 2, background: "#f97316" }} />
+            <div>
+              <h2 style={{ margin: 0, color: "#f0ede8", fontWeight: 800, fontSize: 15, letterSpacing: "0.03em", textTransform: "uppercase", fontFamily: "'Barlow Condensed','Barlow','Inter',sans-serif" }}>
+                Evolução Mensal — Jan a Ago 2026
+              </h2>
+              <p style={{ margin: 0, color: "#7a7d8a", fontSize: 11, marginTop: 2 }}>Faturamento e bonificações por período</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[["faturamento", "Faturamento"], ["viagens", "Viagens"]].map(([tab, label]) => (
+              <button key={tab}
+                onClick={() => setChartMode(tab)}
+                style={{
+                  padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "0.05em", cursor: "pointer",
+                  background: chartMode === tab ? "#f973161a" : "transparent",
+                  color: chartMode === tab ? "#f97316" : "#7a7d8a",
+                  border: `1px solid ${chartMode === tab ? "#f9731630" : "transparent"}`,
+                  transition: "all 0.15s",
+                }}>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-5 flex items-center justify-between text-[10px] text-[#7a7d8a] font-mono">
-          <div className="flex items-center gap-2">
-            <StatusDot active />
-            <span>Sistema online · Atualizado em 20/08/2026 às 07:15</span>
+        {/* Legenda */}
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", padding: "10px 20px", borderBottom: "1px solid #2a2d35" }}>
+          {[
+            { color: "#f97316", label: chartMode === "faturamento" ? "Faturamento" : "Viagens" },
+            { color: "#facc15", label: "Bonificações" },
+          ].map(({ color, label }) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 14, height: 6, borderRadius: 3, background: color }} />
+              <span style={{ fontSize: 11, color: "#7a7d8a", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+            </div>
+          ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: "auto" }}>
+            <AlertCircle style={{ width: 12, height: 12, color: "#7a7d8a" }} />
+            <span style={{ fontSize: 11, color: "#7a7d8a" }}>Pontilhado = meta mensal</span>
           </div>
-          <span>TransFolha Gestão v3.1 · CNPJ 12.345.678/0001-90</span>
         </div>
-      </main>
 
-      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
+        {/* Área do gráfico */}
+        <div style={{ padding: "12px 8px 4px", height: 280 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradOrange" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f97316" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="#f97316" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <XAxis dataKey="mes" tick={{ fill: "#7a7d8a", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }} axisLine={false} tickLine={false} dy={8} />
+              <YAxis tick={{ fill: "#7a7d8a", fontSize: 10, fontFamily: "monospace" }} axisLine={false} tickLine={false}
+                tickFormatter={chartMode === "faturamento" ? fmtShort : (v) => `${v}`}
+                width={chartMode === "faturamento" ? 58 : 32} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(249,115,22,0.08)", strokeWidth: 20, strokeLinecap: "butt" }} />
+              <ReferenceLine y={chartMode === "faturamento" ? d.meta : undefined} stroke="#f97316" strokeDasharray="6 4" strokeOpacity={0.35} strokeWidth={1.5} />
+              <Area type="monotone" dataKey={chartMode === "faturamento" ? "faturamento" : "viagens"}
+                name={chartMode === "faturamento" ? "Faturamento" : "Viagens"}
+                stroke="#f97316" strokeWidth={2.5} fill="url(#gradOrange)"
+                dot={(props) => {
+                  const sel = props.payload.mes === selectedMonth;
+                  return <circle key={props.key} cx={props.cx} cy={props.cy} r={sel ? 6 : 3} fill={sel ? "#f97316" : "#0a0b0e"} stroke="#f97316" strokeWidth={sel ? 0 : 2} />;
+                }}
+                activeDot={{ r: 6, fill: "#f97316", stroke: "#0a0b0e", strokeWidth: 2 }}
+              />
+              <Bar dataKey="bonificacoes" name="Bonificações" fill="#facc15" fillOpacity={0.6} radius={[3, 3, 0, 0]} barSize={12} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Mini nav meses */}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${months.length}, 1fr)`, borderTop: "1px solid #2a2d35" }}>
+          {chartData.map((row) => {
+            const sel = row.mes === selectedMonth;
+            const peak = row.faturamento === Math.max(...chartData.map(r => r.faturamento));
+            return (
+              <button key={row.mes}
+                onClick={() => setSelectedMonth(row.mes)}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                  padding: "10px 4px", cursor: "pointer",
+                  background: sel ? "#f973160d" : "transparent",
+                  border: "none", borderRight: "1px solid #2a2d35",
+                  transition: "background 0.15s",
+                }}>
+                <span style={{ fontSize: 10, fontFamily: "monospace", fontWeight: 700, color: sel ? "#f97316" : "#7a7d8a" }}>{row.mes}</span>
+                <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 600, color: sel ? "#f97316" : "#f0ede8" }}>{fmtShort(row.faturamento)}</span>
+                {peak && <span style={{ fontSize: 8, fontWeight: 800, color: "#facc15", textTransform: "uppercase", fontFamily: "monospace" }}>▲ pico</span>}
+                {sel && <div style={{ width: 14, height: 2, borderRadius: 1, background: "#f97316" }} />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Rodapé */}
+      <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <StatusDot active />
+          <span style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace" }}>Sistema online · Atualizado em 20/08/2026 às 07:15</span>
+        </div>
+        <span style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace" }}>Gestão de Motoristas v3.1</span>
+      </div>
     </div>
   );
 }
