@@ -44,6 +44,7 @@ export default function Levantamentos() {
   const [regsMot, setRegsMot]             = useState([]);
   const [mesFiltroMot, setMesFiltroMot]   = useState('');
   const [buscaMot, setBuscaMot]           = useState('');
+  const [frotaFiltroMot, setFrotaFiltroMot] = useState(''); // '' | 'MELI' | 'FROTA'
   const [importacoesMot, setImportacoesMot] = useState([]);
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
@@ -151,6 +152,7 @@ export default function Levantamentos() {
     const filtrado = regsMot.filter(r => {
       if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
       if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
+      if (frotaFiltroMot && getFrotaReal(r.motorista) !== frotaFiltroMot) return false;
       return true;
     });
     // agrupar por motorista + veiculo, somando valores
@@ -175,7 +177,7 @@ export default function Levantamentos() {
       return sortMot.dir === 'asc' ? va - vb : vb - va;
     });
     return rows;
-  }, [regsMot, mesFiltroMot, buscaMot, importacoesMap, sortMot]);
+  }, [regsMot, mesFiltroMot, buscaMot, frotaFiltroMot, importacoesMap, sortMot, opBauOverrides, motoristasBDMap]);
 
   const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
 
@@ -479,12 +481,24 @@ export default function Levantamentos() {
         <div>
           {/* Barra de ferramentas */}
           <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:16, display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
-            <div style={{ display:'flex', gap:8, alignItems:'center', width:'100%' }}>
+            <div style={{ display:'flex', gap:8, alignItems:'center', width:'100%', flexWrap:'wrap' }}>
               {/* busca motorista */}
               <div style={{ position:'relative' }}>
                 <i className="ti ti-search" style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:12, color:'#9ca3af', pointerEvents:'none' }}></i>
                 <input value={buscaMot} onChange={e => setBuscaMot(e.target.value)} placeholder="Buscar motorista..."
                   style={{ padding:'6px 10px 6px 26px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:12, outline:'none', width:180 }} />
+              </div>
+              {/* filtro frota/info */}
+              <div style={{ display:'flex', gap:4 }}>
+                {[{ val: '', label: 'Todos' }, { val: 'FROTA', label: 'FROTA' }, { val: 'MELI', label: 'OP. BAÚ' }].map(({ val, label }) => (
+                  <button key={val} onClick={() => setFrotaFiltroMot(val)}
+                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                      borderColor: frotaFiltroMot === val ? (val === 'MELI' ? '#6d28d9' : val === 'FROTA' ? '#065f46' : '#6366f1') : '#e5e7eb',
+                      background:  frotaFiltroMot === val ? (val === 'MELI' ? '#ede9fe' : val === 'FROTA' ? '#d1fae5' : '#6366f1') : '#f9fafb',
+                      color:       frotaFiltroMot === val ? (val === 'MELI' ? '#6d28d9' : val === 'FROTA' ? '#065f46' : '#fff')    : '#6b7280' }}>
+                    {label}
+                  </button>
+                ))}
               </div>
               {/* filtros rápidos de mês */}
               {mesesMot.length > 0 && (
