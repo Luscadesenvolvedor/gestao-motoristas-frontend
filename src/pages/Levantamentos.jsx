@@ -229,9 +229,13 @@ export default function Levantamentos() {
   const todosMeses = useMemo(() =>
     [...new Set([
       ...lista.map(l => l.mes),
-      ...regsMot.map(r => r.mes).filter(m => m && m.length >= 7),
+      // exclui faturamento dos filtros de mês do Geral
+      ...regsMot
+        .filter(r => importacoesMap[r.importacaoId]?.tipoPagamento !== 'faturamento')
+        .map(r => r.mes)
+        .filter(m => m && m.length >= 7),
     ])].sort(),
-    [lista, regsMot]
+    [lista, regsMot, importacoesMap]
   );
   const anos = [...new Set(todosMeses.map(m => m.split('-')[0]))].filter(Boolean).sort((a,b) => b-a);
   const listaFiltrada = lista.filter(l => {
@@ -280,6 +284,7 @@ export default function Levantamentos() {
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta) continue;
+      if (meta.tipoPagamento === 'faturamento') continue; // faturamento é receita, não entra no geral
       const frotaReal = getFrotaReal(r.motorista);
       if (tipoFiltro && frotaReal !== tipoFiltro) continue;
       if (mesFiltro  && r.mes !== mesFiltro) continue;
