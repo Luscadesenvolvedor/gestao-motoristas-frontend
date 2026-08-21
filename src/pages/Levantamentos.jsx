@@ -48,6 +48,7 @@ export default function Levantamentos() {
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
   const [motoristasBD, setMotoristasBD]   = useState([]); // motoristas do banco para cruzar frota/info
+  const [opBauOverrides, setOpBauOverrides] = useState(new Set()); // nomes marcados como OP. BAÚ via importação
   const [sortMot, setSortMot]             = useState({ col: 'motorista', dir: 'asc' });
 
 
@@ -63,6 +64,9 @@ export default function Levantamentos() {
       .catch(() => {});
     api.get('/motoristas')
       .then(r => setMotoristasBD(r.data))
+      .catch(() => {});
+    api.get('/levantamentos-motoristas/op-bau-nomes')
+      .then(r => setOpBauOverrides(new Set(r.data.map(n => String(n).trim().toUpperCase()))))
       .catch(() => {});
   }, []);
 
@@ -98,10 +102,13 @@ export default function Levantamentos() {
   const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'OP. BAÚ BUZIN', meli_lbm:'OP. BAÚ LBM' };
   const isMeliBD = frota => frota?.startsWith('meli');
   const labelTipo = t => t === 'MELI' ? 'OP. BAÚ' : t;
-  // Retorna 'MELI' se motorista tiver descricao=MELI no banco, senão 'FROTA'
+  // Retorna 'MELI' se motorista tiver descricao=MELI no banco ou foi marcado como OP. BAÚ na importação
   const getFrotaReal = motoristaNome => {
-    const bd = motoristasBDMap[motoristaNome?.trim().toUpperCase()];
-    return bd?.descricao?.toUpperCase() === 'MELI' ? 'MELI' : 'FROTA';
+    const key = motoristaNome?.trim().toUpperCase();
+    const bd = motoristasBDMap[key];
+    if (bd?.descricao?.toUpperCase() === 'MELI') return 'MELI';
+    if (opBauOverrides.has(key)) return 'MELI';
+    return 'FROTA';
   };
 
   // Map importacaoId → { tipoPagamento, frota, mesReferencia }

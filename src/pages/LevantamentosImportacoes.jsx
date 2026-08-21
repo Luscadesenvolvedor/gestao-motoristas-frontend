@@ -122,6 +122,7 @@ export default function LevantamentosImportacoes() {
   // preview = { nomeArquivo, registros, tipoPagamento, frota, revisao, buscando }
   // revisao = [{ nomePlanilha, melhorMatch, nomeEditado, score, veiculo }]
   const [salvando, setSalvando]     = useState(false);
+  const [opBauSemCadastro, setOpBauSemCadastro] = useState(new Set()); // nomes marcados como OP. BAÚ no preview
   const [gerenciar, setGerenciar]   = useState(false); // painel gerenciar nomes
   const [nomes, setNomes]           = useState([]);    // [{ nome, total, nomeEditado, alterado }]
   const [carregandoNomes, setCarregandoNomes] = useState(false);
@@ -186,6 +187,7 @@ export default function LevantamentosImportacoes() {
       const nomesUnicos = [...new Set(registros.map(r => r.motorista))];
 
       // Preview inicial enquanto busca
+      setOpBauSemCadastro(new Set());
       setPreview({ nomeArquivo: file.name, registros, titulo: tituloDetectado, tipoPagamento: '', frota: '', revisao: null, buscando: true, tituloDuplicado: null });
       toast.success(`${registros.length} registros lidos — comparando nomes...`);
 
@@ -274,14 +276,16 @@ export default function LevantamentosImportacoes() {
     setSalvando(true);
     try {
       await api.post('/levantamentos-motoristas/importar', {
-        nomeArquivo:   preview.nomeArquivo,
-        registros:     registrosFinais,
-        titulo:        preview.titulo?.trim() || null,
-        tipoPagamento: preview.tipoPagamento,
-        frota:         null,
-        mesReferencia: preview.mesReferencia || null,
+        nomeArquivo:      preview.nomeArquivo,
+        registros:        registrosFinais,
+        titulo:           preview.titulo?.trim() || null,
+        tipoPagamento:    preview.tipoPagamento,
+        frota:            null,
+        mesReferencia:    preview.mesReferencia || null,
+        motoristasOpBau:  [...opBauSemCadastro],
       });
       toast.success('Importação salva!');
+      setOpBauSemCadastro(new Set());
       setPreview(null);
       await carregar();
     } catch (err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
@@ -576,26 +580,49 @@ export default function LevantamentosImportacoes() {
             )}
           </div>
 
-          {/* Aviso: motoristas sem cadastro no banco */}
+          {/* Aviso: motoristas sem cadastro — toggle OP. BAÚ */}
           {!preview.buscando && (preview.revisao || []).some(r => r.semCadastro) && (
             <div style={{ background:'#fff7ed', border:'1.5px solid #fb923c', borderRadius:10, padding:'14px 16px', marginBottom:12 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
                 <i className="ti ti-user-exclamation" style={{ fontSize:18, color:'#ea580c', flexShrink:0 }}></i>
                 <div>
                   <div style={{ fontSize:13, fontWeight:700, color:'#9a3412' }}>
                     {(preview.revisao || []).filter(r => r.semCadastro).length} motorista(s) sem cadastro no banco
                   </div>
                   <div style={{ fontSize:12, color:'#c2410c', marginTop:2 }}>
-                    Eles serão tratados como <strong>FROTA</strong>. Se algum for OP. BAÚ, cadastre-o primeiro na aba Motoristas antes de importar.
+                    Por padrão são <strong>FROTA</strong>. Clique nos que forem <strong>OP. BAÚ</strong> para marcá-los — o sistema vai registrar automaticamente.
                   </div>
                 </div>
               </div>
+              {opBauSemCadastro.size > 0 && (
+                <div style={{ fontSize:11, color:'#6d28d9', fontWeight:600, marginBottom:6 }}>
+                  {opBauSemCadastro.size} marcado(s) como OP. BAÚ
+                </div>
+              )}
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {(preview.revisao || []).filter(r => r.semCadastro).map((r, i) => (
-                  <span key={i} style={{ padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:600, background:'#fff', color:'#9a3412', border:'1.5px solid #fb923c' }}>
-                    {r.nomeEditado || r.nomePlanilha}
-                  </span>
-                ))}
+                {(preview.revisao || []).filter(r => r.semCadastro).map((r, i) => {
+                  const nome = r.nomeEditado || r.nomePlanilha;
+                  const isOpBau = opBauSemCadastro.has(nome);
+                  return (
+                    <button key={i}
+                      onClick={() => setOpBauSemCadastro(prev => {
+                        const next = new Set(prev);
+                        if (next.has(nome)) next.delete(nome); else next.add(nome);
+                        return next;
+                      })}
+                      title={isOpBau ? 'Clique para desmarcar' : 'Clique para marcar como OP. BAÚ'}
+                      style={{
+                        padding:'4px 12px', borderRadius:20, fontSize:12, fontWeight:700,
+                        cursor:'pointer', border:'1.5px solid',
+                        background: isOpBau ? '#ede9fe' : '#fff',
+                        color:      isOpBau ? '#6d28d9' : '#9a3412',
+                        borderColor: isOpBau ? '#c4b5fd' : '#fb923c',
+                        transition:'all 0.15s',
+                      }}>
+                      {isOpBau ? '✓ OP. BAÚ' : nome}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
