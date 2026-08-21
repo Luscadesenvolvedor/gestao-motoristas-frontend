@@ -54,7 +54,7 @@ export default function Levantamentos() {
   const [frotaOverrides, setFrotaOverrides] = useState(new Set()); // exceções FROTA para motoristas MELI no cadastro
   const [sortMot, setSortMot]             = useState({ col: 'motorista', dir: 'asc' });
 
-    const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
+  const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
 
   useEffect(() => {
@@ -102,14 +102,17 @@ export default function Levantamentos() {
   }
 
   // Inclui meses de mesReferencia (custo folha armazena mês no nível de importação, não por registro)
+  // Usa importacoesMot (estado) em vez de importacoesMap (const posterior) para evitar TDZ
   const mesesMot = useMemo(() => {
     const meses = new Set();
+    const impMap = {};
+    for (const imp of importacoesMot) impMap[imp.id] = imp;
     for (const r of regsMot) {
-      const mesEf = r.mes || importacoesMap[r.importacaoId]?.mesReferencia || '';
+      const mesEf = r.mes || impMap[r.importacaoId]?.mesReferencia || '';
       if (mesEf) meses.add(mesEf);
     }
     return [...meses].sort();
-  }, [regsMot, importacoesMap]);
+  }, [regsMot, importacoesMot]);
 
   // Mapa nome normalizado → motorista do banco (para cruzar frota/info na aba Por Motorista)
   const motoristasBDMap = useMemo(() => {
