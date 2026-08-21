@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -144,7 +143,8 @@ export default function Motoristas() {
 
   const canEdit = pode('motoristas', 'escrita');
 
-  function exportarPlanilha() {
+  async function exportarPlanilha() {
+    const XLSX = await import('xlsx');
     const linhas = motoristas.map(m => ({
       'Nome':               m.nome || '',
       'CPF':                m.cpf  || '',
@@ -161,7 +161,6 @@ export default function Motoristas() {
       'Descrição':          m.descricao || '',
     }));
     const ws = XLSX.utils.json_to_sheet(linhas);
-    // Largura das colunas
     ws['!cols'] = [
       { wch: 35 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 },
       { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 10 }, { wch: 16 },
