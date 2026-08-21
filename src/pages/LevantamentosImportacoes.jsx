@@ -203,10 +203,18 @@ export default function LevantamentosImportacoes() {
       // Busca motoristas existentes e monta revisão
       let revisao;
       try {
-        const [{ data: existentes }, { data: motBD }] = await Promise.all([
+        const [{ data: existentes }, { data: motBD }, { data: opBauSalvos }] = await Promise.all([
           api.get('/levantamentos-motoristas'),
           api.get('/motoristas'),
+          api.get('/levantamentos-motoristas/op-bau-nomes'),
         ]);
+        // Pré-marca como OP. BAÚ os nomes já salvos anteriormente
+        const opBauNorms = new Set((opBauSalvos || []).map(n => norm(n)));
+        // Nomes da planilha que já estão na tabela op_bau → pré-selecionar
+        const preMarcar = new Set(
+          nomesUnicos.filter(nome => opBauNorms.has(norm(nome)))
+        );
+        if (preMarcar.size > 0) setOpBauSemCadastro(preMarcar);
         const mapaExistentes = new Map();
         // Primeiro: nomes do banco de motoristas cadastrados
         const motBDNorms = new Set(motBD.map(m => norm(m.nome)));
