@@ -204,9 +204,11 @@ export default function Levantamentos() {
 
   const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
-      if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
+      // Custo Folha tem mes vazio no registro — usa mesReferencia da importação como fallback
+      const mesEf = r.mes || importacoesMap[r.importacaoId]?.mesReferencia || '';
+      if (mesFiltroMot && mesEf !== mesFiltroMot) return false;
       if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
-      if (frotaFiltroMot && getFrotaReal(r.motorista, r.mes) !== frotaFiltroMot) return false;
+      if (frotaFiltroMot && getFrotaReal(r.motorista, mesEf || null) !== frotaFiltroMot) return false;
       return true;
     });
     // agrupar por motorista + veiculo, somando valores
@@ -220,7 +222,9 @@ export default function Levantamentos() {
       } else {
         map[key].valor += parseFloat(r.valor || 0);
       }
-      if (r.mes) map[key].meses.add(r.mes);
+      // Inclui mesReferencia quando r.mes está vazio (ex: Custo Folha)
+      const mesEf = r.mes || meta?.mesReferencia;
+      if (mesEf) map[key].meses.add(mesEf);
     }
     const rows = Object.values(map);
     rows.sort((a, b) => {
