@@ -54,27 +54,6 @@ export default function Levantamentos() {
   const [frotaOverrides, setFrotaOverrides] = useState(new Set()); // exceções FROTA para motoristas MELI no cadastro
   const [sortMot, setSortMot]             = useState({ col: 'motorista', dir: 'asc' });
 
-  async function exportarMot() {
-    const XLSX = await import('xlsx');
-    const linhas = regsFiltrados.map(r => {
-      const meta = importacoesMap[r.importacaoId] || {};
-      const mesEf = r.mes || meta.mesReferencia || '';
-      return {
-        'Motorista':       r.motorista || '',
-        'Veículo':         r.veiculo   || '',
-        'Mês':             mesEf,
-        'Tipo':            meta.tipoPagamento || '',
-        'Frota':           getFrotaReal(r.motorista, mesEf || null),
-        'Valor':           parseFloat(r.valor || 0),
-      };
-    });
-    const ws = XLSX.utils.json_to_sheet(linhas);
-    ws['!cols'] = [{ wch:35 }, { wch:14 }, { wch:10 }, { wch:18 }, { wch:10 }, { wch:14 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Por Motorista');
-    XLSX.writeFile(wb, `motoristas_${new Date().toISOString().slice(0,10)}.xlsx`);
-  }
-
     const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
 
@@ -148,7 +127,7 @@ export default function Levantamentos() {
   //   2. opBauOverrides (override OP. BAÚ por mês ou global)
   //   3. descricao='MELI' no banco (cadastro)
   //   4. FROTA por padrão
-  const getFrotaReal = (motoristaNome, mes) => {
+  function getFrotaReal(motoristaNome, mes) {
     const key = motoristaNome?.trim().toUpperCase();
     if (mes !== undefined && mes !== null) {
       if (frotaOverrides.has(key + '|' + mes)) return 'FROTA'; // exceção FROTA tem prioridade máxima
@@ -163,7 +142,7 @@ export default function Levantamentos() {
     const bd = motoristasBDMap[key];
     if (bd?.descricao?.toUpperCase() === 'MELI') return 'MELI';
     return 'FROTA';
-  };
+  }
 
   // Alterna classificação OP. BAÚ / FROTA
   // mes: mês específico (quando filtrado) | null: aplica a todos os meses do motorista (allMeses)
@@ -319,7 +298,28 @@ export default function Levantamentos() {
     return map;
   }, [importacoesMot]);
 
-  const regsFiltrados = useMemo(() => {
+  async function exportarMot() {
+    const XLSX = await import('xlsx');
+    const linhas = regsFiltrados.map(r => {
+      const meta = importacoesMap[r.importacaoId] || {};
+      const mesEf = r.mes || meta.mesReferencia || '';
+      return {
+        'Motorista': r.motorista || '',
+        'Veículo':   r.veiculo   || '',
+        'Mês':       mesEf,
+        'Tipo':      meta.tipoPagamento || '',
+        'Frota':     getFrotaReal(r.motorista, mesEf || null),
+        'Valor':     parseFloat(r.valor || 0),
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(linhas);
+    ws['!cols'] = [{ wch:35 }, { wch:14 }, { wch:10 }, { wch:18 }, { wch:10 }, { wch:14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Por Motorista');
+    XLSX.writeFile(wb, `motoristas_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+    const regsFiltrados = useMemo(() => {
     const filtrado = regsMot.filter(r => {
       // Custo Folha tem mes vazio no registro — usa mesReferencia da importação como fallback
       const mesEf = r.mes || importacoesMap[r.importacaoId]?.mesReferencia || '';
