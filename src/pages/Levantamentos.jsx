@@ -111,6 +111,35 @@ export default function Levantamentos() {
     return 'FROTA';
   };
 
+  // Alterna classificação OP. BAÚ / FROTA clicando no badge — salva no banco
+  async function toggleOpBau(motoristaNome) {
+    const key = motoristaNome.trim().toUpperCase();
+    const bd = motoristasBDMap[key];
+    if (bd?.descricao?.toUpperCase() === 'MELI') return; // definido no cadastro, não permite mudar aqui
+    const isOpBau = opBauOverrides.has(key);
+    // Atualização otimista
+    setOpBauOverrides(prev => {
+      const next = new Set(prev);
+      if (isOpBau) next.delete(key); else next.add(key);
+      return next;
+    });
+    try {
+      if (isOpBau) {
+        await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim() } });
+      } else {
+        await api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim() });
+      }
+    } catch {
+      // Reverter se falhou
+      setOpBauOverrides(prev => {
+        const next = new Set(prev);
+        if (isOpBau) next.add(key); else next.delete(key);
+        return next;
+      });
+      toast.error('Erro ao atualizar classificação');
+    }
+  }
+
   // Map importacaoId → { tipoPagamento, frota, mesReferencia }
   const importacoesMap = useMemo(() => {
     const map = {};
@@ -537,10 +566,23 @@ export default function Levantamentos() {
                           onMouseLeave={e => e.currentTarget.style.background= aberto ? '#f0f9ff' : i%2===0?'#fff':'#fafafa'}>
                           <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{r.motorista}</td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
-                            {getFrotaReal(r.motorista) === 'MELI'
-                              ? <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>OP. BAÚ</span>
-                              : <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0' }}>FROTA</span>
-                            }
+                            {(() => {
+                              const isMeli = getFrotaReal(r.motorista) === 'MELI';
+                              const fromDB = motoristasBDMap[r.motorista.trim().toUpperCase()]?.descricao?.toUpperCase() === 'MELI';
+                              return isMeli
+                                ? <span
+                                    onClick={!fromDB ? () => toggleOpBau(r.motorista) : undefined}
+                                    title={fromDB ? 'Definido no cadastro' : 'Clique para mudar para FROTA'}
+                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', cursor: fromDB ? 'default' : 'pointer' }}>
+                                    OP. BAÚ
+                                  </span>
+                                : <span
+                                    onClick={() => toggleOpBau(r.motorista)}
+                                    title="Clique para mudar para OP. BAÚ"
+                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0', cursor:'pointer' }}>
+                                    FROTA
+                                  </span>;
+                            })()}
                           </td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             {r.veiculo ? (
