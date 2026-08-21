@@ -537,13 +537,10 @@ export default function Levantamentos() {
                           onMouseLeave={e => e.currentTarget.style.background= aberto ? '#f0f9ff' : i%2===0?'#fff':'#fafafa'}>
                           <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{r.motorista}</td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
-                            {(() => {
-                              const bd = motoristasBDMap[r.motorista.trim().toUpperCase()];
-                              if (bd?.descricao?.toUpperCase() === 'MELI') {
-                                return <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>OP. BAÚ</span>;
-                              }
-                              return <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0' }}>FROTA</span>;
-                            })()}
+                            {getFrotaReal(r.motorista) === 'MELI'
+                              ? <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd' }}>OP. BAÚ</span>
+                              : <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0' }}>FROTA</span>
+                            }
                           </td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             {r.veiculo ? (
