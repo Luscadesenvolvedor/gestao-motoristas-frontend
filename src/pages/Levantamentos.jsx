@@ -1,5 +1,6 @@
 // frontend/src/pages/Levantamentos.jsx
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -31,6 +32,7 @@ const CustomTooltip = ({ active, payload, label, fmtVal }) => {
 };
 
 export default function Levantamentos() {
+  const navigate = useNavigate();
   const [lista, setLista] = useState([]);
   const [showLista, setShowLista] = useState(false);
   const [editandoInlineId, setEditandoInlineId] = useState(null);
@@ -101,7 +103,15 @@ export default function Levantamentos() {
     }
   }
 
-  const mesesMot = useMemo(() => [...new Set(regsMot.map(r => r.mes))].sort(), [regsMot]);
+  // Inclui meses de mesReferencia (custo folha armazena mês no nível de importação, não por registro)
+  const mesesMot = useMemo(() => {
+    const meses = new Set();
+    for (const r of regsMot) {
+      const mesEf = r.mes || importacoesMap[r.importacaoId]?.mesReferencia || '';
+      if (mesEf) meses.add(mesEf);
+    }
+    return [...meses].sort();
+  }, [regsMot, importacoesMap]);
 
   // Mapa nome normalizado → motorista do banco (para cruzar frota/info na aba Por Motorista)
   const motoristasBDMap = useMemo(() => {
@@ -667,6 +677,11 @@ export default function Levantamentos() {
                   ))}
                 </div>
               )}
+              {/* botão importar */}
+              <button onClick={() => navigate('/levantamentos-importacoes')}
+                style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'1.5px solid #6366f1', background:'#6366f1', color:'#fff', fontWeight:600, fontSize:12, cursor:'pointer' }}>
+                <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar
+              </button>
             </div>
           </div>
 
