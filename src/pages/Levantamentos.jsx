@@ -1,6 +1,5 @@
 // frontend/src/pages/Levantamentos.jsx
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -32,7 +31,6 @@ const CustomTooltip = ({ active, payload, label, fmtVal }) => {
 };
 
 export default function Levantamentos() {
-  const navigate = useNavigate();
   const [lista, setLista] = useState([]);
   const [showLista, setShowLista] = useState(false);
   const [editandoInlineId, setEditandoInlineId] = useState(null);
@@ -678,7 +676,7 @@ export default function Levantamentos() {
                 </div>
               )}
               {/* botão importar */}
-              <button onClick={() => navigate('/levantamentos-importacoes')}
+              <button onClick={() => window.location.href = '/levantamentos-importacoes'}
                 style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'1.5px solid #6366f1', background:'#6366f1', color:'#fff', fontWeight:600, fontSize:12, cursor:'pointer' }}>
                 <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar
               </button>
