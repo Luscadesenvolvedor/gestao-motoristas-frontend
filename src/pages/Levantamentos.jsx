@@ -7,6 +7,35 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+// helpers de parse para import inline
+const _norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
+const MESES_PT_IMP = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12,jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12 };
+function parseMesImp(v) {
+  if (!v && v !== 0) return null;
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}/.test(s)) return s.slice(0,7);
+  if (/^\d{1,2}\/\d{4}$/.test(s)) { const [m,a] = s.split('/'); return `${a}-${m.padStart(2,'0')}`; }
+  if (/^\d{4}\/\d{2}$/.test(s))   { const [a,m] = s.split('/'); return `${a}-${m}`; }
+  if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
+  if (typeof v === 'number') { const d = new Date(Math.round((v-25569)*86400*1000)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`; }
+  const lower = _norm(s);
+  for (const [nome, num] of Object.entries(MESES_PT_IMP)) { if (lower.startsWith(nome)) { const ar = s.match(/\d{4}/)?.[0]; const af = ar || new Date().getFullYear(); return `${af}-${String(num).padStart(2,'0')}`; } }
+  return s.length >= 7 ? s.slice(0,7) : null;
+}
+function parseValImp(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'));
+  return isNaN(n) ? null : n;
+}
+function normFrotaImp(v) {
+  if (!v) return null;
+  const s = String(v).trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if (s === 'FROTA') return 'FROTA';
+  if (s.includes('BAU') || s === 'MELI' || s.includes('OP') || s.includes('BAU')) return 'MELI';
+  return null;
+}
+
 const CustomTooltip = ({ active, payload, label, fmtVal }) => {
   if (!active || !payload?.length) return null;
   const totalVal = payload.reduce((s, p) => s + (p.value || 0), 0);
@@ -57,35 +86,6 @@ export default function Levantamentos() {
   const [importModal, setImportModal]   = useState(null); // null | { nomeArquivo, registros, tipoPagamento, mesReferencia, opBauDaPlanilha }
   const [importSalvando, setImportSalvando] = useState(false);
   const fileRefMot = useRef();
-
-  // ── helpers de parse para import ──
-  const _norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
-  const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12,jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12 };
-  function parseMesImp(v) {
-    if (!v && v !== 0) return null;
-    const s = String(v).trim();
-    if (/^\d{4}-\d{2}/.test(s)) return s.slice(0,7);
-    if (/^\d{1,2}\/\d{4}$/.test(s)) { const [m,a] = s.split('/'); return `${a}-${m.padStart(2,'0')}`; }
-    if (/^\d{4}\/\d{2}$/.test(s))   { const [a,m] = s.split('/'); return `${a}-${m}`; }
-    if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
-    if (typeof v === 'number') { const d = new Date(Math.round((v-25569)*86400*1000)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`; }
-    const lower = _norm(s);
-    for (const [nome, num] of Object.entries(MESES_PT)) { if (lower.startsWith(nome)) { const ar = s.match(/\d{4}/)?.[0]; const af = ar || new Date().getFullYear(); return `${af}-${String(num).padStart(2,'0')}`; } }
-    return s.length >= 7 ? s.slice(0,7) : null;
-  }
-  function parseValImp(v) {
-    if (v === null || v === undefined || v === '') return null;
-    if (typeof v === 'number') return v;
-    const n = parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'));
-    return isNaN(n) ? null : n;
-  }
-  function normFrotaImp(v) {
-    if (!v) return null;
-    const s = String(v).trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    if (s === 'FROTA') return 'FROTA';
-    if (s.includes('BAU') || s === 'MELI' || s.includes('OP') || s.includes('BAÚ')) return 'MELI';
-    return null;
-  }
 
   async function handleFileMot(e) {
     const file = e.target.files[0];
