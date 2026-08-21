@@ -132,9 +132,11 @@ export default function Levantamentos() {
       toast('Selecione um mês para alterar a classificação', { icon: 'ℹ️' });
       return;
     }
-    const overrideKey = key + '|' + mes;
-    const globalKey   = key + '|';
-    const isOpBau = opBauOverrides.has(overrideKey) || opBauOverrides.has(globalKey);
+    const overrideKey   = key + '|' + mes;
+    const globalKey     = key + '|';
+    const hasSpecific   = opBauOverrides.has(overrideKey);
+    const hasGlobal     = opBauOverrides.has(globalKey);
+    const isOpBau       = hasSpecific || hasGlobal;
     // Atualização otimista
     setOpBauOverrides(prev => {
       const next = new Set(prev);
@@ -149,9 +151,15 @@ export default function Levantamentos() {
         await api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim(), mes });
       }
     } catch {
+      // Reverte exatamente o que foi removido
       setOpBauOverrides(prev => {
         const next = new Set(prev);
-        if (isOpBau) next.add(overrideKey); else next.delete(overrideKey);
+        if (isOpBau) {
+          if (hasSpecific) next.add(overrideKey);
+          if (hasGlobal)   next.add(globalKey);
+        } else {
+          next.delete(overrideKey);
+        }
         return next;
       });
       toast.error('Erro ao atualizar classificação');
