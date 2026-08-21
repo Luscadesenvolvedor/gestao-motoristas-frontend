@@ -311,7 +311,7 @@ export default function Levantamentos() {
         'Veículo':   r.veiculo   || '',
         'Mês':       mesEf,
         'Tipo':      meta.tipoPagamento || '',
-        'Frota':     getFrotaReal(r.motorista, mesEf || null),
+        'Frota':     getFrotaReal(r.motorista, mesEf || mesFiltroMot || null),
         'Valor':     parseFloat(r.valor || 0),
       };
     });
