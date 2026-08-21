@@ -1,5 +1,6 @@
 // frontend/src/pages/Levantamentos.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -53,6 +54,96 @@ export default function Levantamentos() {
   const [frotaOverrides, setFrotaOverrides] = useState(new Set()); // exceções FROTA para motoristas MELI no cadastro
   const [sortMot, setSortMot]             = useState({ col: 'motorista', dir: 'asc' });
 
+  // ── Modal import inline ──
+  const [importModal, setImportModal]   = useState(null); // null | { nomeArquivo, registros, tipoPagamento, mesReferencia, opBauDaPlanilha }
+  const [importSalvando, setImportSalvando] = useState(false);
+  const fileRefMot = useRef();
+
+  // ── helpers de parse para import ──
+  const _norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
+  const MESES_PT = { janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12,jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12 };
+  function parseMesImp(v) {
+    if (!v && v !== 0) return null;
+    const s = String(v).trim();
+    if (/^\d{4}-\d{2}/.test(s)) return s.slice(0,7);
+    if (/^\d{1,2}\/\d{4}$/.test(s)) { const [m,a] = s.split('/'); return `${a}-${m.padStart(2,'0')}`; }
+    if (/^\d{4}\/\d{2}$/.test(s))   { const [a,m] = s.split('/'); return `${a}-${m}`; }
+    if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
+    if (typeof v === 'number') { const d = new Date(Math.round((v-25569)*86400*1000)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`; }
+    const lower = _norm(s);
+    for (const [nome, num] of Object.entries(MESES_PT)) { if (lower.startsWith(nome)) { const ar = s.match(/\d{4}/)?.[0]; const af = ar || new Date().getFullYear(); return `${af}-${String(num).padStart(2,'0')}`; } }
+    return s.length >= 7 ? s.slice(0,7) : null;
+  }
+  function parseValImp(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'number') return v;
+    const n = parseFloat(String(v).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.'));
+    return isNaN(n) ? null : n;
+  }
+  function normFrotaImp(v) {
+    if (!v) return null;
+    const s = String(v).trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    if (s === 'FROTA') return 'FROTA';
+    if (s.includes('BAU') || s === 'MELI' || s.includes('OP') || s.includes('BAÚ')) return 'MELI';
+    return null;
+  }
+
+  async function handleFileMot(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, { cellDates: true });
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+      const header = (raw[0] || []).map(_norm);
+      const iMot = header.findIndex(h => h.includes('motorista'));
+      const iVei = header.findIndex(h => h.includes('veiculo') || h.includes('placa') || h.includes('vei'));
+      const iVal = header.findIndex(h => h.includes('valor') || h.includes('faturamento'));
+      const iMes = header.findIndex(h => h.includes('mes') || h.includes('periodo') || h.includes('competencia') || h.includes('data') || h.includes('referencia') || h.includes('ref'));
+      const iFrota = header.findIndex(h => h === 'frota' || h === 'info' || h === 'bau' || h === 'tipo' || h.includes('classificac') || h.includes('operac') || h.includes('frota'));
+      if (iMot < 0 || iVal < 0) { toast.error(`Colunas não encontradas. Lidos: ${header.join(', ')}`); return; }
+      const registros = raw.slice(1)
+        .filter(r => r[iMot] && String(r[iMot]).trim())
+        .map(r => ({ motorista: String(r[iMot]).trim(), veiculo: iVei >= 0 && r[iVei] ? String(r[iVei]).trim() : null, valor: parseValImp(r[iVal]), mes: iMes >= 0 ? parseMesImp(r[iMes]) : null, frota: iFrota >= 0 ? normFrotaImp(r[iFrota]) : null }))
+        .filter(r => r.valor !== null);
+      if (!registros.length) { toast.error('Nenhum registro válido'); return; }
+      const opBauDaPlanilha = new Set(registros.filter(r => r.frota === 'MELI').map(r => r.motorista));
+      toast.success(`${registros.length} registros lidos`);
+      setImportModal({ nomeArquivo: file.name, registros, tipoPagamento: '', mesReferencia: '', opBauDaPlanilha });
+    } catch(err) { toast.error('Erro ao ler arquivo: ' + err.message); }
+  }
+
+  async function salvarImportMot() {
+    if (!importModal) return;
+    if (!importModal.tipoPagamento) { toast.error('Selecione o tipo de pagamento'); return; }
+    if (importModal.tipoPagamento === 'custoFolha' && !importModal.mesReferencia) { toast.error('Selecione o mês de referência'); return; }
+    setImportSalvando(true);
+    try {
+      await api.post('/levantamentos-motoristas/importar', {
+        nomeArquivo:   importModal.nomeArquivo,
+        registros:     importModal.registros,
+        tipoPagamento: importModal.tipoPagamento,
+        frota:         null,
+        mesReferencia: importModal.mesReferencia || null,
+        motoristasOpBau: [...(importModal.opBauDaPlanilha || [])].map(nome => ({
+          nome,
+          meses: [...new Set(importModal.registros.filter(r => r.motorista === nome && (r.mes || importModal.mesReferencia)).map(r => r.mes || importModal.mesReferencia))],
+        })),
+      });
+      toast.success('Importação salva!');
+      setImportModal(null);
+      // Recarrega dados
+      const [r1, r2] = await Promise.all([
+        api.get('/levantamentos-motoristas'),
+        api.get('/levantamentos-motoristas/importacoes'),
+      ]);
+      setRegsMot(r1.data);
+      setImportacoesMot(r2.data);
+    } catch(err) { toast.error(err?.response?.data?.error || 'Erro ao salvar'); }
+    finally { setImportSalvando(false); }
+  }
 
   const fmtR = v => `R$ ${parseFloat(v||0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}`;
   const fmtDt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
@@ -676,7 +767,8 @@ export default function Levantamentos() {
                 </div>
               )}
               {/* botão importar */}
-              <button onClick={() => window.location.href = '/levantamentos-importacoes'}
+              <input ref={fileRefMot} type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }} onChange={handleFileMot} />
+              <button onClick={() => fileRefMot.current?.click()}
                 style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'1.5px solid #6366f1', background:'#6366f1', color:'#fff', fontWeight:600, fontSize:12, cursor:'pointer' }}>
                 <i className="ti ti-upload" style={{ fontSize:14 }}></i> Importar
               </button>
@@ -1012,6 +1104,78 @@ export default function Levantamentos() {
         </div>
       )}
       </>}
+
+      {/* ── Modal importação inline ── */}
+      {importModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}
+          onClick={e => { if (e.target === e.currentTarget && !importSalvando) setImportModal(null); }}>
+          <div style={{ background:'#fff', borderRadius:16, padding:28, width:420, maxWidth:'95vw', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <div>
+                <div style={{ fontWeight:700, fontSize:16, color:'#1e293b' }}>Importar planilha</div>
+                <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>{importModal.nomeArquivo} · {importModal.registros.length} registros</div>
+              </div>
+              {!importSalvando && (
+                <button onClick={() => setImportModal(null)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'#9ca3af', lineHeight:1 }}>×</button>
+              )}
+            </div>
+
+            {/* Tipo de pagamento */}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', marginBottom:6, textTransform:'uppercase' }}>Tipo de pagamento *</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                {[
+                  { key:'saldo',       label:'Saldo/Prévia' },
+                  { key:'diarias',     label:'Diárias dedicados' },
+                  { key:'bonificacao', label:'Bonificações' },
+                  { key:'custoFolha',  label:'Custo Folha' },
+                  { key:'folgas',      label:'Folgas' },
+                  { key:'faturamento', label:'Faturamento' },
+                ].map(({ key, label }) => (
+                  <button key={key} onClick={() => setImportModal(m => ({ ...m, tipoPagamento: key }))}
+                    style={{ padding:'7px 10px', borderRadius:8, border:'1.5px solid', fontSize:12, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'all .15s',
+                      borderColor: importModal.tipoPagamento === key ? '#6366f1' : '#e5e7eb',
+                      background:  importModal.tipoPagamento === key ? '#eef2ff' : '#f9fafb',
+                      color:       importModal.tipoPagamento === key ? '#4f46e5' : '#374151' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mês de referência (só custo folha) */}
+            {importModal.tipoPagamento === 'custoFolha' && (
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', marginBottom:6, textTransform:'uppercase' }}>Mês de referência *</div>
+                <input type="month" value={importModal.mesReferencia || ''}
+                  onChange={e => setImportModal(m => ({ ...m, mesReferencia: e.target.value }))}
+                  style={{ padding:'7px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }} />
+              </div>
+            )}
+
+            {/* BAÚ detectados */}
+            {importModal.opBauDaPlanilha?.size > 0 && (
+              <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'8px 12px', marginBottom:14, fontSize:12, color:'#166534' }}>
+                <i className="ti ti-check" style={{ marginRight:6 }}></i>
+                {importModal.opBauDaPlanilha.size} motorista(s) marcados como OP. BAÚ pela coluna Frota
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
+              {!importSalvando && (
+                <button onClick={() => setImportModal(null)}
+                  style={{ padding:'8px 16px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#f9fafb', color:'#374151', fontWeight:600, fontSize:13, cursor:'pointer' }}>
+                  Cancelar
+                </button>
+              )}
+              <button onClick={salvarImportMot} disabled={importSalvando}
+                style={{ padding:'8px 20px', borderRadius:8, border:'none', background:'#6366f1', color:'#fff', fontWeight:700, fontSize:13, cursor: importSalvando ? 'not-allowed' : 'pointer', opacity: importSalvando ? 0.7 : 1 }}>
+                {importSalvando ? 'Salvando...' : 'Salvar importação'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
