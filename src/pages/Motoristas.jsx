@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -143,6 +144,35 @@ export default function Motoristas() {
 
   const canEdit = pode('motoristas', 'escrita');
 
+  function exportarPlanilha() {
+    const linhas = motoristas.map(m => ({
+      'Nome':               m.nome || '',
+      'CPF':                m.cpf  || '',
+      'Contato':            m.contato || '',
+      'Frota':              FROTAS_LABEL[m.frota] || m.frota || '',
+      'Categoria':          CATEGORIAS_LABEL[m.categoria] || m.categoria || '',
+      'Status':             m.status === 'ativo' ? 'Ativo' : 'Desligado',
+      'Data Desligamento':  m.dataDesligamento || '',
+      'Banco':              m.banco || '',
+      'Agência':            m.agencia || '',
+      'Conta':              m.conta || '',
+      'PIX':                m.pix || '',
+      'Destinatário':       m.destinatario || '',
+      'Descrição':          m.descricao || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(linhas);
+    // Largura das colunas
+    ws['!cols'] = [
+      { wch: 35 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 18 },
+      { wch: 10 }, { wch: 18 }, { wch: 14 }, { wch: 10 }, { wch: 16 },
+      { wch: 30 }, { wch: 25 }, { wch: 20 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Motoristas');
+    const status = mostrarDesligados ? 'desligados' : 'ativos';
+    XLSX.writeFile(wb, `motoristas_${status}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
   return (
     <div>
       {historicoModal && (
@@ -173,12 +203,18 @@ export default function Motoristas() {
           <h2 style={{ fontSize:20, fontWeight:600, color:'#1a1a2e' }}>Motoristas</h2>
           <p style={{ fontSize:13, color:'#6b7280', marginTop:2 }}>{motoristas.length} {mostrarDesligados ? 'desligados' : 'ativos'}</p>
         </div>
-        {canEdit && (
-          <button onClick={() => { setForm(vazio); setEditId(null); setShowForm(v => !v); }}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
-            <i className="ti ti-plus"></i> Incluir motorista
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={exportarPlanilha} disabled={motoristas.length === 0}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', background:'#fff', color:'#374151', border:'1px solid #e5e7eb', borderRadius:8, fontSize:13, fontWeight:500, cursor: motoristas.length === 0 ? 'not-allowed' : 'pointer', opacity: motoristas.length === 0 ? 0.5 : 1 }}>
+            <i className="ti ti-download" style={{ fontSize:14 }}></i> Exportar
           </button>
-        )}
+          {canEdit && (
+            <button onClick={() => { setForm(vazio); setEditId(null); setShowForm(v => !v); }}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer' }}>
+              <i className="ti ti-plus"></i> Incluir motorista
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && canEdit && (
