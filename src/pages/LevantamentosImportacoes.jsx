@@ -231,8 +231,13 @@ export default function LevantamentosImportacoes() {
 
         revisao = nomesUnicos.map(nome => {
           const n = norm(nome);
-          // Verifica se tem match no banco de motoristas cadastrados (exato ou fuzzy)
-          const emBD = motBDNorms.has(n) || [...motBDNorms].some(nk => scoreNome(n, nk) >= THRESHOLD);
+          // Verifica se tem match: banco de motoristas, importações anteriores ou override OP. BAÚ
+          const emBD =
+            opBauNorms.has(n) ||
+            motBDNorms.has(n) ||
+            mapaExistentes.has(n) ||
+            [...motBDNorms].some(nk => scoreNome(n, nk) >= THRESHOLD) ||
+            [...mapaExistentes.keys()].some(nk => scoreNome(n, nk) >= THRESHOLD);
           // Match exato
           if (mapaExistentes.has(n)) {
             const entry = mapaExistentes.get(n);
