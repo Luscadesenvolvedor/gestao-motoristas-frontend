@@ -50,6 +50,7 @@ export default function Levantamentos() {
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
   const [motoristasBD, setMotoristasBD]   = useState([]); // motoristas do banco para cruzar frota/info
   const [opBauOverrides, setOpBauOverrides] = useState(new Set()); // nomes marcados como OP. BAÚ via importação
+  const [frotaOverrides, setFrotaOverrides] = useState(new Set()); // exceções FROTA para motoristas MELI no cadastro
   const [sortMot, setSortMot]             = useState({ col: 'motorista', dir: 'asc' });
 
 
@@ -70,6 +71,12 @@ export default function Levantamentos() {
       .then(r => {
         const pairs = r.data || [];
         setOpBauOverrides(new Set(pairs.map(({ nome, mes }) => nome.trim().toUpperCase() + '|' + (mes || ''))));
+      })
+      .catch(() => {});
+    api.get('/levantamentos-motoristas/frota-override')
+      .then(r => {
+        const pairs = r.data || [];
+        setFrotaOverrides(new Set(pairs.map(({ nome, mes }) => nome.trim().toUpperCase() + '|' + (mes || ''))));
       })
       .catch(() => {});
   }, []);
@@ -106,91 +113,172 @@ export default function Levantamentos() {
   const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'OP. BAÚ BUZIN', meli_lbm:'OP. BAÚ LBM' };
   const isMeliBD = frota => frota?.startsWith('meli');
   const labelTipo = t => t === 'MELI' ? 'OP. BAÚ' : t;
-  // Retorna 'MELI' se motorista tiver descricao=MELI no banco ou tem override OP. BAÚ para o mês informado
-  // mes: string 'YYYY-MM' | null | undefined — sem mes verifica qualquer mês
+  // Retorna 'MELI' ou 'FROTA' para o motorista/mês.
+  // Ordem de prioridade:
+  //   1. frotaOverrides (exceção FROTA para motoristas MELI no cadastro) — ganha de tudo
+  //   2. opBauOverrides (override OP. BAÚ por mês ou global)
+  //   3. descricao='MELI' no banco (cadastro)
+  //   4. FROTA por padrão
   const getFrotaReal = (motoristaNome, mes) => {
     const key = motoristaNome?.trim().toUpperCase();
-    const bd = motoristasBDMap[key];
-    if (bd?.descricao?.toUpperCase() === 'MELI') return 'MELI';
     if (mes !== undefined && mes !== null) {
+      if (frotaOverrides.has(key + '|' + mes)) return 'FROTA'; // exceção FROTA tem prioridade máxima
       if (opBauOverrides.has(key + '|' + mes)) return 'MELI';
       if (opBauOverrides.has(key + '|')) return 'MELI'; // override global (legado)
     } else {
+      // sem mês: verifica se existe qualquer override BAÚ
       for (const k of opBauOverrides) {
         if (k.startsWith(key + '|')) return 'MELI';
       }
     }
+    const bd = motoristasBDMap[key];
+    if (bd?.descricao?.toUpperCase() === 'MELI') return 'MELI';
     return 'FROTA';
   };
 
   // Alterna classificação OP. BAÚ / FROTA
   // mes: mês específico (quando filtrado) | null: aplica a todos os meses do motorista (allMeses)
+  // Motoristas com descricao='MELI' no cadastro: usa frotaOverrides (exceção FROTA por mês)
+  // Motoristas sem cadastro MELI: usa opBauOverrides (override OP. BAÚ por mês)
   async function toggleOpBau(motoristaNome, mes, allMeses) {
     const key = motoristaNome.trim().toUpperCase();
-    const bd = motoristasBDMap[key];
-    if (bd?.descricao?.toUpperCase() === 'MELI') return;
-
+    const fromDB = motoristasBDMap[key]?.descricao?.toUpperCase() === 'MELI';
     const isOpBau = getFrotaReal(motoristaNome, mes) === 'MELI';
 
     if (mes) {
       // ── Toggle para mês específico ──
-      const overrideKey = key + '|' + mes;
-      const globalKey   = key + '|';
-      const hasSpecific = opBauOverrides.has(overrideKey);
-      const hasGlobal   = opBauOverrides.has(globalKey);
-      setOpBauOverrides(prev => {
-        const next = new Set(prev);
-        if (isOpBau) { next.delete(overrideKey); next.delete(globalKey); }
-        else next.add(overrideKey);
-        return next;
-      });
-      try {
-        if (isOpBau) {
-          await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim(), mes } });
-        } else {
-          await api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim(), mes });
-        }
-      } catch {
-        setOpBauOverrides(prev => {
-          const next = new Set(prev);
-          if (isOpBau) {
-            if (hasSpecific) next.add(overrideKey);
-            if (hasGlobal)   next.add(globalKey);
-          } else {
-            next.delete(overrideKey);
+      const bauKey    = key + '|' + mes;
+      const bauGlobal = key + '|';
+      const frotaKey  = key + '|' + mes;
+      const hasBauSpecific = opBauOverrides.has(bauKey);
+      const hasBauGlobal   = opBauOverrides.has(bauGlobal);
+      const hasFrotaOvr    = frotaOverrides.has(frotaKey);
+
+      if (isOpBau) {
+        // OP. BAÚ → FROTA
+        if (fromDB && !hasBauSpecific && !hasBauGlobal) {
+          // MELI vem do cadastro → adiciona exceção FROTA para este mês
+          setFrotaOverrides(prev => { const n = new Set(prev); n.add(frotaKey); return n; });
+          try {
+            await api.post('/levantamentos-motoristas/frota-override', { nome: motoristaNome.trim(), mes });
+          } catch {
+            setFrotaOverrides(prev => { const n = new Set(prev); n.delete(frotaKey); return n; });
+            toast.error('Erro ao atualizar classificação');
           }
-          return next;
-        });
-        toast.error('Erro ao atualizar classificação');
+        } else {
+          // MELI vem de override BAÚ → remove o override
+          setOpBauOverrides(prev => {
+            const n = new Set(prev); n.delete(bauKey); n.delete(bauGlobal); return n;
+          });
+          try {
+            await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim(), mes } });
+          } catch {
+            setOpBauOverrides(prev => {
+              const n = new Set(prev);
+              if (hasBauSpecific) n.add(bauKey);
+              if (hasBauGlobal)   n.add(bauGlobal);
+              return n;
+            });
+            toast.error('Erro ao atualizar classificação');
+          }
+        }
+      } else {
+        // FROTA → OP. BAÚ
+        if (hasFrotaOvr) {
+          // FROTA por exceção → remove a exceção (volta a ser MELI do cadastro)
+          setFrotaOverrides(prev => { const n = new Set(prev); n.delete(frotaKey); return n; });
+          try {
+            await api.delete('/levantamentos-motoristas/frota-override', { data: { nome: motoristaNome.trim(), mes } });
+          } catch {
+            setFrotaOverrides(prev => { const n = new Set(prev); n.add(frotaKey); return n; });
+            toast.error('Erro ao atualizar classificação');
+          }
+        } else {
+          // FROTA por padrão → adiciona override BAÚ
+          setOpBauOverrides(prev => { const n = new Set(prev); n.add(bauKey); return n; });
+          try {
+            await api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim(), mes });
+          } catch {
+            setOpBauOverrides(prev => { const n = new Set(prev); n.delete(bauKey); return n; });
+            toast.error('Erro ao atualizar classificação');
+          }
+        }
       }
     } else {
       // ── Toggle para todos os meses do motorista ──
       const meses = [...(allMeses || [])].filter(Boolean);
-      setOpBauOverrides(prev => {
-        const next = new Set(prev);
-        if (isOpBau) {
-          // Remove todas as chaves deste motorista
-          for (const k of [...next]) if (k.startsWith(key + '|')) next.delete(k);
+
+      if (isOpBau) {
+        if (fromDB) {
+          // Cadastro MELI → adiciona exceção FROTA para todos os meses
+          setFrotaOverrides(prev => {
+            const n = new Set(prev);
+            for (const m of meses) n.add(key + '|' + m);
+            return n;
+          });
+          try {
+            await Promise.all(meses.map(m =>
+              api.post('/levantamentos-motoristas/frota-override', { nome: motoristaNome.trim(), mes: m })
+            ));
+          } catch {
+            setFrotaOverrides(prev => {
+              const n = new Set(prev);
+              for (const m of meses) n.delete(key + '|' + m);
+              return n;
+            });
+            toast.error('Erro ao atualizar classificação');
+          }
         } else {
-          for (const m of meses) next.add(key + '|' + m);
+          // Override BAÚ → remove todos os overrides BAÚ
+          setOpBauOverrides(prev => {
+            const n = new Set(prev);
+            for (const k of [...n]) if (k.startsWith(key + '|')) n.delete(k);
+            return n;
+          });
+          try {
+            await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim() } });
+          } catch {
+            toast.error('Erro ao atualizar classificação');
+            api.get('/levantamentos-motoristas/op-bau-nomes')
+              .then(r => setOpBauOverrides(new Set((r.data||[]).map(({ nome, mes: m }) => nome.trim().toUpperCase() + '|' + (m||'')))));
+          }
         }
-        return next;
-      });
-      try {
-        if (isOpBau) {
-          // DELETE sem mes = remove todos os meses
-          await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim() } });
+      } else {
+        // FROTA → OP. BAÚ
+        const hasFrotaOvrs = meses.some(m => frotaOverrides.has(key + '|' + m));
+        if (hasFrotaOvrs) {
+          // Remove exceções FROTA (volta a ser MELI do cadastro)
+          setFrotaOverrides(prev => {
+            const n = new Set(prev);
+            for (const m of meses) n.delete(key + '|' + m);
+            return n;
+          });
+          try {
+            await Promise.all(meses.map(m =>
+              api.delete('/levantamentos-motoristas/frota-override', { data: { nome: motoristaNome.trim(), mes: m } })
+            ));
+          } catch {
+            toast.error('Erro ao atualizar classificação');
+            api.get('/levantamentos-motoristas/frota-override')
+              .then(r => setFrotaOverrides(new Set((r.data||[]).map(({ nome, mes: m }) => nome.trim().toUpperCase() + '|' + (m||'')))));
+          }
         } else {
-          // POST para cada mês
-          await Promise.all(meses.map(m =>
-            api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim(), mes: m })
-          ));
+          // Adiciona overrides BAÚ para todos os meses
+          setOpBauOverrides(prev => {
+            const n = new Set(prev);
+            for (const m of meses) n.add(key + '|' + m);
+            return n;
+          });
+          try {
+            await Promise.all(meses.map(m =>
+              api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim(), mes: m })
+            ));
+          } catch {
+            toast.error('Erro ao atualizar classificação');
+            api.get('/levantamentos-motoristas/op-bau-nomes')
+              .then(r => setOpBauOverrides(new Set((r.data||[]).map(({ nome, mes: m }) => nome.trim().toUpperCase() + '|' + (m||'')))));
+          }
         }
-      } catch {
-        toast.error('Erro ao atualizar classificação');
-        // Recarrega do servidor para garantir consistência
-        api.get('/levantamentos-motoristas/op-bau-nomes')
-          .then(r => setOpBauOverrides(new Set((r.data||[]).map(({ nome, mes: m }) => nome.trim().toUpperCase() + '|' + (m||'')))));
       }
     }
   }
@@ -235,7 +323,7 @@ export default function Levantamentos() {
       return sortMot.dir === 'asc' ? va - vb : vb - va;
     });
     return rows;
-  }, [regsMot, mesFiltroMot, buscaMot, frotaFiltroMot, importacoesMap, sortMot, opBauOverrides, motoristasBDMap]);
+  }, [regsMot, mesFiltroMot, buscaMot, frotaFiltroMot, importacoesMap, sortMot, opBauOverrides, frotaOverrides, motoristasBDMap]);
 
   const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
 
@@ -365,7 +453,7 @@ export default function Levantamentos() {
     // soma de motoristas únicos por mês (não únicos globais) para média mensal correta
     const motoristasFechados = Object.values(motoristasPorMes).reduce((s, set) => s + set.size, 0);
     return { ...result, motoristasFechados };
-  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, motoristasBDMap]);
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, opBauOverrides, frotaOverrides, motoristasBDMap]);
 
   // Totais por frota agrupados por mês (para o gráfico — soma nas barras FROTA/MELI)
   const chartMotData = useMemo(() => {
@@ -382,7 +470,7 @@ export default function Levantamentos() {
       map[r.mes][frotaReal] = (map[r.mes][frotaReal] || 0) + parseFloat(r.valor || 0);
     }
     return map;
-  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, motoristasBDMap]);
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, opBauOverrides, frotaOverrides, motoristasBDMap]);
 
   const mesesChart = [...new Set([
     ...listaFiltrada.map(l => l.mes),
@@ -452,7 +540,7 @@ export default function Levantamentos() {
       FROTA: { total: acc.FROTA.total, motoristas: somarMes(acc.FROTA.porMes) },
       MELI:  { total: acc.MELI.total,  motoristas: somarMes(acc.MELI.porMes)  },
     };
-  }, [regsMot, importacoesMap, mesFiltro, anoFiltro, motoristasBDMap]);
+  }, [regsMot, importacoesMap, mesFiltro, anoFiltro, opBauOverrides, frotaOverrides, motoristasBDMap]);
 
   // Motoristas únicos dos importados — filtrado só por tempo (não por frota)
   const motoristasUnicosImportados = useMemo(() => new Set(
@@ -482,7 +570,7 @@ export default function Levantamentos() {
     }
     const sum = f => Object.values(porMes[f]).reduce((s, set) => s + set.size, 0);
     return { FROTA: sum('FROTA'), MELI: sum('MELI') };
-  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, motoristasBDMap]);
+  }, [regsMot, importacoesMap, tipoFiltro, mesFiltro, anoFiltro, opBauOverrides, frotaOverrides, motoristasBDMap]);
 
   // Card "Motoristas Fechados": exclusivamente da planilha Custo Folha importada.
   const motoristasCard = useMemo(() => {
@@ -642,13 +730,15 @@ export default function Levantamentos() {
                               const mes = mesFiltroMot || null;
                               const isMeli = getFrotaReal(r.motorista, mes) === 'MELI';
                               const fromDB = motoristasBDMap[r.motorista.trim().toUpperCase()]?.descricao?.toUpperCase() === 'MELI';
-                              const titleMeli = fromDB ? 'Definido no cadastro' : mes ? 'Clique para mudar para FROTA' : 'Clique para mudar para FROTA (todos os meses)';
+                              const titleMeli = fromDB
+                                ? (mes ? 'Cadastro MELI — clique para FROTA neste mês' : 'Cadastro MELI — selecione um mês para alterar')
+                                : (mes ? 'Clique para mudar para FROTA' : 'Clique para mudar para FROTA (todos os meses)');
                               const titleFrota = mes ? 'Clique para mudar para OP. BAÚ' : 'Clique para mudar para OP. BAÚ (todos os meses)';
                               return isMeli
                                 ? <span
-                                    onClick={fromDB ? undefined : () => toggleOpBau(r.motorista, mes, r.meses)}
+                                    onClick={() => toggleOpBau(r.motorista, mes, r.meses)}
                                     title={titleMeli}
-                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', cursor: fromDB ? 'default' : 'pointer' }}>
+                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', cursor:'pointer' }}>
                                     OP. BAÚ
                                   </span>
                                 : <span
