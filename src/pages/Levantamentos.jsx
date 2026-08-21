@@ -1,6 +1,5 @@
 // frontend/src/pages/Levantamentos.jsx
 import { useState, useEffect, useMemo, useRef } from 'react';
-import * as XLSX from 'xlsx';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -93,6 +92,7 @@ export default function Levantamentos() {
     if (!file) return;
     e.target.value = '';
     try {
+      const XLSX = await import('xlsx');
       const buf = await file.arrayBuffer();
       const wb  = XLSX.read(buf, { cellDates: true });
       const ws  = wb.Sheets[wb.SheetNames[0]];
