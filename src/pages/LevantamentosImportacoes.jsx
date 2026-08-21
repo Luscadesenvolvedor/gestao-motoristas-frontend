@@ -208,8 +208,8 @@ export default function LevantamentosImportacoes() {
           api.get('/motoristas'),
           api.get('/levantamentos-motoristas/op-bau-nomes'),
         ]);
-        // Pré-marca como OP. BAÚ os nomes já salvos anteriormente
-        const opBauNorms = new Set((opBauSalvos || []).map(n => norm(n)));
+        // Pré-marca como OP. BAÚ os nomes já salvos anteriormente (API retorna [{ nome, mes }])
+        const opBauNorms = new Set((opBauSalvos || []).map(({ nome }) => norm(nome)));
         // Nomes da planilha que já estão na tabela op_bau → pré-selecionar
         const preMarcar = new Set(
           nomesUnicos.filter(nome => opBauNorms.has(norm(nome)))
@@ -295,7 +295,14 @@ export default function LevantamentosImportacoes() {
         tipoPagamento:    preview.tipoPagamento,
         frota:            null,
         mesReferencia:    preview.mesReferencia || null,
-        motoristasOpBau:  [...opBauSemCadastro],
+        motoristasOpBau:  [...opBauSemCadastro].map(nome => ({
+          nome,
+          meses: [...new Set(
+            (preview.registros || [])
+              .filter(r => r.motorista === nome && (r.mes || preview.mesReferencia))
+              .map(r => r.mes || preview.mesReferencia)
+          )],
+        })),
       });
       toast.success('Importação salva!');
       setOpBauSemCadastro(new Set());

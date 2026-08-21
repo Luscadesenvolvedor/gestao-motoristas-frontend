@@ -67,7 +67,10 @@ export default function Levantamentos() {
       .then(r => setMotoristasBD(r.data))
       .catch(() => {});
     api.get('/levantamentos-motoristas/op-bau-nomes')
-      .then(r => setOpBauOverrides(new Set(r.data.map(n => String(n).trim().toUpperCase()))))
+      .then(r => {
+        const pairs = r.data || [];
+        setOpBauOverrides(new Set(pairs.map(({ nome, mes }) => nome.trim().toUpperCase() + '|' + (mes || ''))));
+      })
       .catch(() => {});
   }, []);
 
@@ -103,38 +106,52 @@ export default function Levantamentos() {
   const FROTAS_LABEL_BD = { buzin:'BUZIN', lbm:'LBM', meli_buzin:'OP. BAÚ BUZIN', meli_lbm:'OP. BAÚ LBM' };
   const isMeliBD = frota => frota?.startsWith('meli');
   const labelTipo = t => t === 'MELI' ? 'OP. BAÚ' : t;
-  // Retorna 'MELI' se motorista tiver descricao=MELI no banco ou foi marcado como OP. BAÚ na importação
-  const getFrotaReal = motoristaNome => {
+  // Retorna 'MELI' se motorista tiver descricao=MELI no banco ou tem override OP. BAÚ para o mês informado
+  // mes: string 'YYYY-MM' | null | undefined — sem mes verifica qualquer mês
+  const getFrotaReal = (motoristaNome, mes) => {
     const key = motoristaNome?.trim().toUpperCase();
     const bd = motoristasBDMap[key];
     if (bd?.descricao?.toUpperCase() === 'MELI') return 'MELI';
-    if (opBauOverrides.has(key)) return 'MELI';
+    if (mes !== undefined && mes !== null) {
+      if (opBauOverrides.has(key + '|' + mes)) return 'MELI';
+      if (opBauOverrides.has(key + '|')) return 'MELI'; // override global (legado)
+    } else {
+      for (const k of opBauOverrides) {
+        if (k.startsWith(key + '|')) return 'MELI';
+      }
+    }
     return 'FROTA';
   };
 
-  // Alterna classificação OP. BAÚ / FROTA clicando no badge — salva no banco
-  async function toggleOpBau(motoristaNome) {
+  // Alterna classificação OP. BAÚ / FROTA para um mês específico — salva no banco
+  async function toggleOpBau(motoristaNome, mes) {
     const key = motoristaNome.trim().toUpperCase();
     const bd = motoristasBDMap[key];
-    if (bd?.descricao?.toUpperCase() === 'MELI') return; // definido no cadastro, não permite mudar aqui
-    const isOpBau = opBauOverrides.has(key);
+    if (bd?.descricao?.toUpperCase() === 'MELI') return;
+    if (!mes) {
+      toast('Selecione um mês para alterar a classificação', { icon: 'ℹ️' });
+      return;
+    }
+    const overrideKey = key + '|' + mes;
+    const globalKey   = key + '|';
+    const isOpBau = opBauOverrides.has(overrideKey) || opBauOverrides.has(globalKey);
     // Atualização otimista
     setOpBauOverrides(prev => {
       const next = new Set(prev);
-      if (isOpBau) next.delete(key); else next.add(key);
+      if (isOpBau) { next.delete(overrideKey); next.delete(globalKey); }
+      else next.add(overrideKey);
       return next;
     });
     try {
       if (isOpBau) {
-        await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim() } });
+        await api.delete('/levantamentos-motoristas/op-bau-nomes', { data: { nome: motoristaNome.trim(), mes } });
       } else {
-        await api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim() });
+        await api.post('/levantamentos-motoristas/op-bau-nomes', { nome: motoristaNome.trim(), mes });
       }
     } catch {
-      // Reverter se falhou
       setOpBauOverrides(prev => {
         const next = new Set(prev);
-        if (isOpBau) next.add(key); else next.delete(key);
+        if (isOpBau) next.add(overrideKey); else next.delete(overrideKey);
         return next;
       });
       toast.error('Erro ao atualizar classificação');
@@ -152,7 +169,7 @@ export default function Levantamentos() {
     const filtrado = regsMot.filter(r => {
       if (mesFiltroMot && r.mes !== mesFiltroMot) return false;
       if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
-      if (frotaFiltroMot && getFrotaReal(r.motorista) !== frotaFiltroMot) return false;
+      if (frotaFiltroMot && getFrotaReal(r.motorista, r.mes) !== frotaFiltroMot) return false;
       return true;
     });
     // agrupar por motorista + veiculo, somando valores
@@ -291,8 +308,8 @@ export default function Levantamentos() {
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (!meta?.tipoPagamento) continue;
-      if (tipoFiltro && getFrotaReal(r.motorista) !== tipoFiltro) continue;
       const mesEfetivo = r.mes || meta.mesReferencia || '';
+      if (tipoFiltro && getFrotaReal(r.motorista, mesEfetivo || null) !== tipoFiltro) continue;
       if (mesFiltro  && mesEfetivo !== mesFiltro) continue;
       if (anoFiltro  && mesEfetivo && !mesEfetivo.startsWith(anoFiltro)) continue;
       const k = meta.tipoPagamento;
@@ -316,7 +333,7 @@ export default function Levantamentos() {
       const meta = importacoesMap[r.importacaoId];
       if (!meta) continue;
       if (meta.tipoPagamento === 'faturamento') continue; // faturamento é receita, não entra no geral
-      const frotaReal = getFrotaReal(r.motorista);
+      const frotaReal = getFrotaReal(r.motorista, r.mes || meta.mesReferencia || null);
       if (tipoFiltro && frotaReal !== tipoFiltro) continue;
       if (mesFiltro  && r.mes !== mesFiltro) continue;
       if (anoFiltro  && !r.mes?.startsWith(anoFiltro)) continue;
@@ -376,8 +393,8 @@ export default function Levantamentos() {
       const meta = importacoesMap[r.importacaoId];
       if (!meta) continue;
       if (meta.tipoPagamento === 'faturamento') continue; // faturamento é receita, não entra na média de custo
-      const frotaReal = getFrotaReal(r.motorista);
       const mesEf2 = r.mes || meta.mesReferencia || '';
+      const frotaReal = getFrotaReal(r.motorista, mesEf2 || null);
       if (mesFiltro && mesEf2 !== mesFiltro) continue;
       if (anoFiltro && mesEf2 && !mesEf2.startsWith(anoFiltro)) continue;
       const v = parseFloat(r.valor || 0);
@@ -411,9 +428,9 @@ export default function Levantamentos() {
     for (const r of regsMot) {
       const meta = importacoesMap[r.importacaoId];
       if (meta?.tipoPagamento !== 'custoFolha') continue;
-      const frotaReal = getFrotaReal(r.motorista);
-      if (tipoFiltro && frotaReal !== tipoFiltro) continue;
       const mesEf = r.mes || meta.mesReferencia || '';
+      const frotaReal = getFrotaReal(r.motorista, mesEf || null);
+      if (tipoFiltro && frotaReal !== tipoFiltro) continue;
       if (mesFiltro  && mesEf !== mesFiltro) continue;
       if (anoFiltro  && mesEf && !mesEf.startsWith(anoFiltro)) continue;
       if (parseFloat(r.valor || 0) > 0) {
@@ -581,18 +598,21 @@ export default function Levantamentos() {
                           <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{r.motorista}</td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             {(() => {
-                              const isMeli = getFrotaReal(r.motorista) === 'MELI';
+                              const mes = mesFiltroMot || null;
+                              const isMeli = getFrotaReal(r.motorista, mes) === 'MELI';
                               const fromDB = motoristasBDMap[r.motorista.trim().toUpperCase()]?.descricao?.toUpperCase() === 'MELI';
+                              const canToggle = !fromDB && !!mes;
+                              const hint = () => toast('Selecione um mês para alterar a classificação', { icon: 'ℹ️' });
                               return isMeli
                                 ? <span
-                                    onClick={!fromDB ? () => toggleOpBau(r.motorista) : undefined}
-                                    title={fromDB ? 'Definido no cadastro' : 'Clique para mudar para FROTA'}
+                                    onClick={fromDB ? undefined : canToggle ? () => toggleOpBau(r.motorista, mes) : hint}
+                                    title={fromDB ? 'Definido no cadastro' : mes ? 'Clique para mudar para FROTA' : 'Selecione um mês para alterar'}
                                     style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', cursor: fromDB ? 'default' : 'pointer' }}>
                                     OP. BAÚ
                                   </span>
                                 : <span
-                                    onClick={() => toggleOpBau(r.motorista)}
-                                    title="Clique para mudar para OP. BAÚ"
+                                    onClick={mes ? () => toggleOpBau(r.motorista, mes) : hint}
+                                    title={mes ? 'Clique para mudar para OP. BAÚ' : 'Selecione um mês para alterar'}
                                     style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0', cursor:'pointer' }}>
                                     FROTA
                                   </span>;
