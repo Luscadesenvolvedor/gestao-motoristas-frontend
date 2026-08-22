@@ -152,19 +152,35 @@ export default function LevantamentosImportacoes() {
       const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
 
       const header = (raw[0] || []).map(norm);
-      const iMot = header.findIndex(h => h.includes('motorista'));
-      const iVei = header.findIndex(h => h.includes('veiculo') || h.includes('placa') || h.includes('vei'));
-      const iVal = header.findIndex(h => h.includes('valor') || h.includes('faturamento'));
-      const iMes = header.findIndex(h =>
+      const iMot   = header.findIndex(h => h.includes('motorista'));
+      const iVei   = header.findIndex(h => h.includes('veiculo') || h.includes('placa') || h.includes('vei'));
+      const iVal   = header.findIndex(h => h.includes('valor') || h.includes('faturamento'));
+      const iMes   = header.findIndex(h =>
         h.includes('mes') || h.includes('periodo') || h.includes('competencia') ||
         h.includes('data') || h.includes('referencia') || h.includes('ref')
       );
-      const iTit = header.findIndex(h => h.includes('titulo') || h.includes('title'));
+      const iTit   = header.findIndex(h => h.includes('titulo') || h.includes('title'));
+      // Coluna CPF: para match direto com o cadastro
+      const iCpf   = header.findIndex(h => h.includes('cpf') || h === 'documento' || h === 'doc');
+      // Coluna Frota/Info: detecta classificação por linha
+      const iFrota = header.findIndex(h =>
+        h === 'frota' || h === 'info' || h === 'bau' || h === 'tipo' ||
+        h.includes('classificac') || h.includes('operac') || h.includes('frota')
+      );
 
       if (iMot < 0 || iVal < 0) {
         toast.error(`Colunas não encontradas. Lidos: ${header.join(', ')}`);
         return;
       }
+
+      // Normaliza valor da coluna Frota → 'MELI' | 'FROTA' | null
+      const normFrota = v => {
+        if (!v) return null;
+        const s = String(v).trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+        if (s === 'FROTA') return 'FROTA';
+        if (s.includes('BAU') || s === 'MELI' || s.includes('OP') || s.includes('BAÚ')) return 'MELI';
+        return null;
+      };
 
       const registros = raw.slice(1)
         .filter(r => r[iMot] && String(r[iMot]).trim())
@@ -173,10 +189,17 @@ export default function LevantamentosImportacoes() {
           veiculo:   iVei >= 0 && r[iVei] ? String(r[iVei]).trim() : null,
           valor:     parseVal(r[iVal]),
           mes:       iMes >= 0 ? parseMes(r[iMes]) : null,
+          frota:     iFrota >= 0 ? normFrota(r[iFrota]) : null,
+          cpf:       iCpf >= 0 && r[iCpf] ? String(r[iCpf]).replace(/\D/g,'') : null,
         }))
         .filter(r => r.valor !== null);
 
       if (!registros.length) { toast.error('Nenhum registro válido'); return; }
+
+      // Motoristas marcados como MELI/BAÚ na coluna Frota da planilha (mesclado depois com salvos no DB)
+      const opBauDaPlanilha = new Set(
+        registros.filter(r => r.frota === 'MELI').map(r => r.motorista)
+      );
 
       // Título: lê da coluna "titulo" (1ª linha de dados) ou usa nome do arquivo sem extensão
       const tituloDetectado = iTit >= 0 && raw[1]?.[iTit]
@@ -186,9 +209,9 @@ export default function LevantamentosImportacoes() {
       // Nomes únicos na planilha
       const nomesUnicos = [...new Set(registros.map(r => r.motorista))];
 
-      // Preview inicial enquanto busca
-      setOpBauSemCadastro(new Set());
-      setPreview({ nomeArquivo: file.name, registros, titulo: tituloDetectado, tipoPagamento: '', frota: '', revisao: null, buscando: true, tituloDuplicado: null });
+      // Preview inicial enquanto busca — inicializa com os da planilha (se houver coluna frota)
+      setOpBauSemCadastro(opBauDaPlanilha.size > 0 ? opBauDaPlanilha : new Set());
+      setPreview({ nomeArquivo: file.name, registros, titulo: tituloDetectado, tipoPagamento: '', frota: '', revisao: null, buscando: true, tituloDuplicado: null, frotaColDetectada: iFrota >= 0 });
       toast.success(`${registros.length} registros lidos — comparando nomes...`);
 
       // Verifica duplicata de título em paralelo
@@ -211,10 +234,26 @@ export default function LevantamentosImportacoes() {
         // Pré-marca como OP. BAÚ os nomes já salvos anteriormente (API retorna [{ nome, mes }])
         const opBauNorms = new Set((opBauSalvos || []).map(({ nome }) => norm(nome)));
         // Nomes da planilha que já estão na tabela op_bau → pré-selecionar
-        const preMarcar = new Set(
-          nomesUnicos.filter(nome => opBauNorms.has(norm(nome)))
-        );
+        const preMarcarDB = new Set(nomesUnicos.filter(nome => opBauNorms.has(norm(nome))));
+        // Mescla: salvos no DB + detectados na coluna Frota da planilha
+        const preMarcar = new Set([...preMarcarDB, ...opBauDaPlanilha]);
         if (preMarcar.size > 0) setOpBauSemCadastro(preMarcar);
+
+        // Mapa CPF (só dígitos) → motorista do cadastro
+        const cpfMap = new Map();
+        for (const m of motBD) {
+          if (m.cpf) {
+            const cpfNorm = String(m.cpf).replace(/\D/g,'');
+            if (cpfNorm) cpfMap.set(cpfNorm, { original: m.nome, veiculo: null });
+          }
+        }
+
+        // CPF por nome de motorista da planilha
+        const nomeToCpf = {};
+        for (const r of registros) {
+          if (r.cpf && !nomeToCpf[r.motorista]) nomeToCpf[r.motorista] = r.cpf;
+        }
+
         const mapaExistentes = new Map();
         // Primeiro: nomes do banco de motoristas cadastrados
         const motBDNorms = new Set(motBD.map(m => norm(m.nome)));
@@ -230,6 +269,21 @@ export default function LevantamentosImportacoes() {
         }
 
         revisao = nomesUnicos.map(nome => {
+          // 1. Match por CPF — se a planilha tem coluna CPF
+          if (iCpf >= 0) {
+            const cpf = nomeToCpf[nome];
+            if (cpf && cpfMap.has(cpf)) {
+              const entry = cpfMap.get(cpf);
+              return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: entry.original, score: 1, veiculo: entry.veiculo, semCadastro: false, matchByCpf: true };
+            }
+            if (cpf) {
+              // CPF presente mas não encontrado no cadastro → novo
+              return { nomePlanilha: nome, melhorMatch: null, nomeEditado: nome, score: 0, veiculo: null, semCadastro: true };
+            }
+            // CPF ausente nesta linha → cai no fuzzy abaixo
+          }
+
+          // 2. Match fuzzy por nome
           const n = norm(nome);
           // Verifica se tem match: banco de motoristas, importações anteriores ou override OP. BAÚ
           const emBD =
@@ -493,11 +547,15 @@ export default function LevantamentosImportacoes() {
             <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
               Revisão de nomes — edite antes de salvar
               {!preview.buscando && (() => {
-                const pendentes = (preview.revisao || []).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro).length;
+                const cpfOk    = (preview.revisao || []).filter(r => r.matchByCpf).length;
+                const pendentes = (preview.revisao || []).filter(r => !r.matchByCpf && (r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro)).length;
                 const total     = (preview.revisao || []).length;
-                return pendentes > 0
-                  ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700, textTransform:'none' }}>{pendentes} de {total} precisam revisão</span>
-                  : <span style={{ padding:'2px 8px', borderRadius:10, background:'#dcfce7', color:'#16a34a', border:'1px solid #bbf7d0', fontSize:11, fontWeight:700, textTransform:'none' }}>Todos exatos ✓</span>;
+                return <>
+                  {cpfOk > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#dbeafe', color:'#1d4ed8', border:'1px solid #bfdbfe', fontSize:11, fontWeight:700, textTransform:'none' }}>{cpfOk} por CPF ✓</span>}
+                  {pendentes > 0
+                    ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700, textTransform:'none' }}>{pendentes} de {total} precisam revisão</span>
+                    : <span style={{ padding:'2px 8px', borderRadius:10, background:'#dcfce7', color:'#16a34a', border:'1px solid #bbf7d0', fontSize:11, fontWeight:700, textTransform:'none' }}>Todos exatos ✓</span>}
+                </>;
               })()}
             </div>
 
@@ -522,7 +580,7 @@ export default function LevantamentosImportacoes() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro).map((r, i) => {
+                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => !r.matchByCpf && (r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro)).map((r, i) => {
                         // Score mais confiável: compara nome final vs melhor match do sistema (reativo ao editar)
                         const scoreFinal = r.melhorMatch
                           ? Math.max(r.score, scoreNome(norm(r.nomeEditado), norm(r.melhorMatch)))
@@ -599,6 +657,16 @@ export default function LevantamentosImportacoes() {
               </div>
             )}
           </div>
+
+          {/* Aviso: coluna Frota detectada na planilha */}
+          {!preview.buscando && preview.frotaColDetectada && opBauSemCadastro.size > 0 && (
+            <div style={{ background:'#f0fdf4', border:'1.5px solid #4ade80', borderRadius:10, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
+              <i className="ti ti-check" style={{ fontSize:16, color:'#16a34a' }}></i>
+              <div style={{ fontSize:12, color:'#166534' }}>
+                <strong>Coluna Frota/Info detectada:</strong> {opBauSemCadastro.size} motorista(s) classificado(s) como OP. BAÚ automaticamente a partir da planilha.
+              </div>
+            </div>
+          )}
 
           {/* Aviso: motoristas sem cadastro — toggle OP. BAÚ */}
           {!preview.buscando && (preview.revisao || []).some(r => r.semCadastro) && (
