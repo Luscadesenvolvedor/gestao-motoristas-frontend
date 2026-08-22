@@ -49,11 +49,12 @@ class ErrorBoundary extends Component {
   }
 }
 
-function Privada({ children, recurso }) {
-  const { usuario, loading, pode } = useAuth();
+function Privada({ children, recurso, adminOnly }) {
+  const { usuario, loading, pode, isAdmin } = useAuth();
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh' }}>Carregando...</div>;
   if (!usuario) return <Navigate to="/login" />;
   if (recurso && !pode(recurso, 'leitura')) return <Navigate to="/" />;
+  if (adminOnly && !isAdmin) return <Navigate to="/" />;
   return children;
 }
 
@@ -112,7 +113,7 @@ function AppRoutes() {
         <Route path="indicadores"  element={<Privada recurso="solicitacoes"><ErrorBoundary><Indicadores /></ErrorBoundary></Privada>} />
         <Route path="vales-fixos"  element={<Privada recurso="solicitacoes"><ErrorBoundary><ValesFixos /></ErrorBoundary></Privada>} />
         <Route path="levantamentos"            element={<Privada recurso="levantamentos"><ErrorBoundary><Levantamentos /></ErrorBoundary></Privada>} />
-        <Route path="levantamentos-importacoes" element={<Privada recurso="levantamentos"><ErrorBoundary><LevantamentosImportacoes /></ErrorBoundary></Privada>} />
+        <Route path="levantamentos-importacoes" element={<Privada recurso="levantamentos" adminOnly><ErrorBoundary><LevantamentosImportacoes /></ErrorBoundary></Privada>} />
         <Route path="mapa-ineficiencia" element={<Privada recurso="financeiro"><ErrorBoundary><MapaIneficiencia /></ErrorBoundary></Privada>} />
         <Route path="configuracoes"           element={<Privada><ErrorBoundary><Configuracoes /></ErrorBoundary></Privada>} />
         <Route path="notas-abastecimento"      element={<Privada><ErrorBoundary><NotasAbastecimento /></ErrorBoundary></Privada>} />

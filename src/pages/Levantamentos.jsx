@@ -1,5 +1,6 @@
 // frontend/src/pages/Levantamentos.jsx
 import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -32,6 +33,7 @@ const CustomTooltip = ({ active, payload, label, fmtVal }) => {
 };
 
 export default function Levantamentos() {
+  const { isAdmin } = useAuth();
   const [lista, setLista] = useState([]);
   const [showLista, setShowLista] = useState(false);
   const [editandoInlineId, setEditandoInlineId] = useState(null);
@@ -699,11 +701,13 @@ export default function Levantamentos() {
                   ))}
                 </div>
               )}
-              {/* botão exportar */}
-              <button onClick={exportarMot} disabled={regsFiltrados.length === 0}
-                style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'1.5px solid #16a34a', background:'#16a34a', color:'#fff', fontWeight:600, fontSize:12, cursor: regsFiltrados.length === 0 ? 'not-allowed' : 'pointer', opacity: regsFiltrados.length === 0 ? 0.5 : 1 }}>
-                <i className="ti ti-download" style={{ fontSize:14 }}></i> Exportar
-              </button>
+              {/* botão exportar — só admin */}
+              {isAdmin && (
+                <button onClick={exportarMot} disabled={regsFiltrados.length === 0}
+                  style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:8, border:'1.5px solid #16a34a', background:'#16a34a', color:'#fff', fontWeight:600, fontSize:12, cursor: regsFiltrados.length === 0 ? 'not-allowed' : 'pointer', opacity: regsFiltrados.length === 0 ? 0.5 : 1 }}>
+                  <i className="ti ti-download" style={{ fontSize:14 }}></i> Exportar
+                </button>
+              )}
             </div>
           </div>
 

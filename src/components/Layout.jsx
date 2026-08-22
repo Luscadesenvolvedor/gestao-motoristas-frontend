@@ -16,7 +16,7 @@ const menusAcerto = [
   { path: 'vales-fixos',  label: 'Vales Fixos',         icon: 'ti-credit-card',    recurso: 'solicitacoes' },
   { path: 'indicadores',  label: 'Indicadores',         icon: 'ti-chart-bar',      recurso: 'solicitacoes' },
   { path: 'levantamentos',             label: 'Levantamentos',        icon: 'ti-report-money',   recurso: 'levantamentos' },
-  { path: 'levantamentos-importacoes', label: 'Importações Motoristas', icon: 'ti-file-import',    recurso: 'levantamentos' },
+  { path: 'levantamentos-importacoes', label: 'Importações Motoristas', icon: 'ti-file-import',    recurso: 'levantamentos', adminOnly: true },
   { path: 'ab-medias-consumo', label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: 'levantamentos' },
   { path: 'mapa-ineficiencia', label: 'Mapa de Ineficiência', icon: 'ti-map-pin', recurso: 'financeiro' },
 ];
@@ -99,6 +99,7 @@ export default function Layout() {
           </NavLink>
           {(setorAtivo === 'abastecimento' ? menusAbastecimento : menusAcerto).map(m => {
             if (m.recurso && !pode(m.recurso, 'leitura')) return null;
+            if (m.adminOnly && !isAdmin) return null;
             return (
               <NavLink key={m.path} to={`/${m.path}`}
                 style={({ isActive }) => ({
