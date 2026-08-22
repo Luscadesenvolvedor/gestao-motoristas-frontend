@@ -777,15 +777,15 @@ export default function Levantamentos() {
                               const titleFrota = mes ? 'Clique para mudar para OP. BAÚ' : 'Clique para mudar para OP. BAÚ (todos os meses)';
                               return isMeli
                                 ? <span
-                                    onClick={() => toggleOpBau(r.motorista, mes, r.meses)}
-                                    title={titleMeli}
-                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', cursor:'pointer' }}>
+                                    onClick={isAdmin ? () => toggleOpBau(r.motorista, mes, r.meses) : undefined}
+                                    title={isAdmin ? titleMeli : 'OP. BAÚ'}
+                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#ede9fe', color:'#6d28d9', border:'1px solid #c4b5fd', cursor: isAdmin ? 'pointer' : 'default' }}>
                                     OP. BAÚ
                                   </span>
                                 : <span
-                                    onClick={() => toggleOpBau(r.motorista, mes, r.meses)}
-                                    title={titleFrota}
-                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0', cursor:'pointer' }}>
+                                    onClick={isAdmin ? () => toggleOpBau(r.motorista, mes, r.meses) : undefined}
+                                    title={isAdmin ? titleFrota : 'FROTA'}
+                                    style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0', cursor: isAdmin ? 'pointer' : 'default' }}>
                                     FROTA
                                   </span>;
                             })()}

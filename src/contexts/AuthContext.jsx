@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
     }
     const mapa = {
       usuarios:   { leitura: ['admin'], escrita: ['admin'] },
-      motoristas: { leitura: ['admin','guiche','acertador','dgp','financeiro'], escrita: ['admin','guiche','acertador','dgp','financeiro'] },
+      motoristas: { leitura: ['admin','guiche','acertador','dgp','financeiro','levantamentos'], escrita: ['admin','guiche','acertador','dgp','financeiro'] },
       solicitacoes:{ leitura: ['admin','guiche','acertador','dgp','financeiro'], escrita: ['admin','guiche','acertador','dgp','financeiro'] },
       exclusoes:  { leitura: ['admin','acertador','financeiro'], escrita: ['admin','acertador','financeiro'] },
       folgas:     { leitura: ['admin','guiche','acertador','dgp','financeiro'], escrita: ['admin','financeiro'] },
