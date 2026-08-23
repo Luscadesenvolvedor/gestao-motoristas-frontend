@@ -128,6 +128,11 @@ export default function LevantamentosImportacoes() {
   const [carregandoNomes, setCarregandoNomes] = useState(false);
   const [salvandoNomes, setSalvandoNomes]     = useState(false);
   const [buscaNomes, setBuscaNomes] = useState('');
+  // Modal "Mover registros por importação"
+  const [moverModal, setMoverModal] = useState(null); // { motorista, importacoes: [] } | null
+  const [moverSelecionados, setMoverSelecionados] = useState(new Set()); // importacaoIds selecionados
+  const [moverPara, setMoverPara]   = useState('');
+  const [moverSalvando, setMoverSalvando] = useState(false);
   const fileRef = useRef();
 
   async function carregar() {
@@ -389,6 +394,32 @@ export default function LevantamentosImportacoes() {
     } catch { toast.error('Erro ao excluir'); }
   }
 
+  async function abrirMover(motorista) {
+    try {
+      const { data } = await api.get('/levantamentos-motoristas/importacoes-por-motorista', { params: { motorista } });
+      setMoverModal({ motorista, importacoes: data });
+      setMoverSelecionados(new Set());
+      setMoverPara('');
+    } catch { toast.error('Erro ao carregar importações'); }
+  }
+
+  async function confirmarMover() {
+    if (!moverPara.trim()) { toast.error('Informe o nome de destino'); return; }
+    if (!moverSelecionados.size) { toast.error('Selecione ao menos uma importação'); return; }
+    setMoverSalvando(true);
+    try {
+      await api.put('/levantamentos-motoristas/mover-importacao', {
+        de: moverModal.motorista,
+        para: moverPara.trim(),
+        importacaoIds: [...moverSelecionados],
+      });
+      toast.success('Registros movidos com sucesso');
+      setMoverModal(null);
+      abrirGerenciar(); // recarrega a lista de nomes
+    } catch { toast.error('Erro ao mover registros'); }
+    finally { setMoverSalvando(false); }
+  }
+
   async function abrirGerenciar() {
     setGerenciar(true);
     setBuscaNomes('');
@@ -516,6 +547,13 @@ export default function LevantamentosImportacoes() {
                           />
                         </td>
                         <td style={{ padding:'7px 12px', textAlign:'center', color:'#9ca3af', fontSize:12 }}>{r.total}</td>
+                        <td style={{ padding:'7px 8px', textAlign:'center' }}>
+                          <button onClick={() => abrirMover(r.nome)}
+                            title="Mover registros desta pessoa para outra por importação"
+                            style={{ fontSize:11, padding:'3px 8px', border:'1px solid #e5e7eb', borderRadius:5, background:'#f8fafc', cursor:'pointer', color:'#374151', display:'flex', alignItems:'center', gap:4 }}>
+                            <i className="ti ti-arrows-transfer-up" style={{ fontSize:12 }}></i> Mover
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -523,6 +561,81 @@ export default function LevantamentosImportacoes() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal: Mover registros por importação */}
+      {moverModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:14, padding:'28px 32px', width:560, maxWidth:'95vw', maxHeight:'85vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+              <div>
+                <div style={{ fontWeight:700, fontSize:16, color:'#1a1a2e' }}>Mover registros por importação</div>
+                <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
+                  Origem: <strong>{moverModal.motorista}</strong>
+                </div>
+              </div>
+              <button onClick={() => setMoverModal(null)} style={{ border:'none', background:'none', cursor:'pointer', fontSize:20, color:'#9ca3af' }}>×</button>
+            </div>
+
+            {/* Destino */}
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, fontWeight:600, color:'#374151', display:'block', marginBottom:6 }}>Nome de destino</label>
+              <input
+                value={moverPara}
+                onChange={e => setMoverPara(e.target.value)}
+                placeholder="Ex: Andre de Paula"
+                list="nomes-lista"
+                style={{ width:'100%', padding:'8px 12px', border:'1.5px solid #d1d5db', borderRadius:8, fontSize:13, outline:'none', boxSizing:'border-box' }}
+              />
+              <datalist id="nomes-lista">
+                {nomes.map(n => <option key={n.nome} value={n.nome} />)}
+              </datalist>
+            </div>
+
+            {/* Lista de importações */}
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:8, display:'flex', justifyContent:'space-between' }}>
+                <span>Importações com registros desta pessoa ({moverModal.importacoes.length})</span>
+                <button onClick={() => {
+                  if (moverSelecionados.size === moverModal.importacoes.length)
+                    setMoverSelecionados(new Set());
+                  else
+                    setMoverSelecionados(new Set(moverModal.importacoes.map(i => i.importacaoId)));
+                }} style={{ fontSize:11, padding:'2px 8px', border:'1px solid #d1d5db', borderRadius:5, background:'#f8fafc', cursor:'pointer', color:'#374151' }}>
+                  {moverSelecionados.size === moverModal.importacoes.length ? 'Desmarcar tudo' : 'Selecionar tudo'}
+                </button>
+              </div>
+              <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden' }}>
+                {moverModal.importacoes.map((imp, i) => {
+                  const sel = moverSelecionados.has(imp.importacaoId);
+                  return (
+                    <label key={imp.importacaoId} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background: sel ? '#f5f3ff' : i%2===0 ? '#fff' : '#fafafa', borderBottom: i < moverModal.importacoes.length-1 ? '1px solid #f3f4f6' : 'none', cursor:'pointer' }}>
+                      <input type="checkbox" checked={sel} onChange={e => {
+                        const next = new Set(moverSelecionados);
+                        e.target.checked ? next.add(imp.importacaoId) : next.delete(imp.importacaoId);
+                        setMoverSelecionados(next);
+                      }} />
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:'#1a1a2e' }}>{imp.titulo || imp.nomeArquivo}</div>
+                        <div style={{ fontSize:11, color:'#6b7280' }}>{imp.tipoPagamento} · {imp.total} registros · R$ {parseFloat(imp.totalValor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button onClick={() => setMoverModal(null)} style={{ padding:'8px 18px', border:'1px solid #e5e7eb', borderRadius:8, background:'#fff', fontSize:13, cursor:'pointer', color:'#374151' }}>
+                Cancelar
+              </button>
+              <button onClick={confirmarMover} disabled={moverSalvando || !moverSelecionados.size || !moverPara.trim()}
+                style={{ padding:'8px 18px', border:'none', borderRadius:8, background:'#6366f1', color:'#fff', fontSize:13, fontWeight:600, cursor: moverSalvando || !moverSelecionados.size || !moverPara.trim() ? 'not-allowed' : 'pointer', opacity: moverSalvando || !moverSelecionados.size || !moverPara.trim() ? 0.6 : 1 }}>
+                {moverSalvando ? 'Movendo...' : `Mover ${moverSelecionados.size} importação(ões)`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
