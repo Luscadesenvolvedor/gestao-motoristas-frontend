@@ -23,7 +23,8 @@ export default function FrotaApoio() {
   // veículos cadastrados
   const [veiculos, setVeiculos]         = useState([]);
   const [showVeiculos, setShowVeiculos] = useState(false);
-  const [novoVeiculo, setNovoVeiculo]   = useState({ placa: '', modelo: '' });
+  const [novoVeiculo, setNovoVeiculo]   = useState({ placa: '', modelo: '', ano: '', cor: '' });
+  const [uploadingId, setUploadingId]   = useState(null); // id do veículo recebendo upload
   const [showSelectVeiculo, setShowSelectVeiculo] = useState(false);
 
   // filtros rápidos
@@ -103,9 +104,35 @@ export default function FrotaApoio() {
     try {
       await api.post('/frota-apoio/veiculos', novoVeiculo);
       toast.success('Veículo cadastrado!');
-      setNovoVeiculo({ placa: '', modelo: '' });
+      setNovoVeiculo({ placa: '', modelo: '', ano: '', cor: '' });
       carregarVeiculos();
     } catch { toast.error('Erro ao cadastrar veículo'); }
+  }
+
+  async function uploadImagem(veiculo, file) {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { toast.error('Imagem muito grande. Máximo 3 MB.'); return; }
+    setUploadingId(veiculo.id);
+    try {
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        try {
+          const base64 = ev.target.result;
+          await api.put(`/frota-apoio/veiculos/${veiculo.id}`, { imagem: base64 });
+          toast.success('Foto salva!');
+          carregarVeiculos();
+        } catch { toast.error('Erro ao salvar foto'); }
+        finally { setUploadingId(null); }
+      };
+      reader.readAsDataURL(file);
+    } catch { setUploadingId(null); }
+  }
+
+  async function removerImagem(veiculo) {
+    try {
+      await api.put(`/frota-apoio/veiculos/${veiculo.id}`, { imagem: '' });
+      carregarVeiculos();
+    } catch { toast.error('Erro ao remover foto'); }
   }
 
   async function excluirVeiculo(id) {
@@ -386,46 +413,105 @@ export default function FrotaApoio() {
       {/* Modal Veículos */}
       {showVeiculos && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:480, maxHeight:'80vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ padding:'18px 24px', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, background:'#fff' }}>
-              <h3 style={{ margin:0, fontSize:16, fontWeight:700 }}>Veículos Cadastrados</h3>
+          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:720, maxHeight:'85vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding:'18px 24px', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, background:'#fff', zIndex:2 }}>
+              <h3 style={{ margin:0, fontSize:16, fontWeight:700 }}>Frota de Apoio</h3>
               <button onClick={() => setShowVeiculos(false)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9ca3af' }}>×</button>
             </div>
             <div style={{ padding:24 }}>
               {/* Formulário de novo veículo */}
-              <form onSubmit={salvarVeiculo} style={{ display:'flex', gap:8, marginBottom:20, alignItems:'flex-end' }}>
-                <div style={{ flex:1 }}>
-                  <label style={lbl}>Placa</label>
+              <form onSubmit={salvarVeiculo} style={{ display:'grid', gridTemplateColumns:'1fr 2fr 1fr 1fr auto', gap:8, marginBottom:24, alignItems:'flex-end' }}>
+                <div>
+                  <label style={lbl}>Placa *</label>
                   <input value={novoVeiculo.placa} onChange={e => setNovoVeiculo(p => ({ ...p, placa: e.target.value.toUpperCase() }))}
                     required placeholder="ABC-1234" style={{ ...inp, textTransform:'uppercase' }} />
                 </div>
-                <div style={{ flex:2 }}>
+                <div>
                   <label style={lbl}>Modelo</label>
                   <input value={novoVeiculo.modelo} onChange={e => setNovoVeiculo(p => ({ ...p, modelo: e.target.value }))}
-                    placeholder="Ex: Fiat Uno" style={inp} />
+                    placeholder="Ex: Fiat Strada" style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Ano</label>
+                  <input value={novoVeiculo.ano} onChange={e => setNovoVeiculo(p => ({ ...p, ano: e.target.value }))}
+                    placeholder="2023" maxLength={4} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Cor</label>
+                  <input value={novoVeiculo.cor} onChange={e => setNovoVeiculo(p => ({ ...p, cor: e.target.value }))}
+                    placeholder="Branco" style={inp} />
                 </div>
                 <button type="submit"
-                  style={{ padding:'8px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                  style={{ padding:'8px 16px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap', alignSelf:'flex-end' }}>
                   <i className="ti ti-plus"></i> Adicionar
                 </button>
               </form>
 
-              {/* Lista */}
+              {/* Cards showroom */}
               {veiculos.length === 0 && (
-                <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center' }}>Nenhum veículo cadastrado ainda.</p>
+                <p style={{ color:'#9ca3af', fontSize:13, textAlign:'center', padding:'32px 0' }}>Nenhum veículo cadastrado ainda.</p>
               )}
-              {veiculos.map(v => (
-                <div key={v.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f1f5f9' }}>
-                  <div>
-                    <span style={{ fontWeight:700, fontSize:14, marginRight:10 }}>{v.placa}</span>
-                    <span style={{ color:'#6b7280', fontSize:13 }}>{v.modelo || '—'}</span>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:16 }}>
+                {veiculos.map(v => (
+                  <div key={v.id} style={{ border:'1px solid #e5e7eb', borderRadius:14, overflow:'hidden', background:'#fafafa', display:'flex', flexDirection:'column' }}>
+                    {/* Área da foto */}
+                    <label style={{ position:'relative', cursor:'pointer', display:'block', background:'linear-gradient(160deg,#f1f5f9 0%,#e2e8f0 100%)', minHeight:140, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <input type="file" accept="image/*" style={{ display:'none' }}
+                        onChange={e => uploadImagem(v, e.target.files[0])} />
+                      {uploadingId === v.id ? (
+                        <div style={{ textAlign:'center', color:'#6b7280', fontSize:12 }}>
+                          <i className="ti ti-loader-2" style={{ fontSize:28, display:'block', marginBottom:4 }}></i>
+                          Salvando...
+                        </div>
+                      ) : v.imagem ? (
+                        <>
+                          <img src={v.imagem} alt={v.modelo} style={{ width:'100%', height:140, objectFit:'cover', display:'block' }} />
+                          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0)', display:'flex', alignItems:'center', justifyContent:'center', opacity:0, transition:'all .2s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background='rgba(0,0,0,0.35)'; e.currentTarget.style.opacity=1; }}
+                            onMouseLeave={e => { e.currentTarget.style.background='rgba(0,0,0,0)'; e.currentTarget.style.opacity=0; }}>
+                            <span style={{ color:'#fff', fontSize:12, fontWeight:600, background:'rgba(0,0,0,0.5)', padding:'4px 10px', borderRadius:6 }}>
+                              <i className="ti ti-camera"></i> Trocar foto
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ textAlign:'center', color:'#9ca3af' }}>
+                          <i className="ti ti-car" style={{ fontSize:40, display:'block', marginBottom:6 }}></i>
+                          <span style={{ fontSize:11, fontWeight:600 }}>Clique para adicionar foto</span>
+                        </div>
+                      )}
+                    </label>
+
+                    {/* Info do carro */}
+                    <div style={{ padding:'12px 14px', flex:1, background:'#fff' }}>
+                      {/* Placa estilo real */}
+                      <div style={{ display:'inline-flex', alignItems:'center', gap:0, marginBottom:8, border:'2px solid #1a1a2e', borderRadius:6, overflow:'hidden', fontSize:13, fontWeight:800, fontFamily:'monospace' }}>
+                        <div style={{ background:'#1565c0', color:'#fff', padding:'2px 5px', fontSize:9, fontWeight:700, letterSpacing:1, writingMode:'vertical-rl', textOrientation:'upright', lineHeight:1 }}>BR</div>
+                        <div style={{ padding:'2px 8px', color:'#1a1a2e', letterSpacing:2 }}>{v.placa}</div>
+                      </div>
+                      <div style={{ fontSize:13, fontWeight:600, color:'#1a1a2e', marginBottom:2 }}>{v.modelo || <span style={{ color:'#9ca3af', fontWeight:400 }}>Modelo não informado</span>}</div>
+                      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                        {v.ano && <span style={{ fontSize:11, color:'#6b7280' }}>{v.ano}</span>}
+                        {v.cor && <span style={{ fontSize:11, color:'#6b7280' }}>· {v.cor}</span>}
+                      </div>
+                    </div>
+
+                    {/* Rodapé com ações */}
+                    <div style={{ borderTop:'1px solid #f1f5f9', padding:'8px 14px', display:'flex', gap:6, justifyContent:'flex-end', background:'#fff' }}>
+                      {v.imagem && (
+                        <button onClick={() => removerImagem(v)} title="Remover foto"
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', fontSize:14, padding:4 }}>
+                          <i className="ti ti-photo-off"></i>
+                        </button>
+                      )}
+                      <button onClick={() => excluirVeiculo(v.id)} title="Excluir veículo"
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:14, padding:4 }}>
+                        <i className="ti ti-trash"></i>
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={() => excluirVeiculo(v.id)}
-                    style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', fontSize:16 }}>
-                    <i className="ti ti-trash"></i>
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
