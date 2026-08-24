@@ -366,6 +366,61 @@ export default function FrotaApoio() {
         ))}
       </div>
 
+      {/* Cards de Veículos — showroom na página principal */}
+      {veiculos.length > 0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+            <span style={{ fontSize:12, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>Frota de Apoio</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(170px, 1fr))', gap:14 }}>
+            {veiculos.map(v => (
+              <div key={v.id} style={{ border:'1px solid #e5e7eb', borderRadius:14, overflow:'hidden', background:'#fafafa', display:'flex', flexDirection:'column' }}>
+                {/* Área da foto */}
+                <label style={{ position:'relative', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(160deg,#f1f5f9 0%,#e2e8f0 100%)', minHeight:120 }}>
+                  <input type="file" accept="image/*" style={{ display:'none' }}
+                    onChange={e => uploadImagem(v, e.target.files[0])} />
+                  {uploadingId === v.id ? (
+                    <div style={{ textAlign:'center', color:'#6b7280', fontSize:12 }}>
+                      <i className="ti ti-loader-2" style={{ fontSize:24, display:'block', marginBottom:4 }}></i>
+                      Salvando...
+                    </div>
+                  ) : v.imagem ? (
+                    <>
+                      <img src={v.imagem} alt={v.modelo} style={{ width:'100%', height:120, objectFit:'cover', display:'block' }} />
+                      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0)', display:'flex', alignItems:'center', justifyContent:'center', opacity:0, transition:'all .2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background='rgba(0,0,0,0.35)'; e.currentTarget.style.opacity=1; }}
+                        onMouseLeave={e => { e.currentTarget.style.background='rgba(0,0,0,0)'; e.currentTarget.style.opacity=0; }}>
+                        <span style={{ color:'#fff', fontSize:11, fontWeight:600, background:'rgba(0,0,0,0.5)', padding:'4px 10px', borderRadius:6 }}>
+                          <i className="ti ti-camera"></i> Trocar foto
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ textAlign:'center', color:'#9ca3af' }}>
+                      <i className="ti ti-car" style={{ fontSize:36, display:'block', marginBottom:4 }}></i>
+                      <span style={{ fontSize:10, fontWeight:600 }}>Adicionar foto</span>
+                    </div>
+                  )}
+                </label>
+
+                {/* Info */}
+                <div style={{ padding:'10px 12px', flex:1, background:'#fff' }}>
+                  <div style={{ display:'inline-flex', alignItems:'center', marginBottom:6, border:'2px solid #1a1a2e', borderRadius:5, overflow:'hidden', fontSize:12, fontWeight:800, fontFamily:'monospace' }}>
+                    <div style={{ background:'#1565c0', color:'#fff', padding:'2px 4px', fontSize:8, fontWeight:700, letterSpacing:1, writingMode:'vertical-rl', textOrientation:'upright', lineHeight:1 }}>BR</div>
+                    <div style={{ padding:'2px 6px', color:'#1a1a2e', letterSpacing:2 }}>{v.placa}</div>
+                  </div>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#1a1a2e', marginBottom:2 }}>{v.modelo || <span style={{ color:'#9ca3af', fontWeight:400, fontSize:11 }}>Modelo não informado</span>}</div>
+                  <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                    {v.ano && <span style={{ fontSize:10, color:'#6b7280' }}>{v.ano}</span>}
+                    {v.cor && <span style={{ fontSize:10, color:'#6b7280' }}>· {v.cor}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tabela */}
       <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
         <div style={{ overflowX:'auto' }}>
