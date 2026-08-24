@@ -503,7 +503,7 @@ export default function FrotaApoio() {
                 {veiculos.map(v => (
                   <div key={v.id} style={{ border:'1px solid #e5e7eb', borderRadius:14, overflow:'hidden', background:'#fafafa', display:'flex', flexDirection:'column' }}>
                     {/* Área da foto */}
-                    <label style={{ position:'relative', cursor:'pointer', display:'block', background:'linear-gradient(160deg,#f1f5f9 0%,#e2e8f0 100%)', minHeight:140, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <label style={{ position:'relative', cursor:'pointer', background:'linear-gradient(160deg,#f1f5f9 0%,#e2e8f0 100%)', minHeight:140, display:'flex', alignItems:'center', justifyContent:'center' }}>
                       <input type="file" accept="image/*" style={{ display:'none' }}
                         onChange={e => uploadImagem(v, e.target.files[0])} />
                       {uploadingId === v.id ? (
