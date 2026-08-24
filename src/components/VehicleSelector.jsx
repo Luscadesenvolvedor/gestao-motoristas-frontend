@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import './VehicleSelector.css';
 
 // Quantos carros aparecem para cada lado do selecionado (0 = só o centro)
-const MAX_VISIBLE_OFFSET = 2;
+const MAX_VISIBLE_OFFSET = 0;
 const SLOT_SPACING = 220;
 const EDGE_TRAVEL = 260;
 const EDGE_X = (MAX_VISIBLE_OFFSET + 1) * SLOT_SPACING + EDGE_TRAVEL;
