@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -24,8 +24,15 @@ export default function FrotaApoio() {
   const [veiculos, setVeiculos]         = useState([]);
   const [showVeiculos, setShowVeiculos] = useState(false);
   const [novoVeiculo, setNovoVeiculo]   = useState({ placa: '', modelo: '', ano: '', cor: '' });
-  const [uploadingId, setUploadingId]   = useState(null); // id do veículo recebendo upload
+  const [uploadingId, setUploadingId]   = useState(null);
   const [showSelectVeiculo, setShowSelectVeiculo] = useState(false);
+
+  // seleção estilo jogo
+  const [selectedVehicleIdx, setSelectedVehicleIdx] = useState(0);
+  const [outgoingIdx, setOutgoingIdx]   = useState(null);
+  const [animDir, setAnimDir]           = useState(1);   // 1 = forward, -1 = backward
+  const [animId, setAnimId]             = useState(0);   // counter para forçar re-mount da entrada
+  const isAnimatingRef                  = useRef(false);
 
   // filtros rápidos
   const hoje = new Date();
@@ -137,8 +144,37 @@ export default function FrotaApoio() {
 
   async function excluirVeiculo(id) {
     if (!confirm('Remover este veículo?')) return;
-    try { await api.delete(`/frota-apoio/veiculos/${id}`); carregarVeiculos(); }
+    try {
+      await api.delete(`/frota-apoio/veiculos/${id}`);
+      // ajusta índice se necessário
+      setSelectedVehicleIdx(prev => Math.max(0, prev - 1 < 0 ? 0 : prev));
+      setOutgoingIdx(null);
+      isAnimatingRef.current = false;
+      carregarVeiculos();
+    }
     catch { toast.error('Erro ao remover'); }
+  }
+
+  // navegação estilo jogo
+  function navigateVehicle(newIdx, dir) {
+    if (isAnimatingRef.current || veiculos.length <= 1) return;
+    isAnimatingRef.current = true;
+    setAnimDir(dir);
+    setOutgoingIdx(selectedVehicleIdx);
+    setSelectedVehicleIdx(newIdx);
+    setAnimId(id => id + 1);
+  }
+  function onExitDone() {
+    setOutgoingIdx(null);
+    isAnimatingRef.current = false;
+  }
+  function prevVehicle() {
+    const newIdx = (selectedVehicleIdx - 1 + veiculos.length) % veiculos.length;
+    navigateVehicle(newIdx, -1);
+  }
+  function nextVehicle() {
+    const newIdx = (selectedVehicleIdx + 1) % veiculos.length;
+    navigateVehicle(newIdx, 1);
   }
 
   function selecionarVeiculo(v) {
@@ -366,60 +402,192 @@ export default function FrotaApoio() {
         ))}
       </div>
 
-      {/* Cards de Veículos — showroom na página principal */}
-      {veiculos.length > 0 && (
-        <div style={{ marginBottom:20 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-            <span style={{ fontSize:12, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>Frota de Apoio</span>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(170px, 1fr))', gap:14 }}>
-            {veiculos.map(v => (
-              <div key={v.id} style={{ border:'1px solid #e5e7eb', borderRadius:14, overflow:'hidden', background:'#fafafa', display:'flex', flexDirection:'column' }}>
-                {/* Área da foto */}
-                <label style={{ position:'relative', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(160deg,#f1f5f9 0%,#e2e8f0 100%)', minHeight:120 }}>
-                  <input type="file" accept="image/*" style={{ display:'none' }}
-                    onChange={e => uploadImagem(v, e.target.files[0])} />
-                  {uploadingId === v.id ? (
-                    <div style={{ textAlign:'center', color:'#6b7280', fontSize:12 }}>
-                      <i className="ti ti-loader-2" style={{ fontSize:24, display:'block', marginBottom:4 }}></i>
-                      Salvando...
-                    </div>
-                  ) : v.imagem ? (
-                    <>
-                      <img src={v.imagem} alt={v.modelo} style={{ width:'100%', height:120, objectFit:'cover', display:'block' }} />
-                      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0)', display:'flex', alignItems:'center', justifyContent:'center', opacity:0, transition:'all .2s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background='rgba(0,0,0,0.35)'; e.currentTarget.style.opacity=1; }}
-                        onMouseLeave={e => { e.currentTarget.style.background='rgba(0,0,0,0)'; e.currentTarget.style.opacity=0; }}>
-                        <span style={{ color:'#fff', fontSize:11, fontWeight:600, background:'rgba(0,0,0,0.5)', padding:'4px 10px', borderRadius:6 }}>
-                          <i className="ti ti-camera"></i> Trocar foto
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ textAlign:'center', color:'#9ca3af' }}>
-                      <i className="ti ti-car" style={{ fontSize:36, display:'block', marginBottom:4 }}></i>
-                      <span style={{ fontSize:10, fontWeight:600 }}>Adicionar foto</span>
-                    </div>
-                  )}
-                </label>
+      {/* ── Seletor de veículos estilo jogo ── */}
+      <style>{`
+        @keyframes gameEnterRight {
+          from { transform: translateX(110%) scale(0.75); opacity: 0; }
+          to   { transform: translateX(0)    scale(1);    opacity: 1; }
+        }
+        @keyframes gameEnterLeft {
+          from { transform: translateX(-110%) scale(0.75); opacity: 0; }
+          to   { transform: translateX(0)     scale(1);    opacity: 1; }
+        }
+        @keyframes gameExitLeft {
+          from { transform: translateX(0)     scale(1);    opacity: 1; }
+          to   { transform: translateX(-110%) scale(0.75); opacity: 0; }
+        }
+        @keyframes gameExitRight {
+          from { transform: translateX(0)    scale(1);    opacity: 1; }
+          to   { transform: translateX(110%) scale(0.75); opacity: 0; }
+        }
+        .game-nav-btn { transition: background 0.2s, transform 0.15s; }
+        .game-nav-btn:hover { background: rgba(255,255,255,0.18) !important; transform: scale(1.1); }
+        .game-nav-btn:active { transform: scale(0.95); }
+        .game-dot { transition: all 0.3s; cursor: pointer; }
+        .game-dot:hover { opacity: 0.8; }
+        .game-upload-label { transition: opacity 0.2s; }
+        .game-upload-label:hover { opacity: 0.85; }
+      `}</style>
 
-                {/* Info */}
-                <div style={{ padding:'10px 12px', flex:1, background:'#fff' }}>
-                  <div style={{ display:'inline-flex', alignItems:'center', marginBottom:6, border:'2px solid #1a1a2e', borderRadius:5, overflow:'hidden', fontSize:12, fontWeight:800, fontFamily:'monospace' }}>
-                    <div style={{ background:'#1565c0', color:'#fff', padding:'2px 4px', fontSize:8, fontWeight:700, letterSpacing:1, writingMode:'vertical-rl', textOrientation:'upright', lineHeight:1 }}>BR</div>
-                    <div style={{ padding:'2px 6px', color:'#1a1a2e', letterSpacing:2 }}>{v.placa}</div>
+      {veiculos.length > 0 && (() => {
+        const sel  = veiculos[selectedVehicleIdx] || veiculos[0];
+        const prev = veiculos[(selectedVehicleIdx - 1 + veiculos.length) % veiculos.length];
+        const next = veiculos[(selectedVehicleIdx + 1) % veiculos.length];
+        const outt = outgoingIdx !== null ? veiculos[outgoingIdx] : null;
+
+        const SideCard = ({ v }) => (
+          <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.04)' }}>
+            <div style={{ height:80, background:'#1e293b', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+              {v.imagem
+                ? <img src={v.imagem} alt="" style={{ width:'100%', height:80, objectFit:'cover' }} />
+                : <i className="ti ti-car" style={{ fontSize:28, color:'rgba(255,255,255,0.2)' }}></i>}
+            </div>
+            <div style={{ padding:'6px 8px' }}>
+              <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:1, fontFamily:'monospace' }}>{v.placa}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:1 }}>{v.modelo || '—'}</div>
+            </div>
+          </div>
+        );
+
+        const CenterCard = ({ v }) => (
+          <div style={{ borderRadius:14, overflow:'hidden', border:'2px solid rgba(99,102,241,0.4)', background:'#0f172a', boxShadow:'0 0 40px rgba(99,102,241,0.25)' }}>
+            <label className="game-upload-label" style={{ display:'block', position:'relative', cursor:'pointer', height:200, background:'#0f172a', overflow:'hidden' }}>
+              <input type="file" accept="image/*" style={{ display:'none' }}
+                onChange={e => uploadImagem(v, e.target.files[0])} />
+              {uploadingId === v.id ? (
+                <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.5)', fontSize:13 }}>
+                  <i className="ti ti-loader-2" style={{ fontSize:32, marginBottom:6 }}></i>Salvando...
+                </div>
+              ) : v.imagem ? (
+                <>
+                  <img src={v.imagem} alt={v.modelo} style={{ width:'100%', height:200, objectFit:'cover', display:'block' }} />
+                  <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0)', display:'flex', alignItems:'center', justifyContent:'center', transition:'background 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.4)'}
+                    onMouseLeave={e => e.currentTarget.style.background='rgba(0,0,0,0)'}>
+                    <span style={{ color:'#fff', fontSize:12, fontWeight:600, background:'rgba(0,0,0,0.6)', padding:'5px 12px', borderRadius:8, opacity:0, transition:'opacity 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.opacity=1}
+                      onMouseLeave={e => e.currentTarget.style.opacity=0}>
+                      <i className="ti ti-camera"></i> Trocar foto
+                    </span>
                   </div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'#1a1a2e', marginBottom:2 }}>{v.modelo || <span style={{ color:'#9ca3af', fontWeight:400, fontSize:11 }}>Modelo não informado</span>}</div>
-                  <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                    {v.ano && <span style={{ fontSize:10, color:'#6b7280' }}>{v.ano}</span>}
-                    {v.cor && <span style={{ fontSize:10, color:'#6b7280' }}>· {v.cor}</span>}
+                </>
+              ) : (
+                <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,0.3)', gap:8 }}>
+                  <i className="ti ti-car" style={{ fontSize:52 }}></i>
+                  <span style={{ fontSize:11, fontWeight:600 }}>Clique para adicionar foto</span>
+                </div>
+              )}
+            </label>
+          </div>
+        );
+
+        return (
+          <div style={{ marginBottom:20, background:'linear-gradient(135deg,#0f172a 0%,#1a2540 50%,#0f172a 100%)', borderRadius:16, padding:'20px 16px 18px', position:'relative', overflow:'hidden', userSelect:'none' }}>
+            {/* glow */}
+            <div style={{ position:'absolute', top:'40%', left:'50%', transform:'translate(-50%,-50%)', width:320, height:200, background:'radial-gradient(ellipse,rgba(99,102,241,0.18) 0%,transparent 70%)', pointerEvents:'none' }} />
+
+            {/* label */}
+            <div style={{ textAlign:'center', fontSize:10, fontWeight:700, letterSpacing:3, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', marginBottom:14 }}>
+              Frota de Apoio
+            </div>
+
+            {/* linha principal */}
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              {/* botão prev */}
+              <button className="game-nav-btn" onClick={prevVehicle} disabled={veiculos.length <= 1}
+                style={{ background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, width:38, height:38, display:'flex', alignItems:'center', justifyContent:'center', cursor: veiculos.length > 1 ? 'pointer' : 'default', color:'#fff', fontSize:20, flexShrink:0, opacity: veiculos.length > 1 ? 1 : 0.3 }}>
+                ‹
+              </button>
+
+              {/* lateral esquerda */}
+              {veiculos.length > 2 && (
+                <div style={{ width:100, opacity:0.35, transform:'scale(0.88) perspective(400px) rotateY(18deg)', flexShrink:0, transition:'all 0.4s', filter:'blur(1px) brightness(0.6)', transformOrigin:'right center', cursor:'pointer' }}
+                  onClick={prevVehicle}>
+                  <SideCard v={prev} />
+                </div>
+              )}
+              {veiculos.length === 2 && (
+                <div style={{ width:100, opacity:0.35, flexShrink:0, transition:'all 0.4s', filter:'blur(1px) brightness(0.6)', cursor:'pointer' }} onClick={prevVehicle}>
+                  <SideCard v={prev} />
+                </div>
+              )}
+
+              {/* centro com animação */}
+              <div style={{ flex:1, position:'relative', overflow:'hidden', minHeight:220 }}>
+                {/* card saindo */}
+                {outt && (
+                  <div style={{ position:'absolute', inset:0, zIndex:2,
+                    animation:`${animDir > 0 ? 'gameExitLeft' : 'gameExitRight'} 0.42s cubic-bezier(0.4,0,0.2,1) forwards` }}
+                    onAnimationEnd={onExitDone}>
+                    <CenterCard v={outt} />
                   </div>
+                )}
+                {/* card entrando */}
+                <div key={animId}
+                  style={{ animation: animId > 0 ? `${animDir > 0 ? 'gameEnterRight' : 'gameEnterLeft'} 0.42s cubic-bezier(0.4,0,0.2,1) forwards` : 'none' }}>
+                  <CenterCard v={sel} />
                 </div>
               </div>
-            ))}
+
+              {/* lateral direita */}
+              {veiculos.length > 2 && (
+                <div style={{ width:100, opacity:0.35, transform:'scale(0.88) perspective(400px) rotateY(-18deg)', flexShrink:0, transition:'all 0.4s', filter:'blur(1px) brightness(0.6)', transformOrigin:'left center', cursor:'pointer' }}
+                  onClick={nextVehicle}>
+                  <SideCard v={next} />
+                </div>
+              )}
+              {veiculos.length === 2 && (
+                <div style={{ width:100, opacity:0.35, flexShrink:0, transition:'all 0.4s', filter:'blur(1px) brightness(0.6)', cursor:'pointer' }} onClick={nextVehicle}>
+                  <SideCard v={next} />
+                </div>
+              )}
+
+              {/* botão next */}
+              <button className="game-nav-btn" onClick={nextVehicle} disabled={veiculos.length <= 1}
+                style={{ background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, width:38, height:38, display:'flex', alignItems:'center', justifyContent:'center', cursor: veiculos.length > 1 ? 'pointer' : 'default', color:'#fff', fontSize:20, flexShrink:0, opacity: veiculos.length > 1 ? 1 : 0.3 }}>
+                ›
+              </button>
+            </div>
+
+            {/* info do veículo selecionado */}
+            <div style={{ textAlign:'center', marginTop:14 }}>
+              <div style={{ display:'inline-flex', alignItems:'center', marginBottom:6, border:'2px solid rgba(255,255,255,0.3)', borderRadius:7, overflow:'hidden', fontSize:14, fontWeight:800, fontFamily:'monospace' }}>
+                <div style={{ background:'#1565c0', color:'#fff', padding:'3px 6px', fontSize:9, fontWeight:700, letterSpacing:1, writingMode:'vertical-rl', textOrientation:'upright', lineHeight:1 }}>BR</div>
+                <div style={{ padding:'3px 10px', color:'#fff', letterSpacing:3 }}>{sel.placa}</div>
+              </div>
+              <div style={{ fontSize:15, fontWeight:700, color:'#fff', marginBottom:2 }}>{sel.modelo || <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:400 }}>Modelo não informado</span>}</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>
+                {[sel.ano, sel.cor].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+
+            {/* ações */}
+            <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:12 }}>
+              {sel.imagem && (
+                <button onClick={() => removerImagem(sel)}
+                  style={{ background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, padding:'5px 12px', color:'rgba(255,255,255,0.6)', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                  <i className="ti ti-photo-off"></i> Remover foto
+                </button>
+              )}
+              <button onClick={() => excluirVeiculo(sel.id)}
+                style={{ background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:8, padding:'5px 12px', color:'#f87171', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                <i className="ti ti-trash"></i> Remover veículo
+              </button>
+            </div>
+
+            {/* dots */}
+            {veiculos.length > 1 && (
+              <div style={{ display:'flex', justifyContent:'center', gap:5, marginTop:14 }}>
+                {veiculos.map((_, i) => (
+                  <div key={i} className="game-dot"
+                    onClick={() => { if (i !== selectedVehicleIdx) navigateVehicle(i, i > selectedVehicleIdx ? 1 : -1); }}
+                    style={{ height:5, borderRadius:3, background: i === selectedVehicleIdx ? '#6366f1' : 'rgba(255,255,255,0.25)', width: i === selectedVehicleIdx ? 20 : 5, transition:'all 0.3s' }} />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Tabela */}
       <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden' }}>
