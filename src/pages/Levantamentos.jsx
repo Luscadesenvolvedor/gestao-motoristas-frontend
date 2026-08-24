@@ -48,6 +48,7 @@ export default function Levantamentos() {
   const [mesFiltroMot, setMesFiltroMot]   = useState('');
   const [buscaMot, setBuscaMot]           = useState('');
   const [frotaFiltroMot, setFrotaFiltroMot] = useState(''); // '' | 'MELI' | 'FROTA'
+  const [soInconsistentes, setSoInconsistentes] = useState(false);
   const [importacoesMot, setImportacoesMot] = useState([]);
   const [placasMot, setPlacasMot]         = useState({}); // { [motorista]: { valor, salvando, salvo } }
   const [detalheMot, setDetalheMot]       = useState(null); // motorista key expandido
@@ -303,6 +304,24 @@ export default function Levantamentos() {
     return map;
   }, [importacoesMot]);
 
+  // Motoristas OP. BAÚ com custo folha em importação sem "bau" no título
+  const opBauFolhaErrada = useMemo(() => {
+    const temBau = s => /bau|ba[uú]/i.test((s || ''));
+    const result = new Set();
+    const impMap = {};
+    for (const im of importacoesMot) impMap[im.id] = im;
+    for (const r of regsMot) {
+      const im = impMap[r.importacaoId];
+      if (!im || im.tipoPagamento !== 'custoFolha') continue;
+      if (temBau(im.titulo) || temBau(im.nomeArquivo)) continue;
+      const mesEf = r.mes || im.mesReferencia || '';
+      if (getFrotaReal(r.motorista, mesEf || null) === 'MELI') {
+        result.add(r.motorista.trim().toUpperCase());
+      }
+    }
+    return result;
+  }, [regsMot, importacoesMot, opBauOverrides, frotaOverrides, motoristasBDMap]);
+
   async function exportarMot() {
     const XLSX = await import('xlsx');
     const linhas = regsFiltrados.map(r => {
@@ -331,6 +350,7 @@ export default function Levantamentos() {
       if (mesFiltroMot && mesEf !== mesFiltroMot) return false;
       if (buscaMot && !r.motorista.toLowerCase().includes(buscaMot.toLowerCase())) return false;
       if (frotaFiltroMot && getFrotaReal(r.motorista, mesEf || null) !== frotaFiltroMot) return false;
+      if (soInconsistentes && !opBauFolhaErrada.has(r.motorista.trim().toUpperCase())) return false;
       return true;
     });
     // agrupar por motorista + veiculo, somando valores
@@ -357,7 +377,7 @@ export default function Levantamentos() {
       return sortMot.dir === 'asc' ? va - vb : vb - va;
     });
     return rows;
-  }, [regsMot, mesFiltroMot, buscaMot, frotaFiltroMot, importacoesMap, sortMot, opBauOverrides, frotaOverrides, motoristasBDMap]);
+  }, [regsMot, mesFiltroMot, buscaMot, frotaFiltroMot, soInconsistentes, opBauFolhaErrada, importacoesMap, sortMot, opBauOverrides, frotaOverrides, motoristasBDMap]);
 
   const totalMot = regsFiltrados.reduce((s, r) => s + r.valor, 0);
 
@@ -680,6 +700,18 @@ export default function Levantamentos() {
                   </button>
                 ))}
               </div>
+              {/* filtro inconsistências OP. BAÚ — só admin */}
+              {isAdmin && opBauFolhaErrada.size > 0 && (
+                <button onClick={() => setSoInconsistentes(v => !v)}
+                  title="OP. BAÚ com custo folha em importação sem 'bau' no título"
+                  style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5,
+                    borderColor: soInconsistentes ? '#b45309' : '#fde68a',
+                    background:  soInconsistentes ? '#fef3c7' : '#fffbeb',
+                    color: '#b45309' }}>
+                  <i className="ti ti-alert-triangle" style={{ fontSize:12 }}></i>
+                  {opBauFolhaErrada.size} OP. BAÚ s/ folha BAÚ
+                </button>
+              )}
               {/* filtros rápidos de mês */}
               {mesesMot.length > 0 && (
                 <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
@@ -765,7 +797,15 @@ export default function Levantamentos() {
                         <tr key={r.motorista} style={{ background: i%2===0?'#fff':'#fafafa' }}
                           onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
                           onMouseLeave={e => e.currentTarget.style.background= aberto ? '#f0f9ff' : i%2===0?'#fff':'#fafafa'}>
-                          <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>{r.motorista}</td>
+                          <td style={{ padding:'10px 16px', fontWeight:600, color:'#1a1a2e', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              {r.motorista}
+                              {isAdmin && opBauFolhaErrada.has(key) && (
+                                <span title="OP. BAÚ com custo folha em importação sem 'bau' no título"
+                                  style={{ fontSize:13, color:'#b45309', lineHeight:1 }}>⚠️</span>
+                              )}
+                            </div>
+                          </td>
                           <td style={{ padding:'10px 16px', borderBottom: aberto ? 'none' : '1px solid #f3f4f6' }}>
                             {(() => {
                               const mes = mesFiltroMot || null;
