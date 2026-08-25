@@ -98,6 +98,36 @@ export default function MediasConsumo() {
     const chave = String(nome || '').toUpperCase().replace(/\s+/g,' ').trim();
     return aliasMap[chave] || nome;
   }
+  // Salva alias e atualiza estado local
+  async function salvarAliasLocal(nomeOriginal, nomeNovo) {
+    try {
+      const { data } = await api.post('/nome-aliases', { nomeImportado: nomeOriginal, motoristaNome: nomeNovo });
+      setAliases(prev => {
+        const sem = prev.filter(a => a.nomeImportado !== data.nomeImportado);
+        return [...sem, data];
+      });
+      // Atualiza revisaoNomes do preview
+      setPreview(p => p ? ({
+        ...p,
+        revisaoNomes: (p.revisaoNomes || []).map(r =>
+          r.nomeOriginal === nomeOriginal ? { ...r, nomeEditado: nomeNovo, matchByAlias: true } : r
+        ),
+      }) : p);
+      toast.success(`Alias salvo: "${nomeOriginal}" → "${nomeNovo}"`);
+    } catch { toast.error('Erro ao salvar alias'); }
+  }
+  // Aplica nomes editados aos registros e marca como confirmado
+  function confirmarNomesConsumo() {
+    setPreview(p => {
+      const mapa = {};
+      for (const r of (p.revisaoNomes || [])) mapa[r.nomeOriginal] = r.nomeEditado;
+      return {
+        ...p,
+        registros: p.registros.map(r => ({ ...r, motorista: mapa[r.motorista] || r.motorista })),
+        nomesConfirmados: true,
+      };
+    });
+  }
 
   /* ── sincronizar importacaoId quando frotaSel muda ── */
   useEffect(() => {
@@ -261,11 +291,25 @@ export default function MediasConsumo() {
         return null;
       };
 
+      // Monta revisão de nomes (antes de resolver aliases)
+      const nomesUnicos = [...new Set(
+        raw.slice(1)
+          .filter(r => col(r, 'motorista'))
+          .map(r => String(col(r, 'motorista') || '').trim())
+          .filter(Boolean)
+      )];
+      const revisaoNomes = nomesUnicos.map(nomeOriginal => {
+        const nomeEditado = resolverNome(nomeOriginal);
+        const matchByAlias = nomeEditado !== nomeOriginal;
+        return { nomeOriginal, nomeEditado, matchByAlias };
+      });
+      const todosPorAlias = revisaoNomes.every(r => r.matchByAlias || r.nomeOriginal === r.nomeEditado);
+
       const registros = raw.slice(1)
         .filter(r => col(r, 'data') && col(r, 'motorista'))
         .map(r => ({
           data:           colData(r, 'data'),
-          motorista:      resolverNome(String(col(r, 'motorista') || '').trim()),
+          motorista:      String(col(r, 'motorista') || '').trim(), // nome cru — resolvido ao confirmar
           placa:          col(r, 'placa'),
           modelo:         col(r, 'modelo'),
           conjunto:       col(r, 'conjunto'),
@@ -285,7 +329,7 @@ export default function MediasConsumo() {
           gap:            colNum(r, 'gap'),
         }));
 
-      setPreview({ nomeArquivo: file.name, registros, frota: '' });
+      setPreview({ nomeArquivo: file.name, registros, frota: '', revisaoNomes, nomesConfirmados: todosPorAlias });
       toast.success(`${registros.length.toLocaleString('pt-BR')} registros lidos`);
     } catch (err) { toast.error('Erro ao ler o arquivo: ' + err.message); }
     e.target.value = '';
@@ -519,7 +563,7 @@ export default function MediasConsumo() {
             </div>
             <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
               <button onClick={() => setPreview(null)} style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer' }}>Cancelar</button>
-              <button onClick={salvarImportacao} disabled={salvando||!preview.frota}
+              <button onClick={salvarImportacao} disabled={salvando||!preview.frota||!preview.nomesConfirmados}
                 style={{ padding:'7px 16px', border:'none', borderRadius:8, background:preview.frota?'#16a34a':'#9ca3af', color:'#fff', fontSize:12, fontWeight:600, cursor:preview.frota?'pointer':'not-allowed' }}>
                 {salvando?`Salvando... ${progresso}%`:'Salvar no banco'}
               </button>
@@ -539,6 +583,86 @@ export default function MediasConsumo() {
               <span style={{ fontSize:11, color:'#b45309' }}>Frota:</span>
               <span style={{ padding:'3px 10px', background:'#d97706', color:'#fff', borderRadius:20, fontSize:11, fontWeight:700 }}>{preview.frota}</span>
               <button onClick={() => setPreview(p=>({...p,frota:''}))} style={{ fontSize:11, color:'#b45309', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Trocar</button>
+            </div>
+          )}
+
+          {/* ── Revisão de nomes ── */}
+          {preview.revisaoNomes && !preview.nomesConfirmados && (
+            <div style={{ marginTop:14, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, overflow:'hidden' }}>
+              <div style={{ padding:'10px 14px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <i className="ti ti-users" style={{ color:'#6366f1', fontSize:15 }}></i>
+                <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Revisão de motoristas</span>
+                {(() => {
+                  const aliasOk  = (preview.revisaoNomes||[]).filter(r => r.matchByAlias).length;
+                  const pendente = (preview.revisaoNomes||[]).filter(r => !r.matchByAlias).length;
+                  return <>
+                    {aliasOk > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:11, fontWeight:700 }}>{aliasOk} por alias ✓</span>}
+                    {pendente > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700 }}>{pendente} para revisar</span>}
+                  </>;
+                })()}
+                <button onClick={confirmarNomesConsumo}
+                  style={{ marginLeft:'auto', padding:'5px 14px', background:'#6366f1', color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  Confirmar nomes e continuar →
+                </button>
+              </div>
+              <div style={{ maxHeight:260, overflowY:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr style={{ background:'#f8fafc' }}>
+                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome na planilha</th>
+                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome final (editável)</th>
+                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Status</th>
+                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Alias</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(preview.revisaoNomes||[]).map((r, i) => (
+                      <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
+                        <td style={{ padding:'6px 12px', color:'#374151', fontWeight:500 }}>{r.nomeOriginal}</td>
+                        <td style={{ padding:'4px 8px' }}>
+                          <input
+                            value={r.nomeEditado}
+                            onChange={e => setPreview(p => ({
+                              ...p,
+                              revisaoNomes: p.revisaoNomes.map((x, j) => j === i ? { ...x, nomeEditado: e.target.value, matchByAlias: false } : x),
+                            }))}
+                            style={{ width:'100%', padding:'4px 8px', border:'1.5px solid ' + (r.nomeEditado !== r.nomeOriginal ? '#6366f1' : '#e5e7eb'), borderRadius:6, fontSize:12, outline:'none', background: r.nomeEditado !== r.nomeOriginal ? '#f5f3ff' : '#fff', boxSizing:'border-box' }}
+                          />
+                        </td>
+                        <td style={{ padding:'6px 12px', textAlign:'center' }}>
+                          {r.matchByAlias
+                            ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:11, fontWeight:700 }}>alias ✓</span>
+                            : r.nomeEditado === r.nomeOriginal
+                              ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#f1f5f9', color:'#64748b', border:'1px solid #e2e8f0', fontSize:11, fontWeight:700 }}>original</span>
+                              : <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef9c3', color:'#854d0e', border:'1px solid #fde047', fontSize:11, fontWeight:700 }}>editado</span>
+                          }
+                        </td>
+                        <td style={{ padding:'6px 12px', textAlign:'center' }}>
+                          {r.nomeEditado !== r.nomeOriginal && !r.matchByAlias && (
+                            <button onClick={() => salvarAliasLocal(r.nomeOriginal, r.nomeEditado)}
+                              style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'3px 10px', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer', whiteSpace:'nowrap' }}>
+                              <i className="ti ti-link"></i> Salvar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Confirmação de nomes já feita */}
+          {preview.nomesConfirmados && preview.revisaoNomes && (
+            <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              {(() => {
+                const aliasOk = (preview.revisaoNomes||[]).filter(r => r.matchByAlias).length;
+                const total   = (preview.revisaoNomes||[]).length;
+                return <span style={{ fontSize:12, color:'#15803d' }}><i className="ti ti-check"></i> Nomes confirmados ({total} motoristas{aliasOk > 0 ? `, ${aliasOk} por alias` : ''})</span>;
+              })()}
+              <button onClick={() => setPreview(p=>({...p, nomesConfirmados:false}))}
+                style={{ fontSize:11, color:'#6b7280', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Rever</button>
             </div>
           )}
         </div>
