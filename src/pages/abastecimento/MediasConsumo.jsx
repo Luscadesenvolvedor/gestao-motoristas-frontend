@@ -82,6 +82,23 @@ export default function MediasConsumo() {
   const [registros,  setRegistros]  = useState([]);
   const [loadingReg, setLoadingReg] = useState(false);
 
+  // ── aliases globais de nomes ──
+  const [aliases, setAliases] = useState([]);
+  useEffect(() => {
+    api.get('/nome-aliases').then(r => setAliases(r.data)).catch(() => {});
+  }, []);
+  // aliasMap: NORM_UPPER(nomeImportado) → motoristaNome canônico
+  const aliasMap = useMemo(() => {
+    const map = {};
+    for (const a of aliases) map[a.nomeImportado] = a.motoristaNome;
+    return map;
+  }, [aliases]);
+  // Resolve nome de motorista via alias (ou retorna o original)
+  function resolverNome(nome) {
+    const chave = String(nome || '').toUpperCase().replace(/\s+/g,' ').trim();
+    return aliasMap[chave] || nome;
+  }
+
   /* ── sincronizar importacaoId quando frotaSel muda ── */
   useEffect(() => {
     if (!importacoes.length) return;
@@ -248,7 +265,7 @@ export default function MediasConsumo() {
         .filter(r => col(r, 'data') && col(r, 'motorista'))
         .map(r => ({
           data:           colData(r, 'data'),
-          motorista:      String(col(r, 'motorista') || '').trim(),
+          motorista:      resolverNome(String(col(r, 'motorista') || '').trim()),
           placa:          col(r, 'placa'),
           modelo:         col(r, 'modelo'),
           conjunto:       col(r, 'conjunto'),

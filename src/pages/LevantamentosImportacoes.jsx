@@ -133,7 +133,30 @@ export default function LevantamentosImportacoes() {
   const [moverSelecionados, setMoverSelecionados] = useState(new Set()); // importacaoIds selecionados
   const [moverPara, setMoverPara]   = useState('');
   const [moverSalvando, setMoverSalvando] = useState(false);
+  const [aliases, setAliases] = useState([]); // [{ id, nomeImportado, motoristaNome, motoristaCpf }]
   const fileRef = useRef();
+
+  // Carrega aliases globais
+  useEffect(() => {
+    api.get('/nome-aliases').then(r => setAliases(r.data)).catch(() => {});
+  }, []);
+
+  // aliasMap: NORM(nomeImportado) → { motoristaNome, motoristaCpf }
+  const aliasMap = useMemo(() => {
+    const map = {};
+    for (const a of aliases) map[a.nomeImportado] = { motoristaNome: a.motoristaNome, motoristaCpf: a.motoristaCpf };
+    return map;
+  }, [aliases]);
+
+  async function salvarAlias(nomeImportado, motoristaNome, motoristaCpf) {
+    try {
+      const { data } = await api.post('/nome-aliases', { nomeImportado, motoristaNome, motoristaCpf });
+      setAliases(prev => {
+        const sem = prev.filter(a => a.nomeImportado !== data.nomeImportado);
+        return [...sem, data];
+      });
+    } catch { /* silencioso */ }
+  }
 
   async function carregar() {
     setCarregando(true);
@@ -231,11 +254,17 @@ export default function LevantamentosImportacoes() {
       // Busca motoristas existentes e monta revisão
       let revisao;
       try {
-        const [{ data: existentes }, { data: motBD }, { data: opBauSalvos }] = await Promise.all([
+        const [{ data: existentes }, { data: motBD }, { data: opBauSalvos }, { data: aliasesBD }] = await Promise.all([
           api.get('/levantamentos-motoristas'),
           api.get('/motoristas'),
           api.get('/levantamentos-motoristas/op-bau-nomes'),
+          api.get('/nome-aliases'),
         ]);
+        // Atualiza estado de aliases (para usar no salvarAlias depois)
+        setAliases(aliasesBD);
+        // Mapa alias: NORM(nomeImportado) → { motoristaNome, motoristaCpf }
+        const aliasMapLocal = {};
+        for (const a of aliasesBD) aliasMapLocal[a.nomeImportado] = { motoristaNome: a.motoristaNome, motoristaCpf: a.motoristaCpf };
         // Pré-marca como OP. BAÚ os nomes já salvos anteriormente (API retorna [{ nome, mes }])
         const opBauNorms = new Set((opBauSalvos || []).map(({ nome }) => norm(nome)));
         // Nomes da planilha que já estão na tabela op_bau → pré-selecionar
@@ -285,10 +314,18 @@ export default function LevantamentosImportacoes() {
               // CPF presente mas não encontrado no cadastro → novo
               return { nomePlanilha: nome, melhorMatch: null, nomeEditado: nome, score: 0, veiculo: null, semCadastro: true };
             }
-            // CPF ausente nesta linha → cai no fuzzy abaixo
+            // CPF ausente nesta linha → cai no alias/fuzzy abaixo
           }
 
-          // 2. Match fuzzy por nome
+          // 2. Match por alias global
+          const nomeNorm = norm(nome).toUpperCase().replace(/\s+/g,' ').trim();
+          const aliasEntry = aliasMapLocal[nomeNorm];
+          if (aliasEntry) {
+            const entry = mapaExistentes.get(norm(aliasEntry.motoristaNome)) || { original: aliasEntry.motoristaNome, veiculo: null };
+            return { nomePlanilha: nome, melhorMatch: entry.original, nomeEditado: entry.original, score: 1, veiculo: entry.veiculo, semCadastro: false, matchByAlias: true };
+          }
+
+          // 3. Match fuzzy por nome
           const n = norm(nome);
           // Verifica se tem match: banco de motoristas, importações anteriores ou override OP. BAÚ
           const emBD =
@@ -660,11 +697,13 @@ export default function LevantamentosImportacoes() {
             <div style={{ fontSize:11, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
               Revisão de nomes — edite antes de salvar
               {!preview.buscando && (() => {
-                const cpfOk    = (preview.revisao || []).filter(r => r.matchByCpf).length;
-                const pendentes = (preview.revisao || []).filter(r => !r.matchByCpf && (r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro)).length;
+                const cpfOk     = (preview.revisao || []).filter(r => r.matchByCpf).length;
+                const aliasOk   = (preview.revisao || []).filter(r => r.matchByAlias).length;
+                const pendentes = (preview.revisao || []).filter(r => !r.matchByCpf && !r.matchByAlias && (r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro)).length;
                 const total     = (preview.revisao || []).length;
                 return <>
                   {cpfOk > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#dbeafe', color:'#1d4ed8', border:'1px solid #bfdbfe', fontSize:11, fontWeight:700, textTransform:'none' }}>{cpfOk} por CPF ✓</span>}
+                  {aliasOk > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:11, fontWeight:700, textTransform:'none' }}>{aliasOk} por alias ✓</span>}
                   {pendentes > 0
                     ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700, textTransform:'none' }}>{pendentes} de {total} precisam revisão</span>
                     : <span style={{ padding:'2px 8px', borderRadius:10, background:'#dcfce7', color:'#16a34a', border:'1px solid #bbf7d0', fontSize:11, fontWeight:700, textTransform:'none' }}>Todos exatos ✓</span>}
@@ -690,10 +729,11 @@ export default function LevantamentosImportacoes() {
                         <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>No sistema</th>
                         <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Cadastro</th>
                         <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Match</th>
+                        <th style={{ padding:'8px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>Salvar</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => !r.matchByCpf && (r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro)).map((r, i) => {
+                      {(preview.revisao || []).map((r, origIdx) => ({ ...r, origIdx })).filter(r => !r.matchByCpf && !r.matchByAlias && (r.score < 1 || r.nomeEditado !== r.nomePlanilha || r.semCadastro)).map((r, i) => {
                         // Score mais confiável: compara nome final vs melhor match do sistema (reativo ao editar)
                         const scoreFinal = r.melhorMatch
                           ? Math.max(r.score, scoreNome(norm(r.nomeEditado), norm(r.melhorMatch)))
@@ -759,6 +799,24 @@ export default function LevantamentosImportacoes() {
                                 <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:matchStyle.bg, color:matchStyle.color, border:`1px solid ${matchStyle.border}`, whiteSpace:'nowrap' }}>
                                   {matchLabel}
                                 </span>
+                              )}
+                            </td>
+                            {/* Coluna: salvar alias */}
+                            <td style={{ padding:'7px 12px', textAlign:'center' }}>
+                              {r.nomeEditado && r.nomeEditado !== r.nomePlanilha && (
+                                <button
+                                  onClick={() => {
+                                    salvarAlias(r.nomePlanilha, r.nomeEditado, null);
+                                    setPreview(p => ({
+                                      ...p,
+                                      revisao: p.revisao.map((x, j) => j === r.origIdx ? { ...x, score: 1, matchByAlias: true } : x),
+                                    }));
+                                    toast.success(`Alias salvo: "${r.nomePlanilha}" → "${r.nomeEditado}"`);
+                                  }}
+                                  title="Salvar este mapeamento para importações futuras"
+                                  style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:7, padding:'3px 10px', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer', whiteSpace:'nowrap' }}>
+                                  <i className="ti ti-link"></i> Salvar alias
+                                </button>
                               )}
                             </td>
                           </tr>
