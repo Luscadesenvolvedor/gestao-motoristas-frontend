@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -90,6 +91,46 @@ export default function Fechamentos() {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Erro ao salvar');
     } finally { setSalvando(false); }
+  }
+
+  function exportarXlsx(f) {
+    const totalF = f.placas.reduce((s, p) => s + Number(p.totalDespesas), 0);
+    const periodo = `${fmtData(f.periodoInicio)} a ${fmtData(f.periodoFim)}`;
+
+    const linhas = [
+      [f.empresa],
+      [`Período: ${periodo}`],
+      [],
+      ['#', 'Placa', 'Modelo', 'Total Despesas (R$)'],
+      ...f.placas.map((p, i) => [
+        i + 1,
+        p.placa,
+        p.modelo || '',
+        Number(p.totalDespesas),
+      ]),
+      [],
+      ['', '', 'TOTAL', totalF],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(linhas);
+
+    // larguras das colunas
+    ws['!cols'] = [{ wch: 4 }, { wch: 12 }, { wch: 28 }, { wch: 22 }];
+
+    // formata coluna de valor como moeda
+    const fmtMoeda = '"R$"#,##0.00';
+    for (let r = 4; r < 4 + f.placas.length; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 3 })];
+      if (cell) cell.z = fmtMoeda;
+    }
+    const cellTotal = ws[XLSX.utils.encode_cell({ r: 4 + f.placas.length + 1, c: 3 })];
+    if (cellTotal) cellTotal.z = fmtMoeda;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Fechamento');
+
+    const nomeArq = `fechamento_${(f.empresa || 'exportado').replace(/\s+/g, '_').toLowerCase()}_${fmtData(f.periodoInicio).replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(wb, nomeArq);
   }
 
   async function excluir(id) {
@@ -307,6 +348,10 @@ export default function Fechamentos() {
                       style={{ padding:'6px 12px', border:'1px solid #e5e7eb', borderRadius:7, background: exp ? '#f0f9ff' : '#f9fafb', fontSize:12, cursor:'pointer', color: exp ? '#0891b2' : '#6b7280', display:'flex', alignItems:'center', gap:5 }}>
                       <i className={`ti ${exp ? 'ti-chevron-up' : 'ti-chevron-down'}`}></i>
                       {exp ? 'Fechar' : `Ver ${f.placas.length} placas`}
+                    </button>
+                    <button onClick={() => exportarXlsx(f)}
+                      style={{ padding:'6px 12px', border:'1px solid #bbf7d0', borderRadius:7, background:'#f0fdf4', fontSize:12, cursor:'pointer', color:'#16a34a', display:'flex', alignItems:'center', gap:5 }}>
+                      <i className="ti ti-table-export"></i> Exportar
                     </button>
                     <button onClick={() => excluir(f.id)}
                       style={{ padding:'6px 10px', border:'1px solid #fee2e2', borderRadius:7, background:'#fff5f5', fontSize:13, cursor:'pointer', color:'#dc2626' }}>
