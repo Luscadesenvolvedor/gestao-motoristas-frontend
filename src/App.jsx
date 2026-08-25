@@ -27,6 +27,7 @@ import FornecedoresLavagem from './pages/abastecimento/FornecedoresLavagem';
 import MediasConsumo from './pages/abastecimento/MediasConsumo';
 import FrotaApoio from './pages/FrotaApoio';
 import Fechamentos from './pages/abastecimento/Fechamentos';
+import PainelConsumo from './pages/abastecimento/PainelConsumo';
 import Home from './pages/Home';
 import './theme.css';
 import { Component } from 'react';
@@ -126,6 +127,7 @@ function AppRoutes() {
         <Route path="ab-medias-consumo"          element={<Privada><ErrorBoundary><MediasConsumo /></ErrorBoundary></Privada>} />
         <Route path="frota-apoio"               element={<Privada><ErrorBoundary><FrotaApoio /></ErrorBoundary></Privada>} />
         <Route path="ab-fechamentos"            element={<Privada><ErrorBoundary><Fechamentos /></ErrorBoundary></Privada>} />
+        <Route path="ab-painel-consumo"         element={<Privada><ErrorBoundary><PainelConsumo /></ErrorBoundary></Privada>} />
       </Route>
     </Routes>
   );

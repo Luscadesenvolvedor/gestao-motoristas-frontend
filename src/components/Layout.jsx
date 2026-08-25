@@ -28,6 +28,7 @@ const menusAbastecimento = [
   { path: 'ab-medias-consumo',   label: 'Médias de Consumo',   icon: 'ti-gauge',          recurso: null },
   { path: 'frota-apoio',         label: 'Frota Apoio',          icon: 'ti-car',            recurso: null },
   { path: 'ab-fechamentos',      label: 'Fechamentos',         icon: 'ti-file-report',    recurso: null },
+  { path: 'ab-painel-consumo',   label: 'Painel de Consumo',   icon: 'ti-layout-dashboard', recurso: null },
   { path: 'ab-relatorios',       label: 'Relatórios',          icon: 'ti-chart-bar',      recurso: null },
 ];
 
