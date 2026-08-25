@@ -12,10 +12,20 @@ const normFuzzy = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀
 const tokens    = s => normFuzzy(s).split(/\s+/).filter(t => t.length > 2);
 const THRESHOLD_CONSUMO = 0.45;
 
+function levDist(a, b) {
+  const dp = Array.from({length:a.length+1}, (_,i) =>
+    Array.from({length:b.length+1}, (_,j) => i===0?j:j===0?i:0));
+  for (let i=1;i<=a.length;i++)
+    for (let j=1;j<=b.length;j++)
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+
 function scoreNomeConsumo(a, b) {
   const ta = tokens(a), tb = tokens(b);
   if (!ta.length || !tb.length) return 0;
-  if (ta[0] !== tb[0]) return 0; // primeiro nome obrigatório
+  // primeiro token: aceita distância ≤ 1 (ex: JERRI vs JERRY)
+  if (levDist(ta[0], tb[0]) > 1) return 0;
   const tbSet = new Set(tb);
   const overlap = ta.filter(t => tbSet.has(t)).length;
   const tokenScore = overlap / Math.max(ta.length, tb.length);
