@@ -332,7 +332,7 @@ export default function MediasConsumo() {
 
       // Carrega motoristas do banco para comparação
       let motoristasBD = [];
-      try { const { data } = await api.get('/motoristas'); motoristasBD = data; } catch {}
+      try { const { data } = await api.get('/medias-consumo/motoristas-nomes'); motoristasBD = data; } catch {}
 
       const revisaoNomes = nomesUnicos.map(nomeOriginal => {
         const nomeEditado  = resolverNome(nomeOriginal);
@@ -672,7 +672,7 @@ export default function MediasConsumo() {
                   <tbody>
                     {(preview.revisaoNomes||[]).map((r, i) => {
                       const badge = badgeScore(r.score);
-                      const temSugestao = r.melhorMatch && r.score >= THRESHOLD_CONSUMO && r.score < 1 && r.nomeEditado !== r.melhorMatch;
+                      const temSugestao = r.melhorMatch && r.score >= 0.7 && r.score < 1 && r.nomeEditado !== r.melhorMatch;
                       return (
                         <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
                           {/* Nome planilha */}
