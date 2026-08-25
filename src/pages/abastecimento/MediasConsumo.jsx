@@ -1,5 +1,4 @@
-import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -7,57 +6,12 @@ import {
   Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, LabelList
 } from 'recharts';
 
-/* ── fuzzy match de nomes ── */
-const normFuzzy = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
-const tokens    = s => normFuzzy(s).split(/\s+/).filter(t => t.length > 2);
-const THRESHOLD_CONSUMO = 0.45;
-
-function levDist(a, b) {
-  const dp = Array.from({length:a.length+1}, (_,i) =>
-    Array.from({length:b.length+1}, (_,j) => i===0?j:j===0?i:0));
-  for (let i=1;i<=a.length;i++)
-    for (let j=1;j<=b.length;j++)
-      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  return dp[a.length][b.length];
-}
-
-function scoreNomeConsumo(a, b) {
-  const ta = tokens(a), tb = tokens(b);
-  if (!ta.length || !tb.length) return 0;
-  // primeiro token: aceita distância ≤ 1 (ex: JERRI vs JERRY)
-  if (levDist(ta[0], tb[0]) > 1) return 0;
-  const tbSet = new Set(tb);
-  const overlap = ta.filter(t => tbSet.has(t)).length;
-  const tokenScore = overlap / Math.max(ta.length, tb.length);
-  const na = normFuzzy(a), nb = normFuzzy(b);
-  const maxL = Math.max(na.length, nb.length);
-  if (!maxL) return tokenScore;
-  const dp = Array.from({length:na.length+1}, (_,i) =>
-    Array.from({length:nb.length+1}, (_,j) => i===0?j:j===0?i:0));
-  for (let i=1;i<=na.length;i++)
-    for (let j=1;j<=nb.length;j++)
-      dp[i][j] = na[i-1]===nb[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  const levScore = 1 - dp[na.length][nb.length] / maxL;
-  return tokenScore * 0.7 + levScore * 0.3;
-}
-
-function badgeScore(score) {
-  if (score >= 1)                   return { bg:'#dcfce7', color:'#166534', border:'#bbf7d0', label:'Exato' };
-  if (score >= 0.7)                 return { bg:'#fef9c3', color:'#854d0e', border:'#fde047', label:'Provável' };
-  if (score >= THRESHOLD_CONSUMO)   return { bg:'#fef3c7', color:'#92400e', border:'#fbbf24', label:'Similar' };
-  return                                   { bg:'#fee2e2', color:'#991b1b', border:'#fecaca', label:'Não encontrado' };
-}
-
 /* ── classificação por conjunto ── */
 const corConjunto = conj => conj
   ? { bg:'#eff6ff', color:'#1d4ed8' }
   : { bg:'#f0fdf4', color:'#15803d' };
 
 /* ── helpers ── */
-function excelDateToISO(serial) {
-  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
-  return d.toISOString().slice(0, 10);
-}
 const fmtMesStr = s => {
   const [ano, mes] = s.split('-');
   return new Date(Number(ano), Number(mes) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -95,13 +49,9 @@ export default function MediasConsumo() {
   const [importacaoId, setImportacaoId] = useState('');
   const [loadingImps,  setLoadingImps]  = useState(true);
 
-  // ── estado Excel local (antes de salvar) ──
-  const [preview,     setPreview]     = useState(null); // { nomeArquivo, registros[], frota }
-  const [salvando,    setSalvando]    = useState(false);
   const [frotaSel,    setFrotaSel]    = useState('BAÚ'); // filtro rápido de frota
 
   const FROTAS = ['BAÚ', 'FROTA'];
-  const fileRef  = useRef();
   const rowRefs  = useRef({});
 
   // ── filtros do relatório ──
@@ -123,53 +73,6 @@ export default function MediasConsumo() {
   const [registros,  setRegistros]  = useState([]);
   const [loadingReg, setLoadingReg] = useState(false);
 
-  // ── aliases globais de nomes ──
-  const [aliases, setAliases] = useState([]);
-  useEffect(() => {
-    api.get('/nome-aliases').then(r => setAliases(r.data)).catch(() => {});
-  }, []);
-  // aliasMap: NORM_UPPER(nomeImportado) → motoristaNome canônico
-  const aliasMap = useMemo(() => {
-    const map = {};
-    for (const a of aliases) map[a.nomeImportado] = a.motoristaNome;
-    return map;
-  }, [aliases]);
-  // Resolve nome de motorista via alias (ou retorna o original)
-  function resolverNome(nome) {
-    const chave = String(nome || '').toUpperCase().replace(/\s+/g,' ').trim();
-    return aliasMap[chave] || nome;
-  }
-  // Salva alias e atualiza estado local
-  async function salvarAliasLocal(nomeOriginal, nomeNovo) {
-    try {
-      const { data } = await api.post('/nome-aliases', { nomeImportado: nomeOriginal, motoristaNome: nomeNovo });
-      setAliases(prev => {
-        const sem = prev.filter(a => a.nomeImportado !== data.nomeImportado);
-        return [...sem, data];
-      });
-      // Atualiza revisaoNomes do preview
-      setPreview(p => p ? ({
-        ...p,
-        revisaoNomes: (p.revisaoNomes || []).map(r =>
-          r.nomeOriginal === nomeOriginal ? { ...r, nomeEditado: nomeNovo, matchByAlias: true } : r
-        ),
-      }) : p);
-      toast.success(`Alias salvo: "${nomeOriginal}" → "${nomeNovo}"`);
-    } catch { toast.error('Erro ao salvar alias'); }
-  }
-  // Aplica nomes editados aos registros e marca como confirmado
-  function confirmarNomesConsumo() {
-    setPreview(p => {
-      const mapa = {};
-      for (const r of (p.revisaoNomes || [])) mapa[r.nomeOriginal] = r.nomeEditado;
-      return {
-        ...p,
-        registros: p.registros.map(r => ({ ...r, motorista: mapa[r.motorista] || r.motorista })),
-        nomesConfirmados: true,
-      };
-    });
-  }
-
   /* ── sincronizar importacaoId quando frotaSel muda ── */
   useEffect(() => {
     if (!importacoes.length) return;
@@ -182,24 +85,17 @@ export default function MediasConsumo() {
   }, [frotaSel, importacoes]);
 
   /* ── buscar importações ao montar ── */
-  const carregarImportacoes = useCallback(async () => {
+  useEffect(() => {
     setLoadingImps(true);
-    try {
-      const { data } = await api.get('/medias-consumo/importacoes');
-      setImportacoes(data);
-      if (data.length > 0 && !importacaoId) setImportacaoId(data[0].id);
-    } catch { toast.error('Erro ao carregar importações'); }
-    finally { setLoadingImps(false); }
+    api.get('/medias-consumo/importacoes')
+      .then(({ data }) => {
+        setImportacoes(data);
+        if (data.length > 0) setImportacaoId(data[0].id);
+      })
+      .catch(() => toast.error('Erro ao carregar importações'))
+      .finally(() => setLoadingImps(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => { carregarImportacoes(); }, [carregarImportacoes]);
-
-  // helper: params para queries — usa frota se filtro ativo, senão importacaoId
-  const queryParams = useCallback((extra = {}) => {
-    if (frotaSel) return { frota: frotaSel, ...extra };
-    if (importacaoId) return { importacaoId, ...extra };
-    return extra;
-  }, [frotaSel, importacaoId]);
 
   // chave estável: evita duplo disparo quando frotaSel muda importacaoId
   const queryKey = frotaSel ? `frota:${frotaSel}` : importacaoId ? `imp:${importacaoId}` : '';
@@ -265,193 +161,6 @@ export default function MediasConsumo() {
       .finally(() => setLoadingResMot(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryKey, mesFiltro]);
-
-  /* ── ler Excel localmente ── */
-  async function handleFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { cellDates: true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-
-      // Mapear colunas por nome do cabeçalho (case-insensitive, sem acento)
-      const norm = s => String(s || '').toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-
-      const MAPA = {
-        data:           ['data abt', 'data'],
-        motorista:      ['motorista'],
-        placa:          ['placa'],
-        modelo:         ['modelo'],
-        conjunto:       ['conjunto'],
-        kmInicial:      ['km inicial', 'kminicial'],
-        kmFinal:        ['km final', 'kmfinal'],
-        distancia:      ['distancia'],
-        posto:          ['posto'],
-        cidade:         ['cidade'],
-        uf:             ['uf'],
-        precoLitro:     ['r$', 'preco litro', 'preco', 'vl unitario'],
-        litros:         ['litros'],
-        produto:        ['produto'],
-        vlrTotal:       ['vlr total', 'valor total', 'vlrtotal'],
-        mediaRealizada: ['media realizada', 'mediarealizada'],
-        mediaSugerida:  ['media sugerida', 'mediasugerida'],
-        percAtingido:   ['% atingido', 'perc atingido'],
-        gap:            ['gap'],
-      };
-
-      const header = raw[0] || [];
-      const idx = {};
-      for (const [campo, aliases] of Object.entries(MAPA)) {
-        idx[campo] = header.findIndex(h => aliases.includes(norm(h)));
-      }
-
-      const col = (row, campo, def = null) => {
-        const i = idx[campo];
-        return i >= 0 && row[i] !== undefined && row[i] !== '' ? row[i] : def;
-      };
-      const colNum = (row, campo) => {
-        const v = col(row, campo);
-        if (v === null || v === undefined || v === '') return null;
-        if (typeof v === 'number') return v;
-        // string com formatação (ex: "R$ 5,74" ou "216,73")
-        const n = parseFloat(String(v).replace(/[R$\s.]/g, '').replace(',', '.'));
-        return isNaN(n) ? null : n;
-      };
-      const colData = (row, campo) => {
-        const v = col(row, campo);
-        if (!v) return null;
-        // Date object (cellDates: true)
-        if (v instanceof Date) return v.toISOString().slice(0, 10);
-        // string yyyy-mm-dd
-        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
-        // serial numérico do Excel
-        if (typeof v === 'number') return excelDateToISO(v);
-        return null;
-      };
-
-      // Monta revisão de nomes (antes de resolver aliases)
-      const nomesUnicos = [...new Set(
-        raw.slice(1)
-          .filter(r => col(r, 'motorista'))
-          .map(r => String(col(r, 'motorista') || '').trim())
-          .filter(Boolean)
-      )];
-
-      // Carrega motoristas do banco para comparação
-      let motoristasBD = [];
-      try { const { data } = await api.get('/medias-consumo/motoristas-nomes'); motoristasBD = data; } catch {}
-
-      const revisaoNomes = nomesUnicos.map(nomeOriginal => {
-        const nomeEditado  = resolverNome(nomeOriginal);
-        const matchByAlias = nomeEditado !== nomeOriginal;
-
-        // Melhor match contra banco
-        let melhorMatch = null, melhorScore = 0, melhorId = null;
-        for (const m of motoristasBD) {
-          const s = scoreNomeConsumo(nomeEditado, m.nome);
-          if (s > melhorScore) { melhorScore = s; melhorMatch = m.nome; melhorId = m.id; }
-        }
-
-        // Exato: normalização igual
-        const exacto = melhorScore >= 1 || normFuzzy(nomeEditado) === normFuzzy(melhorMatch || '');
-        if (exacto && melhorMatch) melhorScore = 1;
-
-        return { nomeOriginal, nomeEditado, matchByAlias, melhorMatch, score: melhorScore, melhorId };
-      });
-
-      const todosResolvidos = revisaoNomes.every(r => r.score >= 1);
-
-      const registros = raw.slice(1)
-        .filter(r => col(r, 'data') && col(r, 'motorista'))
-        .map(r => ({
-          data:           colData(r, 'data'),
-          motorista:      String(col(r, 'motorista') || '').trim(), // nome cru — resolvido ao confirmar
-          placa:          col(r, 'placa'),
-          modelo:         col(r, 'modelo'),
-          conjunto:       col(r, 'conjunto'),
-          kmInicial:      colNum(r, 'kmInicial'),
-          kmFinal:        colNum(r, 'kmFinal'),
-          distancia:      colNum(r, 'distancia'),
-          posto:          col(r, 'posto'),
-          cidade:         col(r, 'cidade'),
-          uf:             col(r, 'uf'),
-          precoLitro:     colNum(r, 'precoLitro'),
-          litros:         colNum(r, 'litros'),
-          produto:        col(r, 'produto', ''),
-          vlrTotal:       colNum(r, 'vlrTotal'),
-          mediaRealizada: colNum(r, 'mediaRealizada'),
-          mediaSugerida:  colNum(r, 'mediaSugerida'),
-          percAtingido:   col(r, 'percAtingido', ''),
-          gap:            colNum(r, 'gap'),
-        }));
-
-      setPreview({ nomeArquivo: file.name, registros, frota: '', revisaoNomes, nomesConfirmados: todosResolvidos });
-      toast.success(`${registros.length.toLocaleString('pt-BR')} registros lidos`);
-    } catch (err) { toast.error('Erro ao ler o arquivo: ' + err.message); }
-    e.target.value = '';
-  }
-
-  /* ── salvar no banco ── */
-  const [progresso, setProgresso] = useState(0); // 0-100
-
-  async function salvarImportacao() {
-    if (!preview) return;
-    setSalvando(true);
-    setProgresso(0);
-    const total = preview.registros.length;
-    const CHUNK = 3000; // registros por requisição
-    const chunks = [];
-    for (let i = 0; i < total; i += CHUNK) chunks.push(preview.registros.slice(i, i + CHUNK));
-
-    const toastId = toast.loading(`Salvando 0 / ${total.toLocaleString('pt-BR')} registros...`);
-    try {
-      // 1º chunk → cria a importação
-      const { data: primeira } = await api.post('/medias-consumo/importar', {
-        nomeArquivo: preview.nomeArquivo,
-        registros:   chunks[0],
-        frota:       preview.frota || 'BAÚ',
-      });
-      const importacaoIdNova = primeira.importacaoId;
-      let salvos = chunks[0].length;
-      setProgresso(Math.round((salvos / total) * 100));
-      toast.loading(`Salvando ${salvos.toLocaleString('pt-BR')} / ${total.toLocaleString('pt-BR')}...`, { id: toastId });
-
-      // chunks restantes → append
-      for (let i = 1; i < chunks.length; i++) {
-        await api.post(`/medias-consumo/importacoes/${importacaoIdNova}/registros`, {
-          registros: chunks[i],
-        });
-        salvos += chunks[i].length;
-        setProgresso(Math.round((salvos / total) * 100));
-        toast.loading(`Salvando ${salvos.toLocaleString('pt-BR')} / ${total.toLocaleString('pt-BR')}...`, { id: toastId });
-      }
-
-      toast.success(`${total.toLocaleString('pt-BR')} registros salvos!`, { id: toastId });
-      setPreview(null);
-      setProgresso(0);
-      await carregarImportacoes();
-      if (importacaoIdNova) setImportacaoId(importacaoIdNova);
-    } catch (err) {
-      toast.error(err?.response?.data?.error || 'Erro ao salvar', { id: toastId });
-      setProgresso(0);
-    } finally { setSalvando(false); }
-  }
-
-  /* ── excluir importação ── */
-  async function excluirImportacao(id) {
-    if (!confirm('Excluir esta importação e todos os registros?')) return;
-    try {
-      await api.delete(`/medias-consumo/importacoes/${id}`);
-      toast.success('Importação removida');
-      setImportacaoId('');
-      setRegistros([]);
-      setPlaca(''); setBuscaPlaca('');
-      await carregarImportacoes();
-    } catch { toast.error('Erro ao excluir'); }
-  }
 
   /* ── resumo mensal ── */
   const resumoMensal = useMemo(() => {
@@ -578,198 +287,31 @@ export default function MediasConsumo() {
             </div>
           )}
 
-          {/* import + importacao select */}
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} style={{ display:'none' }} />
-            <button onClick={() => fileRef.current?.click()}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', background:'#EB3238', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' }}>
-              <i className="ti ti-upload" style={{ fontSize:13 }}></i> Importar
-            </button>
-            {importacoes.length > 0 && (() => {
-              const importacoesFiltradas = frotaSel ? importacoes.filter(i => (i.frota||'Geral')===frotaSel) : importacoes;
-              return (
-                <>
-                  <select value={importacoesFiltradas.find(i=>i.id===importacaoId)?importacaoId:(importacoesFiltradas[0]?.id||'')}
-                    onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-                    style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:200, cursor:'pointer', outline:'none' }}>
-                    {importacoesFiltradas.map(im => (
-                      <option key={im.id} value={im.id}>
-                        {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
-                      </option>
-                    ))}
-                  </select>
-                  {importacaoId && (
-                    <button onClick={() => excluirImportacao(importacaoId)}
-                      style={{ padding:'5px 8px', border:'1px solid #fee2e2', borderRadius:7, background:'#fff5f5', color:'#dc2626', fontSize:12, cursor:'pointer' }}>
-                      <i className="ti ti-trash"></i>
-                    </button>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+          {/* seletor de importação */}
+          {importacoes.length > 0 && (() => {
+            const importacoesFiltradas = frotaSel ? importacoes.filter(i => (i.frota||'Geral')===frotaSel) : importacoes;
+            if (!importacoesFiltradas.length) return null;
+            return (
+              <select value={importacoesFiltradas.find(i=>i.id===importacaoId)?importacaoId:(importacoesFiltradas[0]?.id||'')}
+                onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
+                style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:220, cursor:'pointer', outline:'none' }}>
+                {importacoesFiltradas.map(im => (
+                  <option key={im.id} value={im.id}>
+                    {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
+                  </option>
+                ))}
+              </select>
+            );
+          })()}
         </div>
       </div>
 
-      {/* ── Preview Excel (antes de salvar) ── */}
-      {preview && (
-        <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:16, marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:preview.frota?0:12 }}>
-            <i className="ti ti-file-spreadsheet" style={{ fontSize:20, color:'#d97706' }}></i>
-            <div>
-              <div style={{ fontWeight:600, fontSize:13, color:'#92400e' }}>{preview.nomeArquivo}</div>
-              <div style={{ fontSize:11, color:'#b45309' }}>{preview.registros.length.toLocaleString('pt-BR')} registros lidos</div>
-            </div>
-            <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-              <button onClick={() => setPreview(null)} style={{ padding:'7px 14px', border:'1px solid #d1d5db', borderRadius:8, background:'#fff', fontSize:12, cursor:'pointer' }}>Cancelar</button>
-              <button onClick={salvarImportacao} disabled={salvando||!preview.frota||!preview.nomesConfirmados}
-                style={{ padding:'7px 16px', border:'none', borderRadius:8, background:preview.frota?'#16a34a':'#9ca3af', color:'#fff', fontSize:12, fontWeight:600, cursor:preview.frota?'pointer':'not-allowed' }}>
-                {salvando?`Salvando... ${progresso}%`:'Salvar no banco'}
-              </button>
-            </div>
-          </div>
-          {!preview.frota && (
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, color:'#92400e', alignSelf:'center' }}>Frota:</span>
-              {FROTAS.map(f => (
-                <button key={f} onClick={() => setPreview(p=>({...p,frota:f}))}
-                  style={{ padding:'6px 20px', border:'2px solid #d97706', borderRadius:20, background:'#fff', color:'#92400e', fontSize:13, fontWeight:700, cursor:'pointer' }}>{f}</button>
-              ))}
-            </div>
-          )}
-          {preview.frota && (
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:11, color:'#b45309' }}>Frota:</span>
-              <span style={{ padding:'3px 10px', background:'#d97706', color:'#fff', borderRadius:20, fontSize:11, fontWeight:700 }}>{preview.frota}</span>
-              <button onClick={() => setPreview(p=>({...p,frota:''}))} style={{ fontSize:11, color:'#b45309', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Trocar</button>
-            </div>
-          )}
-
-          {/* ── Revisão de nomes ── */}
-          {preview.revisaoNomes && !preview.nomesConfirmados && (
-            <div style={{ marginTop:14, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, overflow:'hidden' }}>
-              <div style={{ padding:'10px 14px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                <i className="ti ti-users" style={{ color:'#6366f1', fontSize:15 }}></i>
-                <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Verificação de motoristas</span>
-                {(() => {
-                  const exatos    = (preview.revisaoNomes||[]).filter(r => r.score >= 1).length;
-                  const provaveis = (preview.revisaoNomes||[]).filter(r => r.score >= 0.7 && r.score < 1).length;
-                  const similares = (preview.revisaoNomes||[]).filter(r => r.score >= THRESHOLD_CONSUMO && r.score < 0.7).length;
-                  const novos     = (preview.revisaoNomes||[]).filter(r => r.score < THRESHOLD_CONSUMO).length;
-                  return <>
-                    {exatos    > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#dcfce7', color:'#166534', border:'1px solid #bbf7d0', fontSize:11, fontWeight:700 }}>{exatos} exatos</span>}
-                    {provaveis > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef9c3', color:'#854d0e', border:'1px solid #fde047', fontSize:11, fontWeight:700 }}>{provaveis} prováveis</span>}
-                    {similares > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24', fontSize:11, fontWeight:700 }}>{similares} similares</span>}
-                    {novos     > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', fontSize:11, fontWeight:700 }}>{novos} não encontrados</span>}
-                  </>;
-                })()}
-                <button onClick={confirmarNomesConsumo}
-                  style={{ marginLeft:'auto', padding:'5px 14px', background:'#6366f1', color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                  Confirmar e continuar →
-                </button>
-              </div>
-              <div style={{ maxHeight:320, overflowY:'auto' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                  <thead>
-                    <tr style={{ background:'#f8fafc' }}>
-                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome na planilha</th>
-                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Melhor match no banco</th>
-                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome a salvar (editável)</th>
-                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Match</th>
-                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(preview.revisaoNomes||[]).map((r, i) => {
-                      const badge = badgeScore(r.score);
-                      const temSugestao = r.melhorMatch && r.score >= 0.7 && r.score < 1 && r.nomeEditado !== r.melhorMatch;
-                      return (
-                        <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
-                          {/* Nome planilha */}
-                          <td style={{ padding:'6px 12px', color:'#374151', fontWeight:500 }}>
-                            {r.nomeOriginal}
-                            {r.matchByAlias && <span style={{ marginLeft:6, padding:'1px 6px', borderRadius:8, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:10, fontWeight:700 }}>alias</span>}
-                          </td>
-                          {/* Melhor match */}
-                          <td style={{ padding:'6px 12px', color: r.melhorMatch ? '#374151' : '#9ca3af', fontStyle: r.melhorMatch ? 'normal' : 'italic' }}>
-                            {r.melhorMatch || '—'}
-                          </td>
-                          {/* Nome editável */}
-                          <td style={{ padding:'4px 8px' }}>
-                            <input
-                              value={r.nomeEditado}
-                              onChange={e => setPreview(p => ({
-                                ...p,
-                                revisaoNomes: p.revisaoNomes.map((x, j) => j === i
-                                  ? { ...x, nomeEditado: e.target.value, matchByAlias: false,
-                                      score: normFuzzy(e.target.value) === normFuzzy(x.melhorMatch||'') ? 1 : x.score }
-                                  : x),
-                              }))}
-                              style={{ width:'100%', padding:'4px 8px', border:'1.5px solid ' + (r.nomeEditado !== r.nomeOriginal ? '#6366f1' : '#e5e7eb'), borderRadius:6, fontSize:12, outline:'none', background: r.nomeEditado !== r.nomeOriginal ? '#f5f3ff' : '#fff', boxSizing:'border-box' }}
-                            />
-                          </td>
-                          {/* Badge match */}
-                          <td style={{ padding:'6px 8px', textAlign:'center' }}>
-                            <span style={{ padding:'2px 8px', borderRadius:10, background:badge.bg, color:badge.color, border:`1px solid ${badge.border}`, fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>
-                              {badge.label}
-                            </span>
-                          </td>
-                          {/* Ações */}
-                          <td style={{ padding:'4px 8px', textAlign:'center', whiteSpace:'nowrap' }}>
-                            <div style={{ display:'flex', gap:4, justifyContent:'center', flexWrap:'wrap' }}>
-                              {temSugestao && (
-                                <button onClick={() => setPreview(p => ({
-                                  ...p,
-                                  revisaoNomes: p.revisaoNomes.map((x, j) => j === i
-                                    ? { ...x, nomeEditado: x.melhorMatch, score: 1, matchByAlias: false }
-                                    : x),
-                                }))}
-                                  style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:6, padding:'3px 8px', fontSize:11, fontWeight:600, color:'#15803d', cursor:'pointer' }}>
-                                  ✓ Aceitar
-                                </button>
-                              )}
-                              {r.nomeEditado !== r.nomeOriginal && !r.matchByAlias && (
-                                <button onClick={() => salvarAliasLocal(r.nomeOriginal, r.nomeEditado)}
-                                  style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'3px 8px', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>
-                                  <i className="ti ti-link"></i> Alias
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Confirmação de nomes já feita */}
-          {preview.nomesConfirmados && preview.revisaoNomes && (
-            <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-              {(() => {
-                const total    = (preview.revisaoNomes||[]).length;
-                const exatos   = (preview.revisaoNomes||[]).filter(r => r.score >= 1).length;
-                const aliasOk  = (preview.revisaoNomes||[]).filter(r => r.matchByAlias).length;
-                const semMatch = total - exatos;
-                return <>
-                  <span style={{ fontSize:12, color:'#15803d' }}><i className="ti ti-check"></i> {total} motoristas verificados — {exatos} com match{aliasOk>0?`, ${aliasOk} por alias`:''}{semMatch>0?`, ${semMatch} sem correspondência`:''}</span>
-                </>;
-              })()}
-              <button onClick={() => setPreview(p=>({...p, nomesConfirmados:false}))}
-                style={{ fontSize:11, color:'#6b7280', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Rever</button>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ── Sem importações ── */}
-      {!loadingImps && importacoes.length === 0 && !preview && (
+      {!loadingImps && importacoes.length === 0 && (
         <div style={{ textAlign:'center', padding:60, color:'#9ca3af', background:'#fff', borderRadius:12, border:'1px dashed #d1d5db' }}>
           <i className="ti ti-file-spreadsheet" style={{ fontSize:40, display:'block', marginBottom:10, color:'#d1d5db' }}></i>
           <div style={{ fontWeight:500, marginBottom:4 }}>Nenhum dado importado</div>
-          <div style={{ fontSize:12 }}>Clique em "Importar" para carregar o relatório de abastecimento</div>
+          <div style={{ fontSize:12 }}>Use a aba "Importações Consumo" para carregar planilhas</div>
         </div>
       )}
 
