@@ -50,6 +50,7 @@ function excelDateToISO(serial) {
 }
 const fmtDt = s => s ? new Date(s + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
 const fmtN  = (v, d = 0) => v != null ? Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const fmtR  = v => v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
 
 const FROTAS = ['BAÚ', 'FROTA'];
 
@@ -482,6 +483,7 @@ export default function MediasConsumoImportacoes() {
                 <th style={{ padding:'9px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Arquivo</th>
                 <th style={{ padding:'9px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Frota</th>
                 <th style={{ padding:'9px 16px', textAlign:'right', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Registros</th>
+                <th style={{ padding:'9px 16px', textAlign:'right', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Valor total</th>
                 <th style={{ padding:'9px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Data</th>
                 <th style={{ padding:'9px 16px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}></th>
               </tr>
@@ -502,6 +504,9 @@ export default function MediasConsumoImportacoes() {
                   </td>
                   <td style={{ padding:'10px 16px', textAlign:'right', color:'#374151' }}>
                     {fmtN(im._count?.registros ?? im.totalRegistros ?? '—')}
+                  </td>
+                  <td style={{ padding:'10px 16px', textAlign:'right', color:'#16a34a', fontWeight:600 }}>
+                    {im.totalValor != null ? fmtR(im.totalValor) : '—'}
                   </td>
                   <td style={{ padding:'10px 16px', color:'#6b7280', fontSize:12 }}>
                     {fmtDt(im.criadoEm?.slice(0,10))}
