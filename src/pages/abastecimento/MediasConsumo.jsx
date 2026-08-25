@@ -7,6 +7,37 @@ import {
   Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, LabelList
 } from 'recharts';
 
+/* ── fuzzy match de nomes ── */
+const normFuzzy = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9\s]/g,'').trim();
+const tokens    = s => normFuzzy(s).split(/\s+/).filter(t => t.length > 2);
+const THRESHOLD_CONSUMO = 0.45;
+
+function scoreNomeConsumo(a, b) {
+  const ta = tokens(a), tb = tokens(b);
+  if (!ta.length || !tb.length) return 0;
+  if (ta[0] !== tb[0]) return 0; // primeiro nome obrigatório
+  const tbSet = new Set(tb);
+  const overlap = ta.filter(t => tbSet.has(t)).length;
+  const tokenScore = overlap / Math.max(ta.length, tb.length);
+  const na = normFuzzy(a), nb = normFuzzy(b);
+  const maxL = Math.max(na.length, nb.length);
+  if (!maxL) return tokenScore;
+  const dp = Array.from({length:na.length+1}, (_,i) =>
+    Array.from({length:nb.length+1}, (_,j) => i===0?j:j===0?i:0));
+  for (let i=1;i<=na.length;i++)
+    for (let j=1;j<=nb.length;j++)
+      dp[i][j] = na[i-1]===nb[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  const levScore = 1 - dp[na.length][nb.length] / maxL;
+  return tokenScore * 0.7 + levScore * 0.3;
+}
+
+function badgeScore(score) {
+  if (score >= 1)                   return { bg:'#dcfce7', color:'#166534', border:'#bbf7d0', label:'Exato' };
+  if (score >= 0.7)                 return { bg:'#fef9c3', color:'#854d0e', border:'#fde047', label:'Provável' };
+  if (score >= THRESHOLD_CONSUMO)   return { bg:'#fef3c7', color:'#92400e', border:'#fbbf24', label:'Similar' };
+  return                                   { bg:'#fee2e2', color:'#991b1b', border:'#fecaca', label:'Não encontrado' };
+}
+
 /* ── classificação por conjunto ── */
 const corConjunto = conj => conj
   ? { bg:'#eff6ff', color:'#1d4ed8' }
@@ -298,12 +329,30 @@ export default function MediasConsumo() {
           .map(r => String(col(r, 'motorista') || '').trim())
           .filter(Boolean)
       )];
+
+      // Carrega motoristas do banco para comparação
+      let motoristasBD = [];
+      try { const { data } = await api.get('/motoristas'); motoristasBD = data; } catch {}
+
       const revisaoNomes = nomesUnicos.map(nomeOriginal => {
-        const nomeEditado = resolverNome(nomeOriginal);
+        const nomeEditado  = resolverNome(nomeOriginal);
         const matchByAlias = nomeEditado !== nomeOriginal;
-        return { nomeOriginal, nomeEditado, matchByAlias };
+
+        // Melhor match contra banco
+        let melhorMatch = null, melhorScore = 0, melhorId = null;
+        for (const m of motoristasBD) {
+          const s = scoreNomeConsumo(nomeEditado, m.nome);
+          if (s > melhorScore) { melhorScore = s; melhorMatch = m.nome; melhorId = m.id; }
+        }
+
+        // Exato: normalização igual
+        const exacto = melhorScore >= 1 || normFuzzy(nomeEditado) === normFuzzy(melhorMatch || '');
+        if (exacto && melhorMatch) melhorScore = 1;
+
+        return { nomeOriginal, nomeEditado, matchByAlias, melhorMatch, score: melhorScore, melhorId };
       });
-      const todosPorAlias = revisaoNomes.every(r => r.matchByAlias || r.nomeOriginal === r.nomeEditado);
+
+      const todosResolvidos = revisaoNomes.every(r => r.score >= 1);
 
       const registros = raw.slice(1)
         .filter(r => col(r, 'data') && col(r, 'motorista'))
@@ -329,7 +378,7 @@ export default function MediasConsumo() {
           gap:            colNum(r, 'gap'),
         }));
 
-      setPreview({ nomeArquivo: file.name, registros, frota: '', revisaoNomes, nomesConfirmados: todosPorAlias });
+      setPreview({ nomeArquivo: file.name, registros, frota: '', revisaoNomes, nomesConfirmados: todosResolvidos });
       toast.success(`${registros.length.toLocaleString('pt-BR')} registros lidos`);
     } catch (err) { toast.error('Erro ao ler o arquivo: ' + err.message); }
     e.target.value = '';
@@ -591,62 +640,95 @@ export default function MediasConsumo() {
             <div style={{ marginTop:14, background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, overflow:'hidden' }}>
               <div style={{ padding:'10px 14px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                 <i className="ti ti-users" style={{ color:'#6366f1', fontSize:15 }}></i>
-                <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Revisão de motoristas</span>
+                <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Verificação de motoristas</span>
                 {(() => {
-                  const aliasOk  = (preview.revisaoNomes||[]).filter(r => r.matchByAlias).length;
-                  const pendente = (preview.revisaoNomes||[]).filter(r => !r.matchByAlias).length;
+                  const exatos    = (preview.revisaoNomes||[]).filter(r => r.score >= 1).length;
+                  const provaveis = (preview.revisaoNomes||[]).filter(r => r.score >= 0.7 && r.score < 1).length;
+                  const similares = (preview.revisaoNomes||[]).filter(r => r.score >= THRESHOLD_CONSUMO && r.score < 0.7).length;
+                  const novos     = (preview.revisaoNomes||[]).filter(r => r.score < THRESHOLD_CONSUMO).length;
                   return <>
-                    {aliasOk > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:11, fontWeight:700 }}>{aliasOk} por alias ✓</span>}
-                    {pendente > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca', fontSize:11, fontWeight:700 }}>{pendente} para revisar</span>}
+                    {exatos    > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#dcfce7', color:'#166534', border:'1px solid #bbf7d0', fontSize:11, fontWeight:700 }}>{exatos} exatos</span>}
+                    {provaveis > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef9c3', color:'#854d0e', border:'1px solid #fde047', fontSize:11, fontWeight:700 }}>{provaveis} prováveis</span>}
+                    {similares > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef3c7', color:'#92400e', border:'1px solid #fbbf24', fontSize:11, fontWeight:700 }}>{similares} similares</span>}
+                    {novos     > 0 && <span style={{ padding:'2px 8px', borderRadius:10, background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', fontSize:11, fontWeight:700 }}>{novos} não encontrados</span>}
                   </>;
                 })()}
                 <button onClick={confirmarNomesConsumo}
                   style={{ marginLeft:'auto', padding:'5px 14px', background:'#6366f1', color:'#fff', border:'none', borderRadius:7, fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                  Confirmar nomes e continuar →
+                  Confirmar e continuar →
                 </button>
               </div>
-              <div style={{ maxHeight:260, overflowY:'auto' }}>
+              <div style={{ maxHeight:320, overflowY:'auto' }}>
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
                       <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome na planilha</th>
-                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome final (editável)</th>
-                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Status</th>
-                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Alias</th>
+                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Melhor match no banco</th>
+                      <th style={{ padding:'7px 12px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Nome a salvar (editável)</th>
+                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Match</th>
+                      <th style={{ padding:'7px 12px', textAlign:'center', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb' }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(preview.revisaoNomes||[]).map((r, i) => (
-                      <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
-                        <td style={{ padding:'6px 12px', color:'#374151', fontWeight:500 }}>{r.nomeOriginal}</td>
-                        <td style={{ padding:'4px 8px' }}>
-                          <input
-                            value={r.nomeEditado}
-                            onChange={e => setPreview(p => ({
-                              ...p,
-                              revisaoNomes: p.revisaoNomes.map((x, j) => j === i ? { ...x, nomeEditado: e.target.value, matchByAlias: false } : x),
-                            }))}
-                            style={{ width:'100%', padding:'4px 8px', border:'1.5px solid ' + (r.nomeEditado !== r.nomeOriginal ? '#6366f1' : '#e5e7eb'), borderRadius:6, fontSize:12, outline:'none', background: r.nomeEditado !== r.nomeOriginal ? '#f5f3ff' : '#fff', boxSizing:'border-box' }}
-                          />
-                        </td>
-                        <td style={{ padding:'6px 12px', textAlign:'center' }}>
-                          {r.matchByAlias
-                            ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:11, fontWeight:700 }}>alias ✓</span>
-                            : r.nomeEditado === r.nomeOriginal
-                              ? <span style={{ padding:'2px 8px', borderRadius:10, background:'#f1f5f9', color:'#64748b', border:'1px solid #e2e8f0', fontSize:11, fontWeight:700 }}>original</span>
-                              : <span style={{ padding:'2px 8px', borderRadius:10, background:'#fef9c3', color:'#854d0e', border:'1px solid #fde047', fontSize:11, fontWeight:700 }}>editado</span>
-                          }
-                        </td>
-                        <td style={{ padding:'6px 12px', textAlign:'center' }}>
-                          {r.nomeEditado !== r.nomeOriginal && !r.matchByAlias && (
-                            <button onClick={() => salvarAliasLocal(r.nomeOriginal, r.nomeEditado)}
-                              style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'3px 10px', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer', whiteSpace:'nowrap' }}>
-                              <i className="ti ti-link"></i> Salvar
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {(preview.revisaoNomes||[]).map((r, i) => {
+                      const badge = badgeScore(r.score);
+                      const temSugestao = r.melhorMatch && r.score >= THRESHOLD_CONSUMO && r.score < 1 && r.nomeEditado !== r.melhorMatch;
+                      return (
+                        <tr key={i} style={{ borderBottom:'1px solid #f3f4f6', background: i%2===0?'#fff':'#fafafa' }}>
+                          {/* Nome planilha */}
+                          <td style={{ padding:'6px 12px', color:'#374151', fontWeight:500 }}>
+                            {r.nomeOriginal}
+                            {r.matchByAlias && <span style={{ marginLeft:6, padding:'1px 6px', borderRadius:8, background:'#f0fdf4', color:'#15803d', border:'1px solid #86efac', fontSize:10, fontWeight:700 }}>alias</span>}
+                          </td>
+                          {/* Melhor match */}
+                          <td style={{ padding:'6px 12px', color: r.melhorMatch ? '#374151' : '#9ca3af', fontStyle: r.melhorMatch ? 'normal' : 'italic' }}>
+                            {r.melhorMatch || '—'}
+                          </td>
+                          {/* Nome editável */}
+                          <td style={{ padding:'4px 8px' }}>
+                            <input
+                              value={r.nomeEditado}
+                              onChange={e => setPreview(p => ({
+                                ...p,
+                                revisaoNomes: p.revisaoNomes.map((x, j) => j === i
+                                  ? { ...x, nomeEditado: e.target.value, matchByAlias: false,
+                                      score: normFuzzy(e.target.value) === normFuzzy(x.melhorMatch||'') ? 1 : x.score }
+                                  : x),
+                              }))}
+                              style={{ width:'100%', padding:'4px 8px', border:'1.5px solid ' + (r.nomeEditado !== r.nomeOriginal ? '#6366f1' : '#e5e7eb'), borderRadius:6, fontSize:12, outline:'none', background: r.nomeEditado !== r.nomeOriginal ? '#f5f3ff' : '#fff', boxSizing:'border-box' }}
+                            />
+                          </td>
+                          {/* Badge match */}
+                          <td style={{ padding:'6px 8px', textAlign:'center' }}>
+                            <span style={{ padding:'2px 8px', borderRadius:10, background:badge.bg, color:badge.color, border:`1px solid ${badge.border}`, fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>
+                              {badge.label}
+                            </span>
+                          </td>
+                          {/* Ações */}
+                          <td style={{ padding:'4px 8px', textAlign:'center', whiteSpace:'nowrap' }}>
+                            <div style={{ display:'flex', gap:4, justifyContent:'center', flexWrap:'wrap' }}>
+                              {temSugestao && (
+                                <button onClick={() => setPreview(p => ({
+                                  ...p,
+                                  revisaoNomes: p.revisaoNomes.map((x, j) => j === i
+                                    ? { ...x, nomeEditado: x.melhorMatch, score: 1, matchByAlias: false }
+                                    : x),
+                                }))}
+                                  style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:6, padding:'3px 8px', fontSize:11, fontWeight:600, color:'#15803d', cursor:'pointer' }}>
+                                  ✓ Aceitar
+                                </button>
+                              )}
+                              {r.nomeEditado !== r.nomeOriginal && !r.matchByAlias && (
+                                <button onClick={() => salvarAliasLocal(r.nomeOriginal, r.nomeEditado)}
+                                  style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:6, padding:'3px 8px', fontSize:11, fontWeight:600, color:'#1d4ed8', cursor:'pointer' }}>
+                                  <i className="ti ti-link"></i> Alias
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -657,9 +739,13 @@ export default function MediasConsumo() {
           {preview.nomesConfirmados && preview.revisaoNomes && (
             <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
               {(() => {
-                const aliasOk = (preview.revisaoNomes||[]).filter(r => r.matchByAlias).length;
-                const total   = (preview.revisaoNomes||[]).length;
-                return <span style={{ fontSize:12, color:'#15803d' }}><i className="ti ti-check"></i> Nomes confirmados ({total} motoristas{aliasOk > 0 ? `, ${aliasOk} por alias` : ''})</span>;
+                const total    = (preview.revisaoNomes||[]).length;
+                const exatos   = (preview.revisaoNomes||[]).filter(r => r.score >= 1).length;
+                const aliasOk  = (preview.revisaoNomes||[]).filter(r => r.matchByAlias).length;
+                const semMatch = total - exatos;
+                return <>
+                  <span style={{ fontSize:12, color:'#15803d' }}><i className="ti ti-check"></i> {total} motoristas verificados — {exatos} com match{aliasOk>0?`, ${aliasOk} por alias`:''}{semMatch>0?`, ${semMatch} sem correspondência`:''}</span>
+                </>;
               })()}
               <button onClick={() => setPreview(p=>({...p, nomesConfirmados:false}))}
                 style={{ fontSize:11, color:'#6b7280', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Rever</button>
