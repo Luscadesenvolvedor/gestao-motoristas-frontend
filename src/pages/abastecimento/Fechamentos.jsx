@@ -96,40 +96,7 @@ export default function Fechamentos() {
   function exportarXlsx(f) {
     const periodo = `${fmtData(f.periodoInicio)} a ${fmtData(f.periodoFim)}`;
 
-    // Formato idêntico ao padrão IMPORTAÇÃO ABASTECIMENTO
-    const linhas = [
-      // Linha 1: empresa + categorias nas colunas F, G, H
-      [f.empresa, null, null, null, null, 'LUBRIFICAÇÃO', 'ABASTECIMENTO', 'LAVAGENS'],
-      // Linha 2: período
-      [`Período: ${periodo}`, null, null, null, null, null, null, null],
-      // Linha 3: cabeçalho
-      ['PLACA', 'MODELO', 'DESPESAS', 'A VISTA', 'TOTAL', null, null, null],
-      // Dados: placa, modelo, valor em DESPESAS (cols D e E ficam null)
-      ...f.placas.map(p => [
-        p.placa,
-        p.modelo || '',
-        Number(p.totalDespesas),
-        null,
-        null,
-        null, null, null,
-      ]),
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(linhas);
-
-    // Larguras das colunas
-    ws['!cols'] = [
-      { wch: 12.78 }, // PLACA
-      { wch: 28.78 }, // MODELO
-      { wch: 16.78 }, // DESPESAS
-      { wch: 12.78 }, // A VISTA
-      { wch: 13    }, // TOTAL
-      { wch: 14.78 }, // LUBRIFICAÇÃO
-      { wch: 13    }, // ABASTECIMENTO
-      { wch: 12.78 }, // LAVAGENS
-    ];
-
-    // ── Estilos (baseados no arquivo PADRÃO IMPORTAÇÃO ABASTECIMENTO) ──
+    // ── Estilos inline (xlsx-js-style exige estilo dentro do objeto de célula) ──
     const sEmpresa = {
       font: { bold: true, color: { rgb: 'FFFFFF' } },
       fill: { patternType: 'solid', fgColor: { rgb: '404040' } },
@@ -141,7 +108,6 @@ export default function Fechamentos() {
       alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sPeriodo = {
-      font: { color: { rgb: '000000' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sHeader = {
@@ -154,28 +120,39 @@ export default function Fechamentos() {
       numFmt: '#,##0.00',
     };
 
-    const setStyle = (r, c, s) => {
-      const addr = XLSX.utils.encode_cell({ r, c });
-      if (ws[addr]) ws[addr].s = s;
-    };
+    const c = (v, s, t) => ({ v, s, t: t || (typeof v === 'number' ? 'n' : 's') });
+    const vazio = { v: '', t: 's' };
 
-    // Linha 0: empresa (col A) + categorias (cols F–H)
-    setStyle(0, 0, sEmpresa);
-    [5, 6, 7].forEach(c => setStyle(0, c, sCategoria));
+    const linhas = [
+      // Linha 1: empresa (A) + categorias (F–H)
+      [c(f.empresa, sEmpresa), vazio, vazio, vazio, vazio,
+       c('LUBRIFICAÇÃO', sCategoria), c('ABASTECIMENTO', sCategoria), c('LAVAGENS', sCategoria)],
+      // Linha 2: período
+      [c(`Período: ${periodo}`, sPeriodo), vazio, vazio, vazio, vazio, vazio, vazio, vazio],
+      // Linha 3: cabeçalho vermelho
+      [c('PLACA', sHeader), c('MODELO', sHeader), c('DESPESAS', sHeader),
+       c('A VISTA', sHeader), c('TOTAL', sHeader), vazio, vazio, vazio],
+      // Dados
+      ...f.placas.map(p => [
+        { v: p.placa,              t: 's' },
+        { v: p.modelo || '',       t: 's' },
+        { v: Number(p.totalDespesas), s: sDadoNum, t: 'n', z: '#,##0.00' },
+        vazio, vazio, vazio, vazio, vazio,
+      ]),
+    ];
 
-    // Linha 1: período
-    setStyle(1, 0, sPeriodo);
+    const ws = XLSX.utils.aoa_to_sheet(linhas);
 
-    // Linha 2: cabeçalho vermelho
-    [0, 1, 2, 3, 4].forEach(c => setStyle(2, c, sHeader));
-
-    // Linhas de dados: DESPESAS alinhado à direita + número
-    for (let r = 3; r < 3 + f.placas.length; r++) {
-      const cellNum = ws[XLSX.utils.encode_cell({ r, c: 2 })];
-      if (cellNum) { cellNum.s = sDadoNum; cellNum.z = '#,##0.00'; }
-    }
-
-    // Alturas das linhas (rows 1 e 2 = 21.6pt como no original)
+    ws['!cols'] = [
+      { wch: 12.78 }, // PLACA
+      { wch: 28.78 }, // MODELO
+      { wch: 16.78 }, // DESPESAS
+      { wch: 12.78 }, // A VISTA
+      { wch: 13    }, // TOTAL
+      { wch: 14.78 }, // LUBRIFICAÇÃO
+      { wch: 13    }, // ABASTECIMENTO
+      { wch: 12.78 }, // LAVAGENS
+    ];
     ws['!rows'] = [{ hpt: 21.6 }, { hpt: 21.6 }];
 
     const wb = XLSX.utils.book_new();
