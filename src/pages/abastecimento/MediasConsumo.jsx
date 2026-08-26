@@ -285,19 +285,15 @@ export default function MediasConsumo() {
       {importacoes.length > 0 && (
         <>
           {/* ── FROTA PILLS ── */}
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:10 }}>
             {FROTAS.map(f => {
-              const cores = {
-                'BAÚ':   { active:'#EB3238', activeText:'#fff', inactiveText:'#374151' },
-                'FROTA': { active:'#16a34a', activeText:'#fff', inactiveText:'#374151' },
-              };
-              const c = cores[f] || { active:'#374151', activeText:'#fff', inactiveText:'#374151' };
+              const bgAtivo = f === 'FROTA' ? '#065f46' : '#EB3238';
               return (
                 <button key={f} onClick={() => setFrotaSel(frotaSel === f ? '' : f)}
-                  style={{ padding:'6px 20px', borderRadius:20, border:'1.5px solid', fontSize:13, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                    borderColor: frotaSel === f ? c.active : '#e5e7eb',
-                    background:  frotaSel === f ? c.active : '#f1f5f9',
-                    color:       frotaSel === f ? c.activeText : c.inactiveText }}>
+                  style={{ padding:'6px 20px', borderRadius:20, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
+                    background: frotaSel === f ? bgAtivo : '#f1f5f9',
+                    color:      frotaSel === f ? '#fff'   : '#64748b',
+                    boxShadow:  frotaSel === f ? '0 2px 8px rgba(0,0,0,0.15)' : 'none' }}>
                   {f}
                 </button>
               );
@@ -309,12 +305,11 @@ export default function MediasConsumo() {
             <>
               {/* ── FILTRO DE MÊS ── */}
               {meses.length > 0 && (
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+                <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:16 }}>
                   <button onClick={() => setMesFiltro('')}
-                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                      borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb',
-                      background:  !mesFiltro ? '#EB3238' : '#f9fafb',
-                      color:       !mesFiltro ? '#fff'    : '#6b7280' }}>
+                    style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:600, cursor:'pointer', border:'none',
+                      background: !mesFiltro ? '#EB3238' : '#f1f5f9',
+                      color:      !mesFiltro ? '#fff'    : '#64748b' }}>
                     Todos
                   </button>
                   {meses.map(m => {
@@ -322,10 +317,10 @@ export default function MediasConsumo() {
                     const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
                     return (
                       <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
-                        style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                          borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb',
-                          background:  mesFiltro === m ? '#EB3238' : '#f9fafb',
-                          color:       mesFiltro === m ? '#fff'    : '#6b7280' }}>
+                        style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:500, cursor:'pointer',
+                          border:      mesFiltro === m ? '1px solid #EB3238' : '1px solid #e2e8f0',
+                          background:  mesFiltro === m ? '#EB3238' : '#fff',
+                          color:       mesFiltro === m ? '#fff'    : '#475569' }}>
                         {label}
                       </button>
                     );
@@ -446,10 +441,9 @@ export default function MediasConsumo() {
                 {meses.length > 0 && (
                   <>
                     <button onClick={() => { setMesFiltro(''); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-                      style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                        borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb',
-                        background:  !mesFiltro ? '#EB3238' : '#f9fafb',
-                        color:       !mesFiltro ? '#fff'    : '#6b7280' }}>
+                      style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:600, cursor:'pointer', border:'none',
+                        background: !mesFiltro ? '#EB3238' : '#f1f5f9',
+                        color:      !mesFiltro ? '#fff'    : '#64748b' }}>
                       Todos
                     </button>
                     {meses.map(m => {
@@ -457,10 +451,10 @@ export default function MediasConsumo() {
                       const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
                       return (
                         <button key={m} onClick={() => { setMesFiltro(mesFiltro === m ? '' : m); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-                          style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                            borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb',
-                            background:  mesFiltro === m ? '#EB3238' : '#f9fafb',
-                            color:       mesFiltro === m ? '#fff'    : '#6b7280' }}>
+                          style={{ padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:500, cursor:'pointer',
+                            border:     mesFiltro === m ? '1px solid #EB3238' : '1px solid #e2e8f0',
+                            background: mesFiltro === m ? '#EB3238' : '#fff',
+                            color:      mesFiltro === m ? '#fff'    : '#475569' }}>
                           {label}
                         </button>
                       );
