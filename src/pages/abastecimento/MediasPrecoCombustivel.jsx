@@ -14,8 +14,8 @@ const UF_LABELS = {
 
 const FROTAS = ['FROTA', 'BAÚ'];
 const GEOJSON_URL = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson';
-const W = 520, H = 540;
-const EX = 7, EY = 14; // extrusion offset (x, y)
+const W = 520, H = 560;
+const EX = 7, EY = 13; // extrusion offset
 
 function getTopColor(pct, maxPct) {
   if (!pct || !maxPct) return '#1e3a5f';
@@ -29,7 +29,7 @@ function getTopColor(pct, maxPct) {
   return '#1d4b6a';
 }
 function getSideColor(pct, maxPct) {
-  if (!pct || !maxPct) return '#0f1f35';
+  if (!pct || !maxPct) return '#0a1525';
   const t = pct / maxPct;
   if (t > 0.75) return '#7f1d1d';
   if (t > 0.55) return '#991b1b';
@@ -50,24 +50,26 @@ export default function MediasPrecoCombustivel() {
   const [frotaSel, setFrotaSel] = useState('');
   const [dados, setDados] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statePaths, setStatePaths] = useState([]);
+  const [statePaths, setStatePaths] = useState([]); // [{ sigla, d, centroid }]
   const [geoLoading, setGeoLoading] = useState(true);
   const [hovUF, setHovUF] = useState(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const containerRef = useRef();
 
-  // Fetch GeoJSON once
+  // Fetch + project GeoJSON once
   useEffect(() => {
     fetch(GEOJSON_URL)
       .then(r => r.json())
       .then(geo => {
         const proj = d3.geoMercator().fitSize([W, H], geo);
         const pathGen = d3.geoPath().projection(proj);
-        const paths = geo.features.map(f => ({
-          sigla: (f.properties.sigla || f.properties.Sigla || '').toUpperCase(),
-          d: pathGen(f),
-          centroid: pathGen.centroid(f),
-        })).filter(p => p.sigla && p.d);
+        const paths = geo.features
+          .map(f => ({
+            sigla: (f.properties.sigla || '').toUpperCase(),
+            d: pathGen(f),
+            centroid: pathGen.centroid(f),
+          }))
+          .filter(p => p.sigla && p.d);
         setStatePaths(paths);
         setGeoLoading(false);
       })
@@ -137,43 +139,42 @@ export default function MediasPrecoCombustivel() {
             setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
           }}
         >
-          {/* subtle grid bg */}
+          {/* dot grid bg */}
           <div style={{
-            position: 'absolute', inset: 0, opacity: 0.04,
-            backgroundImage: 'linear-gradient(#60a5fa 1px, transparent 1px), linear-gradient(90deg, #60a5fa 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-            pointerEvents: 'none',
+            position: 'absolute', inset: 0, opacity: 0.035,
+            backgroundImage: 'radial-gradient(#60a5fa 1px, transparent 1px)',
+            backgroundSize: '28px 28px', pointerEvents: 'none',
           }} />
 
-          <div style={{ color: '#475569', fontSize: 10, marginBottom: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          <div style={{ color: '#475569', fontSize: 10, marginBottom: 14, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
             Abastecimento por Estado — % do gasto total
           </div>
 
           {/* 3D perspective wrapper */}
-          <div style={{ perspective: '900px', perspectiveOrigin: '50% 0%' }}>
+          <div style={{ perspective: '1000px', perspectiveOrigin: '50% 0%' }}>
             {geoLoading ? (
-              <div style={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
+              <div style={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
                 Carregando mapa...
               </div>
             ) : (
               <svg
-                viewBox={`0 0 ${W + EX} ${H + EY}`}
+                viewBox={`0 0 ${W + EX + 4} ${H + EY + 4}`}
                 style={{
                   width: '100%',
                   display: 'block',
                   transform: 'rotateX(32deg) scale(1.06)',
-                  transformOrigin: '50% 28%',
+                  transformOrigin: '50% 24%',
                 }}
                 onMouseLeave={() => setHovUF(null)}
               >
                 <defs>
-                  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#000" floodOpacity="0.6" />
+                  <filter id="mapShadow" x="-10%" y="-10%" width="120%" height="130%">
+                    <feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#000" floodOpacity="0.55" />
                   </filter>
                 </defs>
 
-                {/* ── Extrusion layer (drawn first, behind top faces) ── */}
-                <g filter="url(#shadow)">
+                {/* ── Extrusion / side layer (drawn first) ── */}
+                <g filter="url(#mapShadow)">
                   {statePaths.map(({ sigla, d }) => {
                     const info = byUF[sigla];
                     return (
@@ -182,7 +183,7 @@ export default function MediasPrecoCombustivel() {
                         d={d}
                         transform={`translate(${EX}, ${EY})`}
                         fill={getSideColor(info?.percentual, maxPct)}
-                        stroke="#060d1a"
+                        stroke="#03070f"
                         strokeWidth={1}
                       />
                     );
@@ -193,36 +194,30 @@ export default function MediasPrecoCombustivel() {
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info = byUF[sigla];
                   const isHov = hovUF === sigla;
-                  const topFill = isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct);
                   const [cx, cy] = centroid || [0, 0];
-                  const validCentroid = !isNaN(cx) && !isNaN(cy);
-
+                  const validC = !isNaN(cx) && !isNaN(cy);
                   return (
                     <g key={`top-${sigla}`}>
                       <path
                         d={d}
-                        fill={topFill}
-                        stroke={isHov ? '#f0f9ff' : '#060d1a'}
-                        strokeWidth={isHov ? 1.5 : 0.5}
+                        fill={isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct)}
+                        stroke={isHov ? '#7dd3fc' : '#03070f'}
+                        strokeWidth={isHov ? 1.6 : 0.5}
                         style={{ cursor: 'pointer', transition: 'fill 0.18s' }}
                         onMouseEnter={() => setHovUF(sigla)}
                         onMouseLeave={() => setHovUF(null)}
                       />
-                      {/* UF label */}
-                      {validCentroid && (
+                      {validC && (
                         <g style={{ pointerEvents: 'none' }}>
-                          <text
-                            x={cx} y={cy - 1}
-                            textAnchor="middle" fontSize={7.5} fontWeight="800"
-                            fill={isHov ? '#0ea5e9' : 'rgba(255,255,255,0.95)'}
-                            style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
-                          >{sigla}</text>
+                          <text x={cx} y={cy - 1} textAnchor="middle" fontSize={7.5} fontWeight="800"
+                            fill={isHov ? '#0284c7' : 'rgba(255,255,255,0.95)'}>
+                            {sigla}
+                          </text>
                           {info && (
-                            <text
-                              x={cx} y={cy + 8}
-                              textAnchor="middle" fontSize={5.5} fontWeight="600"
-                              fill={isHov ? '#0ea5e9' : 'rgba(255,255,255,0.70)'}
-                            >{fmtN(info.percentual, 1)}%</text>
+                            <text x={cx} y={cy + 9} textAnchor="middle" fontSize={5.5} fontWeight="600"
+                              fill={isHov ? '#0284c7' : 'rgba(255,255,255,0.65)'}>
+                              {fmtN(info.percentual, 1)}%
+                            </text>
                           )}
                         </g>
                       )}
@@ -238,7 +233,7 @@ export default function MediasPrecoCombustivel() {
             <div style={{
               position: 'absolute',
               left: Math.min(mouse.x + 16, 260),
-              top: Math.max(mouse.y - 80, 60),
+              top: Math.max(mouse.y - 90, 50),
               background: 'rgba(2,8,23,0.97)',
               border: '1px solid #1e3a5f',
               borderRadius: 14,
@@ -253,11 +248,11 @@ export default function MediasPrecoCombustivel() {
                 {hovUF} — {UF_LABELS[hovUF] || ''}
               </div>
               {[
-                { label: '% do gasto', val: `${fmtN(hovData.percentual, 1)}%`, color: '#fbbf24' },
-                { label: 'Total gasto',  val: fmtR(hovData.totalGasto),         color: '#fb7185' },
-                { label: 'Total litros', val: `${fmtN(hovData.totalLitros, 0)} L`, color: '#93c5fd' },
-                { label: 'Preço médio/L',val: fmtR(hovData.precoMedio),         color: '#34d399' },
-                { label: 'Registros',    val: hovData.totalRegistros,            color: '#a78bfa' },
+                { label: '% do gasto',    val: `${fmtN(hovData.percentual, 1)}%`, color: '#fbbf24' },
+                { label: 'Total gasto',   val: fmtR(hovData.totalGasto),           color: '#fb7185' },
+                { label: 'Total litros',  val: `${fmtN(hovData.totalLitros, 0)} L`, color: '#93c5fd' },
+                { label: 'Preço médio/L', val: fmtR(hovData.precoMedio),            color: '#34d399' },
+                { label: 'Registros',     val: hovData.totalRegistros,              color: '#a78bfa' },
               ].map(({ label, val, color }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 5 }}>
                   <span style={{ color: '#64748b' }}>{label}</span>
@@ -267,28 +262,27 @@ export default function MediasPrecoCombustivel() {
             </div>
           )}
 
-          {/* Color legend */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 12, flexWrap: 'wrap' }}>
-            <span style={{ color: '#475569', fontSize: 9, fontWeight: 700, marginRight: 4 }}>BAIXO</span>
-            {['#1d4b6a','#34d399','#fbbf24','#f97316','#ea580c','#dc2626','#b91c1c'].map(cor => (
-              <div key={cor} style={{ flex: 1, height: 6, background: cor, borderRadius: 2 }} />
-            ))}
-            <span style={{ color: '#475569', fontSize: 9, fontWeight: 700, marginLeft: 4 }}>ALTO</span>
+          {/* Gradient legend */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+            <span style={{ color: '#475569', fontSize: 9, fontWeight: 700 }}>BAIXO</span>
+            <div style={{
+              flex: 1, height: 6, borderRadius: 4,
+              background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)',
+            }} />
+            <span style={{ color: '#475569', fontSize: 9, fontWeight: 700 }}>ALTO</span>
           </div>
         </div>
 
         {/* ─── Right panel ─── */}
         <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* KPI card */}
+          {/* KPI */}
           <div style={{
             background: '#fff', borderRadius: 16, padding: '18px 20px',
             boxShadow: '0 2px 12px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238',
           }}>
             <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>TOTAL GASTO</div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1a2e' }}>{loading ? '—' : fmtR(totalGasto)}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-              {dados.length} estado(s) com abastecimento
-            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{dados.length} estado(s) com abastecimento</div>
           </div>
 
           {/* Ranking */}
@@ -301,50 +295,48 @@ export default function MediasPrecoCombustivel() {
                 <div style={{ padding: 24, color: '#94a3b8', textAlign: 'center', fontSize: 13 }}>Carregando...</div>
               ) : dados.length === 0 ? (
                 <div style={{ padding: 24, color: '#94a3b8', textAlign: 'center', fontSize: 13 }}>Nenhum dado encontrado</div>
-              ) : (
-                dados.map((d, i) => (
-                  <div key={d.uf}
-                    onMouseEnter={() => setHovUF(d.uf)}
-                    onMouseLeave={() => setHovUF(null)}
-                    style={{
-                      padding: '10px 20px', borderBottom: '1px solid #f8fafc',
-                      background: hovUF === d.uf ? '#f0f9ff' : '#fff',
-                      cursor: 'default', transition: 'background 0.15s',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 26, height: 26, borderRadius: 8,
-                          background: getTopColor(d.percentual, maxPct),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0,
-                        }}>{i + 1}</div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1a2e' }}>{d.uf}</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8' }}>{UF_LABELS[d.uf] || ''}</div>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: '#EB3238' }}>{fmtN(d.percentual, 1)}%</div>
-                        <div style={{ fontSize: 10, color: '#64748b' }}>{fmtR(d.totalGasto)}</div>
-                      </div>
-                    </div>
-                    <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+              ) : dados.map((d, i) => (
+                <div key={d.uf}
+                  onMouseEnter={() => setHovUF(d.uf)}
+                  onMouseLeave={() => setHovUF(null)}
+                  style={{
+                    padding: '10px 20px', borderBottom: '1px solid #f8fafc',
+                    background: hovUF === d.uf ? '#f0f9ff' : '#fff',
+                    cursor: 'default', transition: 'background 0.15s',
+                  }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
-                        height: '100%', borderRadius: 4,
-                        width: `${(d.percentual / maxPct) * 100}%`,
+                        width: 26, height: 26, borderRadius: 8,
                         background: getTopColor(d.percentual, maxPct),
-                        transition: 'width 0.5s ease',
-                      }} />
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0,
+                      }}>{i + 1}</div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1a2e' }}>{d.uf}</div>
+                        <div style={{ fontSize: 10, color: '#94a3b8' }}>{UF_LABELS[d.uf] || ''}</div>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 10, color: '#94a3b8' }}>
-                      <span>{fmtN(d.totalLitros, 0)} L</span>
-                      <span>R$/L: {fmtR(d.precoMedio)}</span>
-                      <span>{d.totalRegistros} reg.</span>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#EB3238' }}>{fmtN(d.percentual, 1)}%</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>{fmtR(d.totalGasto)}</div>
                     </div>
                   </div>
-                ))
-              )}
+                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 4,
+                      width: `${(d.percentual / maxPct) * 100}%`,
+                      background: getTopColor(d.percentual, maxPct),
+                      transition: 'width 0.5s ease',
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 10, color: '#94a3b8' }}>
+                    <span>{fmtN(d.totalLitros, 0)} L</span>
+                    <span>R$/L: {fmtR(d.precoMedio)}</span>
+                    <span>{d.totalRegistros} reg.</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
