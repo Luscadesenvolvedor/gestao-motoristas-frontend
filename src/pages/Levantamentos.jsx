@@ -1013,67 +1013,6 @@ export default function Levantamentos() {
           </ResponsiveContainer>
         </div>
 
-        {/* Gerenciar */}
-        <div style={{ marginTop:12 }}>
-          <button onClick={()=>setShowLista(v=>!v)}
-            style={{ background:'none', border:'none', fontSize:12, color:'#6b7280', cursor:'pointer', padding:'4px 0', display:'flex', alignItems:'center', gap:4 }}>
-            <i className={`ti ${showLista?'ti-chevron-up':'ti-chevron-down'}`}></i>
-            {showLista ? 'Ocultar registros' : 'Gerenciar registros'}
-          </button>
-          {showLista && (
-            <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', overflow:'hidden', marginTop:8 }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-                <thead>
-                  <tr style={{ background:'#f9fafb' }}>
-                    {['Mês','Tipo','Motoristas','Saldo/Prévia','Custo Folha','Total',''].map(h=>(
-                      <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {listaFiltrada.map(l=>{
-                    const editando = editandoInlineId === l.id;
-                    const inpI = { width:'70px', padding:'3px 6px', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, boxSizing:'border-box' };
-                    return (
-                      <tr key={l.id} style={{ borderBottom:'1px solid #f3f4f6', background: editando ? '#f9fafb' : '#fff' }}>
-                        <td style={{ padding:'8px 12px', fontWeight:600 }}>{fmtMes(l.mes)}</td>
-                        {editando ? <>
-                          <td style={{ padding:'8px 12px' }}>
-                            <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-                              background: l.tipo==='MELI' ? '#dbeafe' : '#d1fae5',
-                              color: l.tipo==='MELI' ? '#1d4ed8' : '#065f46' }}>{l.tipo||'FROTA'}</span>
-                          </td>
-                          <td style={{ padding:'4px 8px' }}><input type="number" min="0" value={inlineForm.motoristasFechados} onChange={e=>setInlineForm(f=>({...f,motoristasFechados:e.target.value}))} style={inpI}/></td>
-                          <td style={{ padding:'4px 8px' }}><input type="number" step="0.01" value={inlineForm.saldo} onChange={e=>setInlineForm(f=>({...f,saldo:e.target.value}))} style={inpI}/></td>
-                          <td style={{ padding:'4px 8px' }}><input type="number" step="0.01" value={inlineForm.custoFolha} onChange={e=>setInlineForm(f=>({...f,custoFolha:e.target.value}))} style={inpI}/></td>
-                          <td style={{ padding:'4px 8px', color:'#EB3238', fontWeight:700 }}>{fmt(Object.values(inlineForm).slice(1).reduce((s,v)=>s+parseFloat(v||0),0))}</td>
-                          <td style={{ padding:'4px 8px', whiteSpace:'nowrap' }}>
-                            <button onClick={()=>salvarInline(l.id)} style={{ padding:'3px 10px', background:'#EB3238', border:'none', borderRadius:6, fontSize:12, color:'#fff', cursor:'pointer', marginRight:4 }}>Salvar</button>
-                            <button onClick={()=>setEditandoInlineId(null)} style={{ padding:'3px 10px', background:'#fff', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, color:'#374151', cursor:'pointer' }}>Cancelar</button>
-                          </td>
-                        </> : <>
-                          <td style={{ padding:'8px 12px' }}>
-                            <span style={{ padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-                              background: l.tipo==='MELI' ? '#dbeafe' : '#d1fae5',
-                              color: l.tipo==='MELI' ? '#1d4ed8' : '#065f46' }}>{l.tipo||'FROTA'}</span>
-                          </td>
-                          <td style={{ padding:'8px 12px' }}>{l.motoristasFechados}</td>
-                          <td style={{ padding:'8px 12px' }}>{fmt(parseFloat(l.previa||0)+parseFloat(l.saldo||0))}</td>
-                          <td style={{ padding:'8px 12px' }}>{fmt(l.custoFolha)}</td>
-                          <td style={{ padding:'8px 12px', color:'#EB3238', fontWeight:700 }}>{fmt(total(l))}</td>
-                          <td style={{ padding:'8px 12px', whiteSpace:'nowrap' }}>
-                            <button onClick={()=>abrirInline(l)} style={{ padding:'3px 10px', background:'#fff', border:'1px solid #d1d5db', borderRadius:6, fontSize:12, color:'#374151', cursor:'pointer', marginRight:6 }}>Editar</button>
-                            <button onClick={()=>excluir(l.id)} style={{ padding:'3px 10px', background:'#fff', border:'1px solid #EB3238', borderRadius:6, fontSize:12, color:'#EB3238', cursor:'pointer' }}>Excluir</button>
-                          </td>
-                        </>}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </>) : (
         <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:60, textAlign:'center', color:'#9ca3af' }}>
           Nenhum levantamento registrado
