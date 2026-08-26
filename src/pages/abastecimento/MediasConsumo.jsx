@@ -405,6 +405,7 @@ export default function MediasConsumo() {
                                   <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#mcBarGradSel)' : 'url(#mcBarGrad)'} />
                                 ))}
                                 <LabelList dataKey="totalGasto" position="top" style={{ fontSize:10, fontWeight:700, fill: corLabel }} formatter={v => `R$${(v/1000).toFixed(1)}k`} />
+                                <LabelList dataKey="totalCaminhoes" position="insideTop" style={{ fontSize:10, fontWeight:700, fill:'rgba(255,255,255,0.92)' }} formatter={v => v > 0 ? `🚛 ${v}` : ''} />
                               </Bar>
                               <Line dataKey="totalGasto" name="Tendência" type="monotone" stroke="#fbbf24" strokeWidth={2} dot={{ r:3, fill:'#fbbf24', stroke:'#0f172a', strokeWidth:2 }} activeDot={{ r:5, fill:'#fbbf24' }} legendType="none" />
                             </>
