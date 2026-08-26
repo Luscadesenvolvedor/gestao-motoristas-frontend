@@ -25,6 +25,7 @@ import LaVagens from './pages/abastecimento/Lavagens';
 import FornecedoresLavagem from './pages/abastecimento/FornecedoresLavagem';
 import MediasConsumo from './pages/abastecimento/MediasConsumo';
 import MediasConsumoImportacoes from './pages/abastecimento/MediasConsumoImportacoes';
+import MediasPrecoCombustivel from './pages/abastecimento/MediasPrecoCombustivel';
 import FrotaApoio from './pages/FrotaApoio';
 import Fechamentos from './pages/abastecimento/Fechamentos';
 import Home from './pages/Home';
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="ab-forn-lavagem"           element={<Privada><ErrorBoundary><FornecedoresLavagem /></ErrorBoundary></Privada>} />
         <Route path="ab-medias-consumo"          element={<Privada><ErrorBoundary><MediasConsumo /></ErrorBoundary></Privada>} />
         <Route path="ab-medias-importacoes"     element={<Privada adminOnly><ErrorBoundary><MediasConsumoImportacoes /></ErrorBoundary></Privada>} />
+        <Route path="ab-preco-combustivel"      element={<Privada><ErrorBoundary><MediasPrecoCombustivel /></ErrorBoundary></Privada>} />
         <Route path="frota-apoio"               element={<Privada><ErrorBoundary><FrotaApoio /></ErrorBoundary></Privada>} />
         <Route path="ab-fechamentos"            element={<Privada><ErrorBoundary><Fechamentos /></ErrorBoundary></Privada>} />
       </Route>
