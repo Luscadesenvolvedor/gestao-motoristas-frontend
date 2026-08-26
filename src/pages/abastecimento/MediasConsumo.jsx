@@ -293,27 +293,61 @@ export default function MediasConsumo() {
           {/* ══════════════ ABA GERAL ══════════════ */}
           {abaAtiva === 'geral' && (
             <>
-              {/* ── KPI CARDS totais ── */}
+              {/* ── FILTRO DE MÊS ── */}
+              {meses.length > 0 && (
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+                  <button onClick={() => setMesFiltro('')}
+                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                      borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb',
+                      background:  !mesFiltro ? '#EB3238' : '#f9fafb',
+                      color:       !mesFiltro ? '#fff'    : '#6b7280' }}>
+                    Todos
+                  </button>
+                  {meses.map(m => {
+                    const [ano, mes] = m.split('-');
+                    const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
+                    return (
+                      <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
+                        style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                          borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb',
+                          background:  mesFiltro === m ? '#EB3238' : '#f9fafb',
+                          color:       mesFiltro === m ? '#fff'    : '#6b7280' }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── KPI CARDS (filtrados pelo mês se selecionado) ── */}
               {kpis && (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
-                  {[
-                    { label:'Total Gasto',   value: fmtR(kpis.totalGasto),          icon:'ti-currency-real',  color:'#EB3238', bg:'#fef2f2' },
-                    { label:'Km Rodados',    value: `${fmtN(kpis.totalKm,0)} km`,   icon:'ti-road',           color:'#1d4ed8', bg:'#eff6ff' },
-                    { label:'Litros Diesel', value: `${fmtN(kpis.totalLitros)} L`,  icon:'ti-droplet',        color:'#0f766e', bg:'#f0fdfa' },
-                    { label:'Litros Arla',   value: `${fmtN(kpis.totalArla)} L`,    icon:'ti-droplet-half-2', color:'#7c3aed', bg:'#f5f3ff' },
-                    { label:'Média Real',    value: `${fmtN(kpis.mediaReal)} km/L`, icon:'ti-gauge',          color:'#d97706', bg:'#fffbeb' },
-                    { label:'Custo/km',      value: `R$ ${fmtN(kpis.custoKm,3)}`,  icon:'ti-coin',           color:'#374151', bg:'#f9fafb' },
-                  ].map(card => (
-                    <div key={card.label} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 16px' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                        <div style={{ width:28, height:28, borderRadius:7, background:card.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          <i className={`ti ${card.icon}`} style={{ fontSize:14, color:card.color }}></i>
-                        </div>
-                        <span style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>{card.label}</span>
-                      </div>
-                      <div style={{ fontSize:18, fontWeight:800, color:card.color }}>{card.value}</div>
+                <div style={{ marginBottom:16 }}>
+                  {mesFiltro && (
+                    <div style={{ fontSize:11, fontWeight:700, color:'#EB3238', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
+                      <i className="ti ti-calendar-event"></i>
+                      {fmtMesStr(mesFiltro)}
                     </div>
-                  ))}
+                  )}
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12 }}>
+                    {[
+                      { label:'Total Gasto',   value: fmtR(kpis.totalGasto),          icon:'ti-currency-real',  color:'#EB3238', bg:'#fef2f2' },
+                      { label:'Km Rodados',    value: `${fmtN(kpis.totalKm,0)} km`,   icon:'ti-road',           color:'#1d4ed8', bg:'#eff6ff' },
+                      { label:'Litros Diesel', value: `${fmtN(kpis.totalLitros)} L`,  icon:'ti-droplet',        color:'#0f766e', bg:'#f0fdfa' },
+                      { label:'Litros Arla',   value: `${fmtN(kpis.totalArla)} L`,    icon:'ti-droplet-half-2', color:'#7c3aed', bg:'#f5f3ff' },
+                      { label:'Média Real',    value: `${fmtN(kpis.mediaReal)} km/L`, icon:'ti-gauge',          color:'#d97706', bg:'#fffbeb' },
+                      { label:'Custo/km',      value: `R$ ${fmtN(kpis.custoKm,3)}`,  icon:'ti-coin',           color:'#374151', bg:'#f9fafb' },
+                    ].map(card => (
+                      <div key={card.label} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 16px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                          <div style={{ width:28, height:28, borderRadius:7, background:card.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            <i className={`ti ${card.icon}`} style={{ fontSize:14, color:card.color }}></i>
+                          </div>
+                          <span style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>{card.label}</span>
+                        </div>
+                        <div style={{ fontSize:18, fontWeight:800, color:card.color }}>{card.value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -337,19 +371,25 @@ export default function MediasConsumo() {
                           <ComposedChart
                             data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
                             margin={{ top: 32, right: 24, left: 0, bottom: 4 }}
-                            style={{ cursor:'default' }}
                           >
                             <defs>
                               <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#EB3238" stopOpacity={1} />
                                 <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.85} />
                               </linearGradient>
+                              <linearGradient id="barGradSel" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ff6b6b" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#EB3238" stopOpacity={1} />
+                              </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                             <XAxis dataKey="label" tick={{ fontSize:11, fill:'#6b7280', fontWeight:500 }} axisLine={false} tickLine={false} interval={0} />
                             <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:10, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={58} />
                             <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(235,50,56,0.06)', radius:4 }} />
-                            <Bar dataKey="totalGasto" name="Total Gasto" radius={[6,6,0,0]} maxBarSize={48} fill="url(#barGrad)">
+                            <Bar dataKey="totalGasto" name="Total Gasto" radius={[6,6,0,0]} maxBarSize={48}>
+                              {resumoChart.map((entry, i) => (
+                                <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#barGradSel)' : 'url(#barGrad)'} />
+                              ))}
                               <LabelList dataKey="totalGasto" position="top" style={{ fontSize:10, fontWeight:700, fill:'#374151' }} formatter={v => `R$${(v/1000).toFixed(1)}k`} />
                               <LabelList dataKey="totalCaminhoes" position="insideTop" style={{ fontSize:10, fontWeight:700, fill:'rgba(255,255,255,0.92)' }} formatter={v => v > 0 ? `🚛 ${v}` : ''} />
                             </Bar>
