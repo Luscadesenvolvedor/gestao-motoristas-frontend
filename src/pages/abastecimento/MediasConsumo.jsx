@@ -240,8 +240,8 @@ export default function MediasConsumo() {
   /* ─────────── render ─────────── */
   return (
     <div>
-      {/* ── BARRA SUPERIOR: título + import + frota + placa ── */}
-      <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:16 }}>
+      {/* ── BARRA SUPERIOR: título + import selector ── */}
+      <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:12 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           {/* título */}
           <div style={{ flex:1 }}>
@@ -249,25 +249,44 @@ export default function MediasConsumo() {
             <p style={{ fontSize:11, color:'#9ca3af', margin:0 }}>Dashboard de consumo por frota</p>
           </div>
 
-          {/* frota pills */}
-          {!loadingImps && importacoes.length > 0 && (() => {
-            const frotasDisponiveis = [...new Set(importacoes.map(i => i.frota || 'Geral'))].sort();
-            return (
-              <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
-                <span style={{ fontSize:11, color:'#9ca3af', marginRight:2 }}>Frota:</span>
-                {FROTAS.map(f => (
-                  <button key={f} onClick={() => setFrotaSel(frotaSel===f?'':f)}
-                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:frotaSel===f?'#EB3238':'#e5e7eb', background:frotaSel===f?'#EB3238':'#f9fafb', color:frotaSel===f?'#fff':'#374151', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                    {f}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+          {/* seletor de importação */}
+          {importacoes.length > 0 && (
+            <select value={importacaoId}
+              onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
+              style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:260, cursor:'pointer', outline:'none' }}>
+              {importacoes.map(im => (
+                <option key={im.id} value={im.id}>
+                  {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
 
-          {/* placa busca */}
+      {/* ── LINHA DE FILTROS: frota pills + busca placa ── */}
+      {!loadingImps && importacoes.length > 0 && (
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+          {FROTAS.map(f => {
+            const cores = {
+              'BAÚ':   { active:'#EB3238', activeText:'#fff', inactiveText:'#374151' },
+              'FROTA': { active:'#16a34a', activeText:'#fff', inactiveText:'#374151' },
+            };
+            const c = cores[f] || { active:'#374151', activeText:'#fff', inactiveText:'#374151' };
+            return (
+              <button key={f} onClick={() => setFrotaSel(frotaSel === f ? '' : f)}
+                style={{ padding:'6px 20px', borderRadius:20, border:'1.5px solid', fontSize:13, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                  borderColor: frotaSel === f ? c.active : '#e5e7eb',
+                  background:  frotaSel === f ? c.active : '#f1f5f9',
+                  color:       frotaSel === f ? c.activeText : c.inactiveText }}>
+                {f}
+              </button>
+            );
+          })}
+
+          {/* busca placa */}
           {(placas.length > 0 || placa) && (
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginLeft:4 }}>
               <div style={{ position:'relative' }}>
                 <i className="ti ti-search" style={{ position:'absolute', left:9, top:'50%', transform:'translateY(-50%)', fontSize:13, color:'#9ca3af', pointerEvents:'none' }}></i>
                 <input
@@ -287,21 +306,40 @@ export default function MediasConsumo() {
               )}
             </div>
           )}
+        </div>
+      )}
 
-          {/* seletor de importação */}
-          {importacoes.length > 0 && (
-            <select value={importacaoId}
-              onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-              style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:220, cursor:'pointer', outline:'none' }}>
-              {importacoes.map(im => (
-                <option key={im.id} value={im.id}>
-                  {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
-                </option>
-              ))}
-            </select>
+      {/* ── FILTRO DE MÊS (pills standalone) ── */}
+      {meses.length > 0 && (
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+          <button onClick={() => setMesFiltro('')}
+            style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+              borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb',
+              background:  !mesFiltro ? '#EB3238' : '#f9fafb',
+              color:       !mesFiltro ? '#fff'    : '#6b7280' }}>
+            Todos
+          </button>
+          {meses.map(m => {
+            const [ano, mes] = m.split('-');
+            const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
+            return (
+              <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
+                style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                  borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb',
+                  background:  mesFiltro === m ? '#EB3238' : '#f9fafb',
+                  color:       mesFiltro === m ? '#fff'    : '#6b7280' }}>
+                {label}
+              </button>
+            );
+          })}
+          {mesFiltro && (
+            <button onClick={() => setMesFiltro('')}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 10px', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb', fontSize:11, color:'#6b7280', cursor:'pointer' }}>
+              <i className="ti ti-x" style={{ fontSize:10 }}></i> Limpar
+            </button>
           )}
         </div>
-      </div>
+      )}
 
       {/* ── Sem importações ── */}
       {!loadingImps && importacoes.length === 0 && (
@@ -353,47 +391,17 @@ export default function MediasConsumo() {
       {resumoChart.length > 0 && (
         <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, marginBottom:16, overflow:'hidden' }}>
           {/* cabeçalho */}
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
-              <div style={{ width:32, height:32, borderRadius:8, background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
-              </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>
-                  Total gasto por mês
-                </div>
-                <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
-                  {placa ? placa : 'Todas as placas'} • Clique numa barra para ver detalhes
-                </div>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ width:32, height:32, borderRadius:8, background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
+            </div>
+            <div>
+              <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Total gasto por mês</div>
+              <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>
+                {placa ? placa : 'Todas as placas'} • Clique numa barra para ver detalhes
               </div>
             </div>
-            {mesFiltro && (
-              <button onClick={() => setMesFiltro('')}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', border:'1px solid #e5e7eb', borderRadius:8, background:'#f9fafb', fontSize:12, color:'#6b7280', cursor:'pointer' }}>
-                <i className="ti ti-x" style={{ fontSize:11 }}></i> Limpar
-              </button>
-            )}
           </div>
-
-          {/* pills de mês */}
-          {meses.length > 0 && (
-            <div style={{ padding:'10px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', gap:6, flexWrap:'wrap' }}>
-              <button onClick={() => setMesFiltro('')}
-                style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:!mesFiltro?'#EB3238':'#e5e7eb', background:!mesFiltro?'#EB3238':'#fff', color:!mesFiltro?'#fff':'#6b7280', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                Todos
-              </button>
-              {meses.map(m => {
-                const [ano, mes] = m.split('-');
-                const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
-                return (
-                  <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
-                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', borderColor:mesFiltro===m?'#EB3238':'#e5e7eb', background:mesFiltro===m?'#EB3238':'#fff', color:mesFiltro===m?'#fff':'#6b7280', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
 
           {/* gráfico */}
           {loadingChart
