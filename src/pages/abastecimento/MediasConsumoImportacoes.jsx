@@ -54,6 +54,12 @@ const fmtR  = v => v != null ? `R$ ${Number(v).toLocaleString('pt-BR', { minimum
 
 const FROTAS = ['BAÚ', 'FROTA'];
 const normPlaca = p => String(p || '').toUpperCase().trim();
+const normFrota = v => {
+  const u = String(v || '').toUpperCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (u === 'BAU') return 'BAÚ';
+  if (u === 'FROTA') return 'FROTA';
+  return String(v || '').toUpperCase().trim();
+};
 
 /* ── badge de frota ── */
 function FrotaBadge({ frota }) {
@@ -140,7 +146,7 @@ export default function MediasConsumoImportacoes() {
       const placas = raw.slice(1)
         .map(r => ({
           placa:  r[iPlaca]  ? String(r[iPlaca]).toUpperCase().trim()  : null,
-          frota:  r[iFrota]  ? String(r[iFrota]).toUpperCase().trim()  : null,
+          frota:  r[iFrota]  ? normFrota(String(r[iFrota]))  : null,
           modelo: iModelo >= 0 && r[iModelo] ? String(r[iModelo]).trim() : null,
         }))
         .filter(p => p.placa && p.frota);
