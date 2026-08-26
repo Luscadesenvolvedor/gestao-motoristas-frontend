@@ -45,8 +45,21 @@ function badgeScore(score) {
 
 /* ── helpers ── */
 function excelDateToISO(serial) {
-  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
-  return d.toISOString().slice(0, 10);
+  // Usar UTC diretamente para evitar shift de timezone
+  const ms = Math.round((serial - 25569) * 86400 * 1000);
+  const d = new Date(ms);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dateToISO(d) {
+  // Usa componentes locais para evitar conversão UTC que muda o dia
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 const fmtDt = s => s ? new Date(s + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
 const fmtN  = (v, d = 0) => v != null ? Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
@@ -291,7 +304,7 @@ export default function MediasConsumoImportacoes() {
 
       const col    = (row, campo, def = null) => { const i = idx[campo]; return i >= 0 && row[i] !== undefined && row[i] !== '' ? row[i] : def; };
       const colNum = (row, campo) => { const v = col(row, campo); if (v === null || v === undefined || v === '') return null; if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[R$\s.]/g,'').replace(',','.')); return isNaN(n) ? null : n; };
-      const colData = (row, campo) => { const v = col(row, campo); if (!v) return null; if (v instanceof Date) return v.toISOString().slice(0,10); if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0,10); if (typeof v === 'number') return excelDateToISO(v); return null; };
+      const colData = (row, campo) => { const v = col(row, campo); if (!v) return null; if (v instanceof Date) return dateToISO(v); if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0,10); if (typeof v === 'number') return excelDateToISO(v); return null; };
 
       // Revisão de nomes
       const nomesUnicos = [...new Set(raw.slice(1).filter(r => col(r,'motorista')).map(r => String(col(r,'motorista')||'').trim()).filter(Boolean))];
