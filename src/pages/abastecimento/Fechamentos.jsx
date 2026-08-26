@@ -36,14 +36,6 @@ function fileParaBase64(file) {
   });
 }
 
-/* ── parser data "DD/MM/YYYY" → "YYYY-MM-DD" ── */
-function parseDateBR(s) {
-  if (!s) return null;
-  const m = String(s).match(/(\d{2})\/(\d{2})\/(\d{4})/);
-  if (!m) return null;
-  return `${m[3]}-${m[2]}-${m[1]}`;
-}
-
 export default function Fechamentos() {
   const [fechamentos, setFechamentos]   = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -53,8 +45,7 @@ export default function Fechamentos() {
   const [parseando, setParseando]       = useState(false);
   const [preview, setPreview]           = useState(null); // dados parseados antes de salvar
   const [salvando, setSalvando]         = useState(false);
-  const fileRef     = useRef();
-  const fileXlsxRef = useRef();
+  const fileRef = useRef();
 
   useEffect(() => { carregar(); }, []);
 
@@ -89,67 +80,6 @@ export default function Fechamentos() {
     }
   }
 
-  /* ── parser Excel (PADRÃO IMPORTAÇÃO ABASTECIMENTO.xlsx) ── */
-  async function onArquivoXlsx(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setParseando(true);
-    setPreview(null);
-    try {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-
-      // Linha 0: empresa (col A)
-      const empresa = raw[0]?.[0] ? String(raw[0][0]).trim() : '';
-
-      // Linha 1: período "Período: DD/MM/YYYY a DD/MM/YYYY"
-      const linhaPeriodo = String(raw[1]?.[0] || '');
-      const datas = [...linhaPeriodo.matchAll(/(\d{2}\/\d{2}\/\d{4})/g)].map(m => m[1]);
-      const periodoInicio = parseDateBR(datas[0] || '');
-      const periodoFim    = parseDateBR(datas[1] || '');
-
-      // Localizar linha do cabeçalho (contém "PLACA")
-      let iHeader = raw.findIndex(r => r.some(c => String(c||'').toUpperCase().trim() === 'PLACA'));
-      if (iHeader < 0) iHeader = 2; // fallback: linha 2
-
-      // Índices das colunas pelo cabeçalho
-      const header = raw[iHeader] || [];
-      const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
-      const iPlaca   = header.findIndex(h => norm(h) === 'placa');
-      const iModelo  = header.findIndex(h => norm(h) === 'modelo');
-      // Valor: prioridade TOTAL > DESPESAS > A VISTA
-      const iTotal   = header.findIndex(h => norm(h) === 'total');
-      const iDesp    = header.findIndex(h => norm(h).includes('despesa'));
-      const iValor   = iTotal >= 0 ? iTotal : iDesp >= 0 ? iDesp : 2;
-
-      // Linhas de dados (após o cabeçalho)
-      const placaRe = /^[A-Z]{3}\d[A-Z0-9]\d{2}$|^[A-Z]{3}\d{4}$/; // Mercosul + antigo
-      const placas = [];
-      for (let i = iHeader + 1; i < raw.length; i++) {
-        const row = raw[i];
-        if (!row) continue;
-        const placa = String(row[iPlaca >= 0 ? iPlaca : 0] || '').toUpperCase().trim();
-        if (!placa || !placaRe.test(placa)) continue; // só linhas com placa válida
-        const modelo      = iModelo >= 0 ? String(row[iModelo] || '').trim() : '';
-        const totalDespesas = Number(row[iValor]) || 0;
-        if (totalDespesas === 0) continue;
-        placas.push({ placa, modelo, totalDespesas });
-      }
-
-      if (!placas.length) { toast.error('Nenhuma placa encontrada na planilha'); return; }
-
-      setPreview({ empresa, periodoInicio, periodoFim, placas, duplicatas: [], _linhasDebug: [] });
-      toast.success(`${placas.length} placa(s) lida(s) do Excel`);
-    } catch (err) {
-      toast.error('Erro ao ler Excel: ' + err.message);
-    } finally {
-      setParseando(false);
-      e.target.value = '';
-    }
-  }
-
   async function salvar() {
     if (!preview || salvando) return;
     setSalvando(true);
@@ -164,37 +94,46 @@ export default function Fechamentos() {
   }
 
   function exportarXlsx(f) {
-    const totalF = f.placas.reduce((s, p) => s + Number(p.totalDespesas), 0);
     const periodo = `${fmtData(f.periodoInicio)} a ${fmtData(f.periodoFim)}`;
 
+    // Formato idêntico ao padrão IMPORTAÇÃO ABASTECIMENTO
     const linhas = [
-      [f.empresa],
-      [`Período: ${periodo}`],
-      [],
-      ['#', 'Placa', 'Modelo', 'Total Despesas (R$)'],
-      ...f.placas.map((p, i) => [
-        i + 1,
+      // Linha 1: empresa + categorias nas colunas F, G, H
+      [f.empresa, null, null, null, null, 'LUBRIFICAÇÃO', 'ABASTECIMENTO', 'LAVAGENS'],
+      // Linha 2: período
+      [`Período: ${periodo}`, null, null, null, null, null, null, null],
+      // Linha 3: cabeçalho
+      ['PLACA', 'MODELO', 'DESPESAS', 'A VISTA', 'TOTAL', null, null, null],
+      // Dados: placa, modelo, valor em DESPESAS (cols D e E ficam null)
+      ...f.placas.map(p => [
         p.placa,
         p.modelo || '',
         Number(p.totalDespesas),
+        null,
+        null,
+        null, null, null,
       ]),
-      [],
-      ['', '', 'TOTAL', totalF],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(linhas);
 
-    // larguras das colunas
-    ws['!cols'] = [{ wch: 4 }, { wch: 12 }, { wch: 28 }, { wch: 22 }];
+    // Larguras das colunas
+    ws['!cols'] = [
+      { wch: 12 }, // PLACA
+      { wch: 28 }, // MODELO
+      { wch: 16 }, // DESPESAS
+      { wch: 12 }, // A VISTA
+      { wch: 12 }, // TOTAL
+      { wch: 14 }, // LUBRIFICAÇÃO
+      { wch: 14 }, // ABASTECIMENTO
+      { wch: 12 }, // LAVAGENS
+    ];
 
-    // formata coluna de valor como moeda
-    const fmtMoeda = '"R$"#,##0.00';
-    for (let r = 4; r < 4 + f.placas.length; r++) {
-      const cell = ws[XLSX.utils.encode_cell({ r, c: 3 })];
-      if (cell) cell.z = fmtMoeda;
+    // Formata coluna DESPESAS (col C = índice 2) como número
+    for (let r = 3; r < 3 + f.placas.length; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 2 })];
+      if (cell) cell.z = '#,##0.00';
     }
-    const cellTotal = ws[XLSX.utils.encode_cell({ r: 4 + f.placas.length + 1, c: 3 })];
-    if (cellTotal) cellTotal.z = fmtMoeda;
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Fechamento');
@@ -227,20 +166,12 @@ export default function Fechamentos() {
           <h1 style={{ margin:0, fontSize:22, fontWeight:700, color:'#1a1a2e' }}>Fechamentos</h1>
           <p style={{ margin:'4px 0 0', fontSize:13, color:'#9ca3af' }}>Importe o relatório de Desempenho Operacional em PDF</p>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={() => fileXlsxRef.current.click()} disabled={parseando}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background:'#16a34a', color:'#fff', border:'none', borderRadius:9, fontSize:13, fontWeight:600, cursor:'pointer', opacity: parseando ? 0.7 : 1 }}>
-            <i className={`ti ${parseando ? 'ti-loader-2' : 'ti-table-import'}`} style={{ fontSize:17 }}></i>
-            {parseando ? 'Lendo...' : 'Importar Excel'}
-          </button>
-          <button onClick={() => fileRef.current.click()} disabled={parseando}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:9, fontSize:13, fontWeight:600, cursor:'pointer', opacity: parseando ? 0.7 : 1 }}>
-            <i className={`ti ${parseando ? 'ti-loader-2' : 'ti-file-import'}`} style={{ fontSize:17 }}></i>
-            {parseando ? 'Lendo PDF...' : 'Importar PDF'}
-          </button>
-        </div>
-        <input ref={fileRef}     type="file" accept=".pdf"        style={{ display:'none' }} onChange={onArquivo} />
-        <input ref={fileXlsxRef} type="file" accept=".xlsx,.xls"  style={{ display:'none' }} onChange={onArquivoXlsx} />
+        <button onClick={() => fileRef.current.click()} disabled={parseando}
+          style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', background:'#EB3238', color:'#fff', border:'none', borderRadius:9, fontSize:13, fontWeight:600, cursor:'pointer', opacity: parseando ? 0.7 : 1 }}>
+          <i className={`ti ${parseando ? 'ti-loader-2' : 'ti-file-import'}`} style={{ fontSize:17 }}></i>
+          {parseando ? 'Lendo PDF...' : 'Importar PDF'}
+        </button>
+        <input ref={fileRef} type="file" accept=".pdf" style={{ display:'none' }} onChange={onArquivo} />
       </div>
 
       {/* Preview após parse */}
