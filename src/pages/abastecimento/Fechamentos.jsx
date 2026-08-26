@@ -119,72 +119,64 @@ export default function Fechamentos() {
 
     // Larguras das colunas
     ws['!cols'] = [
-      { wch: 12 }, // PLACA
-      { wch: 28 }, // MODELO
-      { wch: 16 }, // DESPESAS
-      { wch: 12 }, // A VISTA
-      { wch: 12 }, // TOTAL
-      { wch: 14 }, // LUBRIFICAÇÃO
-      { wch: 14 }, // ABASTECIMENTO
-      { wch: 12 }, // LAVAGENS
+      { wch: 12.78 }, // PLACA
+      { wch: 28.78 }, // MODELO
+      { wch: 16.78 }, // DESPESAS
+      { wch: 12.78 }, // A VISTA
+      { wch: 13    }, // TOTAL
+      { wch: 14.78 }, // LUBRIFICAÇÃO
+      { wch: 13    }, // ABASTECIMENTO
+      { wch: 12.78 }, // LAVAGENS
     ];
 
-    // ── Estilos ──
+    // ── Estilos (baseados no arquivo PADRÃO IMPORTAÇÃO ABASTECIMENTO) ──
     const sEmpresa = {
-      font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: 'C00000' } },
-      alignment: { horizontal: 'left', vertical: 'center' },
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { patternType: 'solid', fgColor: { rgb: '404040' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sCategoria = {
-      font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: 'C00000' } },
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { patternType: 'solid', fgColor: { rgb: '000000' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sPeriodo = {
-      font: { italic: true, sz: 10, color: { rgb: '595959' } },
-      fill: { fgColor: { rgb: 'F2F2F2' } },
-      alignment: { horizontal: 'left', vertical: 'center' },
+      font: { color: { rgb: '000000' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sHeader = {
-      font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '404040' } },
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { patternType: 'solid', fgColor: { rgb: 'C00000' } },
       alignment: { horizontal: 'center', vertical: 'center' },
-      border: {
-        bottom: { style: 'thin', color: { rgb: '000000' } },
-      },
     };
-    const sDado = {
-      font: { sz: 10 },
-      border: {
-        top:    { style: 'thin', color: { rgb: 'D1D5DB' } },
-        bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
-        left:   { style: 'thin', color: { rgb: 'D1D5DB' } },
-        right:  { style: 'thin', color: { rgb: 'D1D5DB' } },
-      },
+    const sDadoNum = {
+      alignment: { horizontal: 'right' },
+      numFmt: '#,##0.00',
     };
-    const sDadoNum = { ...sDado, alignment: { horizontal: 'right' }, z: '#,##0.00' };
 
-    // Linha 0: empresa (col A) + categorias (cols F-H)
     const setStyle = (r, c, s) => {
       const addr = XLSX.utils.encode_cell({ r, c });
       if (ws[addr]) ws[addr].s = s;
     };
+
+    // Linha 0: empresa (col A) + categorias (cols F–H)
     setStyle(0, 0, sEmpresa);
     [5, 6, 7].forEach(c => setStyle(0, c, sCategoria));
 
     // Linha 1: período
     setStyle(1, 0, sPeriodo);
 
-    // Linha 2: cabeçalho PLACA/MODELO/DESPESAS/A VISTA/TOTAL
+    // Linha 2: cabeçalho vermelho
     [0, 1, 2, 3, 4].forEach(c => setStyle(2, c, sHeader));
 
-    // Linhas de dados
+    // Linhas de dados: DESPESAS alinhado à direita + número
     for (let r = 3; r < 3 + f.placas.length; r++) {
-      setStyle(r, 0, sDado);
-      setStyle(r, 1, sDado);
       const cellNum = ws[XLSX.utils.encode_cell({ r, c: 2 })];
       if (cellNum) { cellNum.s = sDadoNum; cellNum.z = '#,##0.00'; }
     }
+
+    // Alturas das linhas (rows 1 e 2 = 21.6pt como no original)
+    ws['!rows'] = [{ hpt: 21.6 }, { hpt: 21.6 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Fechamento');
