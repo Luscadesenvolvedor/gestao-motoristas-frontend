@@ -326,7 +326,7 @@ export default function MediasConsumo() {
                     </div>
                     <div>
                       <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Total gasto por mês</div>
-                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Todas as placas • Clique numa barra para ver detalhes por placa</div>
+                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Todas as placas</div>
                     </div>
                   </div>
                   {loadingChart
@@ -337,11 +337,7 @@ export default function MediasConsumo() {
                           <ComposedChart
                             data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
                             margin={{ top: 32, right: 24, left: 0, bottom: 4 }}
-                            onClick={e => {
-                              const mes = e?.activePayload?.[0]?.payload?.mes;
-                              if (mes) { setMesFiltro(mes); setPlaca(''); setBuscaPlaca(''); setMesSel(''); setAbaAtiva('placa'); }
-                            }}
-                            style={{ cursor:'pointer' }}
+                            style={{ cursor:'default' }}
                           >
                             <defs>
                               <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
