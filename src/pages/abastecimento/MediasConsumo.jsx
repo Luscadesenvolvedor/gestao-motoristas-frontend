@@ -379,51 +379,37 @@ export default function MediasConsumo() {
                         margin={{ top: 28, right: 16, left: 0, bottom: 4 }}
                         barCategoryGap="28%"
                       >
-                        <defs>
-                          <linearGradient id="mcBarGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
-                            <stop offset="100%" stopColor="#be123c" stopOpacity={0.9} />
-                          </linearGradient>
-                          <linearGradient id="mcBarGradSel" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#fb923c" stopOpacity={1} />
-                            <stop offset="100%" stopColor="#ea580c" stopOpacity={1} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" vertical={false} />
-                        <XAxis
-                          dataKey="label"
-                          tick={{ fontSize:12, fill:'#94a3b8', fontWeight:500 }}
-                          axisLine={false} tickLine={false}
-                          interval={0}
-                        />
-                        <YAxis
-                          tickFormatter={v => `R$${(v/1000).toFixed(0)}k`}
-                          tick={{ fontSize:11, fill:'#64748b' }}
-                          axisLine={false} tickLine={false}
-                          width={62}
-                        />
-                        <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
-                        <Bar dataKey="totalGasto" name="Total Gasto" radius={[8,8,0,0]} maxBarSize={52}>
-                          {resumoChart.map((entry, i) => (
-                            <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#mcBarGradSel)' : 'url(#mcBarGrad)'} />
-                          ))}
-                          <LabelList
-                            dataKey="totalGasto"
-                            position="top"
-                            style={{ fontSize:10, fontWeight:700, fill: mesFiltro ? '#fb923c' : '#f87171' }}
-                            formatter={v => `R$${(v/1000).toFixed(1)}k`}
-                          />
-                        </Bar>
-                        <Line
-                          dataKey="totalGasto"
-                          name="Tendência"
-                          type="monotone"
-                          stroke="#fbbf24"
-                          strokeWidth={2}
-                          dot={{ r:3, fill:'#fbbf24', stroke:'#0f172a', strokeWidth:2 }}
-                          activeDot={{ r:5, fill:'#fbbf24' }}
-                          legendType="none"
-                        />
+                        {(() => {
+                          const corBase = frotaSel === 'FROTA' ? '#10b981' : '#3b82f6';
+                          const corBaseDark = frotaSel === 'FROTA' ? '#065f46' : '#1d4ed8';
+                          const corSel  = frotaSel === 'FROTA' ? '#34d399' : '#60a5fa';
+                          const corLabel = frotaSel === 'FROTA' ? '#6ee7b7' : '#93c5fd';
+                          return (
+                            <>
+                              <defs>
+                                <linearGradient id="mcBarGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={corBase} stopOpacity={1} />
+                                  <stop offset="100%" stopColor={corBaseDark} stopOpacity={0.9} />
+                                </linearGradient>
+                                <linearGradient id="mcBarGradSel" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={corSel} stopOpacity={1} />
+                                  <stop offset="100%" stopColor={corBase} stopOpacity={1} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" vertical={false} />
+                              <XAxis dataKey="label" tick={{ fontSize:12, fill:'#94a3b8', fontWeight:500 }} axisLine={false} tickLine={false} interval={0} />
+                              <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:11, fill:'#64748b' }} axisLine={false} tickLine={false} width={62} />
+                              <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
+                              <Bar dataKey="totalGasto" name="Total Gasto" radius={[8,8,0,0]} maxBarSize={52}>
+                                {resumoChart.map((entry, i) => (
+                                  <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#mcBarGradSel)' : 'url(#mcBarGrad)'} />
+                                ))}
+                                <LabelList dataKey="totalGasto" position="top" style={{ fontSize:10, fontWeight:700, fill: corLabel }} formatter={v => `R$${(v/1000).toFixed(1)}k`} />
+                              </Bar>
+                              <Line dataKey="totalGasto" name="Tendência" type="monotone" stroke="#fbbf24" strokeWidth={2} dot={{ r:3, fill:'#fbbf24', stroke:'#0f172a', strokeWidth:2 }} activeDot={{ r:5, fill:'#fbbf24' }} legendType="none" />
+                            </>
+                          );
+                        })()}
                       </ComposedChart>
                     </ResponsiveContainer>
                   )}
