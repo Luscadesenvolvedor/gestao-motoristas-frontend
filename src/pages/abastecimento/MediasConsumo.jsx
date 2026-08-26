@@ -293,61 +293,27 @@ export default function MediasConsumo() {
           {/* ══════════════ ABA GERAL ══════════════ */}
           {abaAtiva === 'geral' && (
             <>
-              {/* ── FILTRO DE MÊS (pills standalone) ── */}
-              {meses.length > 0 && (
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
-                  <button onClick={() => setMesFiltro('')}
-                    style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                      borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb',
-                      background:  !mesFiltro ? '#EB3238' : '#f9fafb',
-                      color:       !mesFiltro ? '#fff'    : '#6b7280' }}>
-                    Todos
-                  </button>
-                  {meses.map(m => {
-                    const [ano, mes] = m.split('-');
-                    const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
-                    return (
-                      <button key={m} onClick={() => setMesFiltro(mesFiltro === m ? '' : m)}
-                        style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
-                          borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb',
-                          background:  mesFiltro === m ? '#EB3238' : '#f9fafb',
-                          color:       mesFiltro === m ? '#fff'    : '#6b7280' }}>
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* ── KPI CARDS ── */}
+              {/* ── KPI CARDS totais ── */}
               {kpis && (
-                <div style={{ marginBottom:16 }}>
-                  {mesFiltro && (
-                    <div style={{ fontSize:11, fontWeight:700, color:'#EB3238', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
-                      <i className="ti ti-calendar-event"></i>
-                      {fmtMesStr(mesFiltro)}
-                    </div>
-                  )}
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12 }}>
-                    {[
-                      { label:'Total Gasto',    value: fmtR(kpis.totalGasto),              icon:'ti-currency-real',   color:'#EB3238', bg:'#fef2f2' },
-                      { label:'Km Rodados',     value: `${fmtN(kpis.totalKm,0)} km`,       icon:'ti-road',            color:'#1d4ed8', bg:'#eff6ff' },
-                      { label:'Litros Diesel',  value: `${fmtN(kpis.totalLitros)} L`,      icon:'ti-droplet',         color:'#0f766e', bg:'#f0fdfa' },
-                      { label:'Litros Arla',    value: `${fmtN(kpis.totalArla)} L`,        icon:'ti-droplet-half-2',  color:'#7c3aed', bg:'#f5f3ff' },
-                      { label:'Média Real',     value: `${fmtN(kpis.mediaReal)} km/L`,     icon:'ti-gauge',           color:'#d97706', bg:'#fffbeb' },
-                      { label:'Custo/km',       value: `R$ ${fmtN(kpis.custoKm,3)}`,       icon:'ti-coin',            color:'#374151', bg:'#f9fafb' },
-                    ].map(card => (
-                      <div key={card.label} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 16px' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                          <div style={{ width:28, height:28, borderRadius:7, background:card.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                            <i className={`ti ${card.icon}`} style={{ fontSize:14, color:card.color }}></i>
-                          </div>
-                          <span style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>{card.label}</span>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12, marginBottom:16 }}>
+                  {[
+                    { label:'Total Gasto',   value: fmtR(kpis.totalGasto),          icon:'ti-currency-real',  color:'#EB3238', bg:'#fef2f2' },
+                    { label:'Km Rodados',    value: `${fmtN(kpis.totalKm,0)} km`,   icon:'ti-road',           color:'#1d4ed8', bg:'#eff6ff' },
+                    { label:'Litros Diesel', value: `${fmtN(kpis.totalLitros)} L`,  icon:'ti-droplet',        color:'#0f766e', bg:'#f0fdfa' },
+                    { label:'Litros Arla',   value: `${fmtN(kpis.totalArla)} L`,    icon:'ti-droplet-half-2', color:'#7c3aed', bg:'#f5f3ff' },
+                    { label:'Média Real',    value: `${fmtN(kpis.mediaReal)} km/L`, icon:'ti-gauge',          color:'#d97706', bg:'#fffbeb' },
+                    { label:'Custo/km',      value: `R$ ${fmtN(kpis.custoKm,3)}`,  icon:'ti-coin',           color:'#374151', bg:'#f9fafb' },
+                  ].map(card => (
+                    <div key={card.label} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 16px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                        <div style={{ width:28, height:28, borderRadius:7, background:card.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <i className={`ti ${card.icon}`} style={{ fontSize:14, color:card.color }}></i>
                         </div>
-                        <div style={{ fontSize:18, fontWeight:800, color:card.color }}>{card.value}</div>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.5px' }}>{card.label}</span>
                       </div>
-                    ))}
-                  </div>
+                      <div style={{ fontSize:18, fontWeight:800, color:card.color }}>{card.value}</div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -360,7 +326,7 @@ export default function MediasConsumo() {
                     </div>
                     <div>
                       <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Total gasto por mês</div>
-                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Todas as placas • Clique numa barra para ver detalhes</div>
+                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Todas as placas • Clique numa barra para ver detalhes por placa</div>
                     </div>
                   </div>
                   {loadingChart
@@ -373,7 +339,7 @@ export default function MediasConsumo() {
                             margin={{ top: 32, right: 24, left: 0, bottom: 4 }}
                             onClick={e => {
                               const mes = e?.activePayload?.[0]?.payload?.mes;
-                              if (mes) setMesFiltro(prev => prev === mes ? '' : mes);
+                              if (mes) { setMesFiltro(mes); setPlaca(''); setBuscaPlaca(''); setMesSel(''); setAbaAtiva('placa'); }
                             }}
                             style={{ cursor:'pointer' }}
                           >
@@ -382,19 +348,12 @@ export default function MediasConsumo() {
                                 <stop offset="0%" stopColor="#EB3238" stopOpacity={1} />
                                 <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.85} />
                               </linearGradient>
-                              <linearGradient id="barGradSel" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ff6b6b" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#EB3238" stopOpacity={1} />
-                              </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                             <XAxis dataKey="label" tick={{ fontSize:11, fill:'#6b7280', fontWeight:500 }} axisLine={false} tickLine={false} interval={0} />
                             <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:10, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={58} />
                             <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(235,50,56,0.06)', radius:4 }} />
-                            <Bar dataKey="totalGasto" name="Total Gasto" radius={[6,6,0,0]} maxBarSize={48}>
-                              {resumoChart.map((entry, i) => (
-                                <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#barGradSel)' : 'url(#barGrad)'} />
-                              ))}
+                            <Bar dataKey="totalGasto" name="Total Gasto" radius={[6,6,0,0]} maxBarSize={48} fill="url(#barGrad)">
                               <LabelList dataKey="totalGasto" position="top" style={{ fontSize:10, fontWeight:700, fill:'#374151' }} formatter={v => `R$${(v/1000).toFixed(1)}k`} />
                               <LabelList dataKey="totalCaminhoes" position="insideTop" style={{ fontSize:10, fontWeight:700, fill:'rgba(255,255,255,0.92)' }} formatter={v => v > 0 ? `🚛 ${v}` : ''} />
                             </Bar>
@@ -404,79 +363,6 @@ export default function MediasConsumo() {
                       </div>
                     )
                   }
-
-                  {/* tabela de motoristas por mês selecionado */}
-                  {mesFiltro && (
-                    <div style={{ borderTop:'2px solid #fef2f2' }}>
-                      <div style={{ padding:'14px 20px 10px', display:'flex', alignItems:'center', gap:8, background:'#fef2f2' }}>
-                        <i className="ti ti-users" style={{ color:'#EB3238', fontSize:14 }}></i>
-                        <span style={{ fontWeight:700, fontSize:13, color:'#1a1a2e' }}>{fmtMesStr(mesFiltro)} — por motorista</span>
-                        {loadingResMot && <span style={{ fontSize:11, color:'#9ca3af' }}>carregando...</span>}
-                      </div>
-                      {!loadingResMot && resumoMotoristas.length > 0 && (
-                        <div style={{ overflowX:'auto' }}>
-                          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-                            <thead>
-                              <tr style={{ background:'#f8fafc' }}>
-                                {['Motorista','Placa','Km','Litros','Média Real','Média Sug.','% Ating.','Total Gasto'].map(h => (
-                                  <th key={h} style={{ padding:'9px 14px', textAlign:h==='Motorista'||h==='Placa'?'left':'right', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {resumoMotoristas.map((m, i) => (
-                                <tr key={m.motorista} style={{ background:i%2===0?'#fff':'#fafafa' }}
-                                  onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
-                                  onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
-                                  <td style={{ padding:'10px 14px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{m.motorista}</td>
-                                  <td style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6' }}>
-                                    <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{(m.placas||'—').split(', ')[0]}</span>
-                                  </td>
-                                  <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)}</td>
-                                  <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalLitros)}</td>
-                                  <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaReal)}</td>
-                                  <td style={{ padding:'10px 14px', textAlign:'right', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaSug)}</td>
-                                  <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>
-                                    <span style={{ fontWeight:700, color:corPerc(m.perc) }}>{fmtN(m.perc,1)}%</span>
-                                    <div style={{ marginTop:3, height:3, borderRadius:2, background:'#e5e7eb', width:60, marginLeft:'auto' }}>
-                                      <div style={{ height:'100%', borderRadius:2, background:corPerc(m.perc), width:`${Math.min(m.perc,100)}%` }}></div>
-                                    </div>
-                                  </td>
-                                  <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, color:'#EB3238', borderBottom:'1px solid #f3f4f6' }}>{fmtR(m.totalGasto)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            {resumoMotoristas.length > 1 && (() => {
-                              const tk=resumoMotoristas.reduce((s,m)=>s+m.totalKm,0);
-                              const tl=resumoMotoristas.reduce((s,m)=>s+m.totalLitros,0);
-                              const tg=resumoMotoristas.reduce((s,m)=>s+m.totalGasto,0);
-                              const mr=tl>0?tk/tl:0;
-                              const sg=resumoMotoristas.filter(m=>m.mediaSug>0);
-                              const ms=sg.length?sg.reduce((s,m)=>s+m.mediaSug,0)/sg.length:0;
-                              const pc=ms>0?(mr/ms)*100:0;
-                              return (
-                                <tfoot>
-                                  <tr style={{ background:'#f8fafc', fontWeight:700 }}>
-                                    <td style={{ padding:'11px 14px', color:'#374151' }}>TOTAL / MÉDIA</td>
-                                    <td style={{ padding:'11px 14px' }}></td>
-                                    <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tk,0)}</td>
-                                    <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tl)}</td>
-                                    <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(mr)}</td>
-                                    <td style={{ padding:'11px 14px', textAlign:'right', color:'#6b7280' }}>{fmtN(ms)}</td>
-                                    <td style={{ padding:'11px 14px', textAlign:'right', color:corPerc(pc) }}>{fmtN(pc,1)}%</td>
-                                    <td style={{ padding:'11px 14px', textAlign:'right', color:'#EB3238' }}>{fmtR(tg)}</td>
-                                  </tr>
-                                </tfoot>
-                              );
-                            })()}
-                          </table>
-                        </div>
-                      )}
-                      {!loadingResMot && resumoMotoristas.length === 0 && (
-                        <div style={{ padding:30, textAlign:'center', color:'#9ca3af', fontSize:13 }}>Nenhum dado para este mês.</div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </>
@@ -485,32 +371,134 @@ export default function MediasConsumo() {
           {/* ══════════════ ABA POR PLACA ══════════════ */}
           {abaAtiva === 'placa' && (
             <>
-              {/* busca placa */}
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+              {/* ── filtros: mês + busca placa ── */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+                {/* pills de mês */}
+                {meses.length > 0 && (
+                  <>
+                    <button onClick={() => { setMesFiltro(''); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
+                      style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                        borderColor: !mesFiltro ? '#EB3238' : '#e5e7eb',
+                        background:  !mesFiltro ? '#EB3238' : '#f9fafb',
+                        color:       !mesFiltro ? '#fff'    : '#6b7280' }}>
+                      Todos
+                    </button>
+                    {meses.map(m => {
+                      const [ano, mes] = m.split('-');
+                      const label = new Date(Number(ano), Number(mes)-1, 1).toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }).replace('.','');
+                      return (
+                        <button key={m} onClick={() => { setMesFiltro(mesFiltro === m ? '' : m); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
+                          style={{ padding:'4px 12px', borderRadius:20, border:'1.5px solid', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                            borderColor: mesFiltro === m ? '#EB3238' : '#e5e7eb',
+                            background:  mesFiltro === m ? '#EB3238' : '#f9fafb',
+                            color:       mesFiltro === m ? '#fff'    : '#6b7280' }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                    <span style={{ color:'#d1d5db', fontSize:14, marginLeft:2, marginRight:2 }}>|</span>
+                  </>
+                )}
+
+                {/* busca placa */}
                 <div style={{ position:'relative' }}>
-                  <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:'#9ca3af', pointerEvents:'none' }}></i>
+                  <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:13, color:'#9ca3af', pointerEvents:'none' }}></i>
                   <input
                     value={buscaPlaca}
-                    onChange={e => setBuscaPlaca(e.target.value.toUpperCase())}
-                    onBlur={() => { setPlaca(buscaPlaca); setMesSel(''); }}
-                    onKeyDown={e => { if (e.key === 'Enter') { setPlaca(buscaPlaca); setMesSel(''); e.target.blur(); } }}
-                    placeholder="Digite a placa e pressione Enter..."
-                    style={{ padding:'9px 12px 9px 34px', border:'1.5px solid #d1d5db', borderRadius:9, fontSize:13, color:'#374151', background:'#fff', outline:'none', width:280 }}
+                    onChange={e => { setBuscaPlaca(e.target.value.toUpperCase()); }}
+                    onBlur={() => { setPlaca(buscaPlaca); setMesSel(''); setMesFiltro(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') { setPlaca(buscaPlaca); setMesSel(''); setMesFiltro(''); e.target.blur(); } }}
+                    placeholder="Buscar placa..."
+                    style={{ padding:'6px 10px 6px 30px', border:'1.5px solid #d1d5db', borderRadius:8, fontSize:12, color:'#374151', background:'#fff', outline:'none', width:200 }}
                   />
                 </div>
                 {(placa || buscaPlaca) && (
                   <button onClick={() => { setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-                    style={{ padding:'6px 10px', border:'none', borderRadius:8, background:'#fee2e2', color:'#dc2626', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-                    <i className="ti ti-x"></i> Limpar
+                    style={{ padding:'5px 9px', border:'none', borderRadius:7, background:'#fee2e2', color:'#dc2626', fontSize:11, cursor:'pointer', display:'flex', alignItems:'center', gap:3 }}>
+                    <i className="ti ti-x"></i> Limpar placa
                   </button>
                 )}
               </div>
 
-              {!placa && (
+              {/* ── tabela de motoristas quando mês selecionado (sem placa) ── */}
+              {mesFiltro && !placa && (
+                <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
+                  <div style={{ padding:'14px 20px', display:'flex', alignItems:'center', gap:8, borderBottom:'1px solid #f3f4f6' }}>
+                    <i className="ti ti-users" style={{ color:'#EB3238', fontSize:15 }}></i>
+                    <span style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>{fmtMesStr(mesFiltro)} — por motorista</span>
+                    {loadingResMot && <span style={{ fontSize:11, color:'#9ca3af' }}>carregando...</span>}
+                  </div>
+                  {!loadingResMot && resumoMotoristas.length > 0 && (
+                    <div style={{ overflowX:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+                        <thead>
+                          <tr style={{ background:'#f8fafc' }}>
+                            {['Motorista','Placa','Km','Litros','Média Real','Média Sug.','% Ating.','Total Gasto'].map(h => (
+                              <th key={h} style={{ padding:'9px 14px', textAlign:h==='Motorista'||h==='Placa'?'left':'right', fontSize:10, fontWeight:700, color:'#374151', textTransform:'uppercase', letterSpacing:'0.4px', borderBottom:'1px solid #e5e7eb', whiteSpace:'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {resumoMotoristas.map((m, i) => (
+                            <tr key={m.motorista} style={{ background:i%2===0?'#fff':'#fafafa' }}
+                              onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                              onMouseLeave={e => e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
+                              <td style={{ padding:'10px 14px', fontWeight:600, color:'#1a1a2e', borderBottom:'1px solid #f3f4f6', whiteSpace:'nowrap' }}>{m.motorista}</td>
+                              <td style={{ padding:'10px 14px', borderBottom:'1px solid #f3f4f6' }}>
+                                <span style={{ padding:'2px 8px', borderRadius:6, background:'#f1f5f9', color:'#374151', fontSize:11, fontWeight:700, fontFamily:'monospace' }}>{(m.placas||'—').split(', ')[0]}</span>
+                              </td>
+                              <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalKm,0)}</td>
+                              <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.totalLitros)}</td>
+                              <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaReal)}</td>
+                              <td style={{ padding:'10px 14px', textAlign:'right', color:'#6b7280', borderBottom:'1px solid #f3f4f6' }}>{fmtN(m.mediaSug)}</td>
+                              <td style={{ padding:'10px 14px', textAlign:'right', borderBottom:'1px solid #f3f4f6' }}>
+                                <span style={{ fontWeight:700, color:corPerc(m.perc) }}>{fmtN(m.perc,1)}%</span>
+                                <div style={{ marginTop:3, height:3, borderRadius:2, background:'#e5e7eb', width:60, marginLeft:'auto' }}>
+                                  <div style={{ height:'100%', borderRadius:2, background:corPerc(m.perc), width:`${Math.min(m.perc,100)}%` }}></div>
+                                </div>
+                              </td>
+                              <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:600, color:'#EB3238', borderBottom:'1px solid #f3f4f6' }}>{fmtR(m.totalGasto)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {resumoMotoristas.length > 1 && (() => {
+                          const tk=resumoMotoristas.reduce((s,m)=>s+m.totalKm,0);
+                          const tl=resumoMotoristas.reduce((s,m)=>s+m.totalLitros,0);
+                          const tg=resumoMotoristas.reduce((s,m)=>s+m.totalGasto,0);
+                          const mr=tl>0?tk/tl:0;
+                          const sg=resumoMotoristas.filter(m=>m.mediaSug>0);
+                          const ms=sg.length?sg.reduce((s,m)=>s+m.mediaSug,0)/sg.length:0;
+                          const pc=ms>0?(mr/ms)*100:0;
+                          return (
+                            <tfoot>
+                              <tr style={{ background:'#f8fafc', fontWeight:700 }}>
+                                <td style={{ padding:'11px 14px', color:'#374151' }}>TOTAL / MÉDIA</td>
+                                <td style={{ padding:'11px 14px' }}></td>
+                                <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tk,0)}</td>
+                                <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(tl)}</td>
+                                <td style={{ padding:'11px 14px', textAlign:'right' }}>{fmtN(mr)}</td>
+                                <td style={{ padding:'11px 14px', textAlign:'right', color:'#6b7280' }}>{fmtN(ms)}</td>
+                                <td style={{ padding:'11px 14px', textAlign:'right', color:corPerc(pc) }}>{fmtN(pc,1)}%</td>
+                                <td style={{ padding:'11px 14px', textAlign:'right', color:'#EB3238' }}>{fmtR(tg)}</td>
+                              </tr>
+                            </tfoot>
+                          );
+                        })()}
+                      </table>
+                    </div>
+                  )}
+                  {!loadingResMot && resumoMotoristas.length === 0 && (
+                    <div style={{ padding:30, textAlign:'center', color:'#9ca3af', fontSize:13 }}>Nenhum dado para este mês.</div>
+                  )}
+                </div>
+              )}
+
+              {/* estado vazio: sem mês e sem placa */}
+              {!mesFiltro && !placa && (
                 <div style={{ textAlign:'center', padding:60, color:'#9ca3af', background:'#fff', borderRadius:12, border:'1px dashed #d1d5db' }}>
                   <i className="ti ti-truck" style={{ fontSize:40, display:'block', marginBottom:10, color:'#d1d5db' }}></i>
-                  <div style={{ fontWeight:500, marginBottom:4 }}>Busque uma placa</div>
-                  <div style={{ fontSize:12 }}>Digite a placa acima para ver o histórico de consumo</div>
+                  <div style={{ fontWeight:500, marginBottom:4 }}>Selecione um mês ou busque uma placa</div>
+                  <div style={{ fontSize:12 }}>Use os filtros acima para ver os detalhes</div>
                 </div>
               )}
 
