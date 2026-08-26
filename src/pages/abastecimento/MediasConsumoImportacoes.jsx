@@ -221,7 +221,11 @@ export default function MediasConsumoImportacoes() {
     } catch { toast.error('Erro ao carregar importações'); }
     finally { setLoadingImps(false); }
   }, []);
-  useEffect(() => { carregarImportacoes(); }, [carregarImportacoes]);
+  useEffect(() => {
+    carregarImportacoes();
+    // Backfill silencioso: preenche frota nos registros antigos que estão NULL
+    api.post('/medias-consumo/cadastro-placas/backfill-frota').catch(() => {});
+  }, [carregarImportacoes]);
 
   async function excluirImportacao(id) {
     if (!confirm('Excluir esta importação e todos os registros?')) return;

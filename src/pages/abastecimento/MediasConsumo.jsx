@@ -73,13 +73,14 @@ export default function MediasConsumo() {
   const [registros,  setRegistros]  = useState([]);
   const [loadingReg, setLoadingReg] = useState(false);
 
-  /* ── sincronizar importacaoId quando frotaSel muda ── */
+  /* ── sincronizar importacaoId quando frotaSel muda ──
+     Com frota por registro, não filtramos o dropdown por ic.frota.
+     Todas as importações ficam disponíveis; o filtro de frota age nos dados. */
   useEffect(() => {
     if (!importacoes.length) return;
-    const filtradas = frotaSel ? importacoes.filter(i => (i.frota || 'Geral') === frotaSel) : importacoes;
-    if (filtradas.length === 0) { setImportacaoId(''); return; }
-    if (!filtradas.find(i => i.id === importacaoId)) {
-      setImportacaoId(filtradas[0].id);
+    // apenas garante que o importacaoId selecionado ainda existe na lista
+    if (!importacoes.find(i => i.id === importacaoId)) {
+      setImportacaoId(importacoes[0].id);
       setPlaca(''); setBuscaPlaca(''); setMesSel('');
     }
   }, [frotaSel, importacoes]);
@@ -288,21 +289,17 @@ export default function MediasConsumo() {
           )}
 
           {/* seletor de importação */}
-          {importacoes.length > 0 && (() => {
-            const importacoesFiltradas = frotaSel ? importacoes.filter(i => (i.frota||'Geral')===frotaSel) : importacoes;
-            if (!importacoesFiltradas.length) return null;
-            return (
-              <select value={importacoesFiltradas.find(i=>i.id===importacaoId)?importacaoId:(importacoesFiltradas[0]?.id||'')}
-                onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-                style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:220, cursor:'pointer', outline:'none' }}>
-                {importacoesFiltradas.map(im => (
-                  <option key={im.id} value={im.id}>
-                    {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
-                  </option>
-                ))}
-              </select>
-            );
-          })()}
+          {importacoes.length > 0 && (
+            <select value={importacaoId}
+              onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
+              style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:220, cursor:'pointer', outline:'none' }}>
+              {importacoes.map(im => (
+                <option key={im.id} value={im.id}>
+                  {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
