@@ -30,12 +30,26 @@ const TooltipGrafico = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   return (
-    <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:10, padding:'12px 16px', fontSize:12, boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}>
-      <div style={{ fontWeight:700, marginBottom:6, color:'#1a1a2e' }}>{fmtMesStr(d?.mes)}</div>
-      <div style={{ color:'#EB3238' }}>Total gasto: <strong>{fmtR(d?.totalGasto)}</strong></div>
-      <div style={{ color:'#374151' }}>Distância: <strong>{fmtN(d?.totalKm,0)} km</strong></div>
-      <div style={{ color:'#374151' }}>Litros diesel: <strong>{fmtN(d?.totalLitros)} L</strong></div>
-      {d?.mediaReal > 0 && <div style={{ color:'#1d4ed8' }}>Média real: <strong>{fmtN(d?.mediaReal)} km/L</strong></div>}
+    <div style={{ background:'#1e293b', borderRadius:12, padding:'14px 18px', fontSize:12, boxShadow:'0 8px 32px rgba(0,0,0,0.28)', minWidth:200 }}>
+      <div style={{ fontWeight:700, marginBottom:10, color:'#f1f5f9', fontSize:13 }}>{fmtMesStr(d?.mes)}</div>
+      <div style={{ display:'flex', justifyContent:'space-between', gap:20, marginBottom:4 }}>
+        <span style={{ color:'#94a3b8' }}>Total gasto</span>
+        <strong style={{ color:'#fb7185' }}>{fmtR(d?.totalGasto)}</strong>
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', gap:20, marginBottom:4 }}>
+        <span style={{ color:'#94a3b8' }}>Distância</span>
+        <strong style={{ color:'#e2e8f0' }}>{fmtN(d?.totalKm,0)} km</strong>
+      </div>
+      <div style={{ display:'flex', justifyContent:'space-between', gap:20, marginBottom:4 }}>
+        <span style={{ color:'#94a3b8' }}>Litros diesel</span>
+        <strong style={{ color:'#e2e8f0' }}>{fmtN(d?.totalLitros)} L</strong>
+      </div>
+      {d?.mediaReal > 0 && (
+        <div style={{ display:'flex', justifyContent:'space-between', gap:20, borderTop:'1px solid #334155', marginTop:8, paddingTop:8 }}>
+          <span style={{ color:'#94a3b8' }}>Média real</span>
+          <strong style={{ color:'#60a5fa' }}>{fmtN(d?.mediaReal)} km/L</strong>
+        </div>
+      )}
     </div>
   );
 };
@@ -353,52 +367,71 @@ export default function MediasConsumo() {
 
               {/* ── GRÁFICO MENSAL ── */}
               {resumoChart.length > 0 && (
-                <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, marginBottom:16, overflow:'hidden' }}>
-                  <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ width:32, height:32, borderRadius:8, background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <i className="ti ti-chart-bar" style={{ color:'#EB3238', fontSize:16 }}></i>
-                    </div>
+                <div style={{ background:'linear-gradient(135deg,#1e293b 0%,#0f172a 100%)', borderRadius:16, padding:'24px 20px 16px', boxShadow:'0 8px 32px rgba(0,0,0,0.18)', marginBottom:16 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
                     <div>
-                      <div style={{ fontWeight:700, fontSize:14, color:'#1a1a2e' }}>Total gasto por mês</div>
-                      <div style={{ fontSize:11, color:'#9ca3af', marginTop:1 }}>Todas as placas</div>
-                    </div>
-                  </div>
-                  {loadingChart
-                    ? <div style={{ textAlign:'center', padding:40, fontSize:12, color:'#9ca3af' }}>Carregando...</div>
-                    : (
-                      <div style={{ padding:'16px 12px 8px' }}>
-                        <ResponsiveContainer width="100%" height={280}>
-                          <ComposedChart
-                            data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
-                            margin={{ top: 32, right: 24, left: 0, bottom: 4 }}
-                          >
-                            <defs>
-                              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#EB3238" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.85} />
-                              </linearGradient>
-                              <linearGradient id="barGradSel" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#ff6b6b" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#EB3238" stopOpacity={1} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                            <XAxis dataKey="label" tick={{ fontSize:11, fill:'#6b7280', fontWeight:500 }} axisLine={false} tickLine={false} interval={0} />
-                            <YAxis tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} tick={{ fontSize:10, fill:'#9ca3af' }} axisLine={false} tickLine={false} width={58} />
-                            <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(235,50,56,0.06)', radius:4 }} />
-                            <Bar dataKey="totalGasto" name="Total Gasto" radius={[6,6,0,0]} maxBarSize={48}>
-                              {resumoChart.map((entry, i) => (
-                                <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#barGradSel)' : 'url(#barGrad)'} />
-                              ))}
-                              <LabelList dataKey="totalGasto" position="top" style={{ fontSize:10, fontWeight:700, fill:'#374151' }} formatter={v => `R$${(v/1000).toFixed(1)}k`} />
-                              <LabelList dataKey="totalCaminhoes" position="insideTop" style={{ fontSize:10, fontWeight:700, fill:'rgba(255,255,255,0.92)' }} formatter={v => v > 0 ? `🚛 ${v}` : ''} />
-                            </Bar>
-                            <Line dataKey="totalGasto" name="Tendência" type="monotone" stroke="#ff9f43" strokeWidth={2.5} dot={{ r:3, fill:'#ff9f43', stroke:'#fff', strokeWidth:1.5 }} activeDot={{ r:5 }} legendType="none" />
-                          </ComposedChart>
-                        </ResponsiveContainer>
+                      <div style={{ color:'#f1f5f9', fontSize:15, fontWeight:700 }}>Total gasto por mês</div>
+                      <div style={{ color:'#64748b', fontSize:12, marginTop:2 }}>
+                        {mesFiltro ? fmtMesStr(mesFiltro) + ' selecionado' : 'Selecione um mês acima para filtrar'}
                       </div>
-                    )
-                  }
+                    </div>
+                    {loadingChart && <span style={{ fontSize:12, color:'#64748b' }}>Carregando...</span>}
+                  </div>
+                  {!loadingChart && (
+                    <ResponsiveContainer width="100%" height={340}>
+                      <ComposedChart
+                        data={resumoChart.map(m => ({ ...m, label: fmtMesCurto(m.mes) }))}
+                        margin={{ top: 28, right: 16, left: 0, bottom: 4 }}
+                        barCategoryGap="28%"
+                      >
+                        <defs>
+                          <linearGradient id="mcBarGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#f43f5e" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#be123c" stopOpacity={0.9} />
+                          </linearGradient>
+                          <linearGradient id="mcBarGradSel" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fb923c" stopOpacity={1} />
+                            <stop offset="100%" stopColor="#ea580c" stopOpacity={1} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" vertical={false} />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize:12, fill:'#94a3b8', fontWeight:500 }}
+                          axisLine={false} tickLine={false}
+                          interval={0}
+                        />
+                        <YAxis
+                          tickFormatter={v => `R$${(v/1000).toFixed(0)}k`}
+                          tick={{ fontSize:11, fill:'#64748b' }}
+                          axisLine={false} tickLine={false}
+                          width={62}
+                        />
+                        <Tooltip content={<TooltipGrafico />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
+                        <Bar dataKey="totalGasto" name="Total Gasto" radius={[8,8,0,0]} maxBarSize={52}>
+                          {resumoChart.map((entry, i) => (
+                            <Cell key={i} fill={mesFiltro === entry.mes ? 'url(#mcBarGradSel)' : 'url(#mcBarGrad)'} />
+                          ))}
+                          <LabelList
+                            dataKey="totalGasto"
+                            position="top"
+                            style={{ fontSize:10, fontWeight:700, fill: mesFiltro ? '#fb923c' : '#f87171' }}
+                            formatter={v => `R$${(v/1000).toFixed(1)}k`}
+                          />
+                        </Bar>
+                        <Line
+                          dataKey="totalGasto"
+                          name="Tendência"
+                          type="monotone"
+                          stroke="#fbbf24"
+                          strokeWidth={2}
+                          dot={{ r:3, fill:'#fbbf24', stroke:'#0f172a', strokeWidth:2 }}
+                          activeDot={{ r:5, fill:'#fbbf24' }}
+                          legendType="none"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               )}
             </>
