@@ -168,24 +168,7 @@ export default function MediasPrecoCombustivel() {
                 }}
                 onMouseLeave={() => setHovUF(null)}
               >
-                {/* ── Extrusion / side layer (drawn first) ── */}
-                <g>
-                  {statePaths.map(({ sigla, d }) => {
-                    const info = byUF[sigla];
-                    return (
-                      <path
-                        key={`side-${sigla}`}
-                        d={d}
-                        transform={`translate(${EX}, ${EY})`}
-                        fill={getSideColor(info?.percentual, maxPct)}
-                        stroke="#03070f"
-                        strokeWidth={1}
-                      />
-                    );
-                  })}
-                </g>
-
-                {/* ── Top face layer ── */}
+                {/* ── Estados ── */}
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info = byUF[sigla];
                   const isHov = hovUF === sigla;
