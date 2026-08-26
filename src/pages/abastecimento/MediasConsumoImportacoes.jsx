@@ -205,7 +205,7 @@ export default function MediasConsumoImportacoes() {
         ...p,
         registros: p.registros.map(r => ({
           ...r,
-          _frota: novoMapa[normPlaca(r.placa)] || placaMap[normPlaca(r.placa)] || 'BAÚ',
+          _frota: novoMapa[normPlaca(r.placa)] || placaMap[normPlaca(r.placa)] || r._frota || 'BAÚ',
         })),
         placasConfirmadas: true,
       };
@@ -237,6 +237,16 @@ export default function MediasConsumoImportacoes() {
     const file = e.target.files[0];
     if (!file) return;
     try {
+      // Buscar cadastro de placas atualizado (evita race condition com o carregamento inicial)
+      let placaMapAtual = placaMap;
+      try {
+        const { data } = await api.get('/medias-consumo/cadastro-placas');
+        setCadastroPlacas(data);
+        const m = {};
+        for (const p of data) m[normPlaca(p.placa)] = p.frota;
+        placaMapAtual = m;
+      } catch {}
+
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
@@ -300,10 +310,10 @@ export default function MediasConsumoImportacoes() {
           mediaSugerida: colNum(r,'mediaSugerida'), percAtingido: col(r,'percAtingido',''), gap: colNum(r,'gap'),
         }));
 
-      // Revisão de placas: detectar placas sem frota cadastrada
+      // Revisão de placas: detectar placas sem frota cadastrada (usa placaMapAtual, sempre fresco)
       const placasUnicas = [...new Set(registros.map(r => normPlaca(r.placa)).filter(Boolean))];
       const revisaoPlacas = placasUnicas
-        .filter(p => !placaMap[p]) // só as não cadastradas
+        .filter(p => !placaMapAtual[p]) // só as não cadastradas
         .map(p => ({ placa: p, frota: '' }));
       const todasPlacasCadastradas = revisaoPlacas.length === 0;
 
