@@ -168,14 +168,8 @@ export default function MediasPrecoCombustivel() {
                 }}
                 onMouseLeave={() => setHovUF(null)}
               >
-                <defs>
-                  <filter id="mapShadow" x="-10%" y="-10%" width="120%" height="130%">
-                    <feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#000" floodOpacity="0.55" />
-                  </filter>
-                </defs>
-
                 {/* ── Extrusion / side layer (drawn first) ── */}
-                <g filter="url(#mapShadow)">
+                <g>
                   {statePaths.map(({ sigla, d }) => {
                     const info = byUF[sigla];
                     return (
