@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -129,10 +129,61 @@ export default function Fechamentos() {
       { wch: 12 }, // LAVAGENS
     ];
 
-    // Formata coluna DESPESAS (col C = índice 2) como número
+    // ── Estilos ──
+    const sEmpresa = {
+      font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: 'C00000' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    };
+    const sCategoria = {
+      font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: 'C00000' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    };
+    const sPeriodo = {
+      font: { italic: true, sz: 10, color: { rgb: '595959' } },
+      fill: { fgColor: { rgb: 'F2F2F2' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    };
+    const sHeader = {
+      font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '404040' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: {
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+      },
+    };
+    const sDado = {
+      font: { sz: 10 },
+      border: {
+        top:    { style: 'thin', color: { rgb: 'D1D5DB' } },
+        bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        left:   { style: 'thin', color: { rgb: 'D1D5DB' } },
+        right:  { style: 'thin', color: { rgb: 'D1D5DB' } },
+      },
+    };
+    const sDadoNum = { ...sDado, alignment: { horizontal: 'right' }, z: '#,##0.00' };
+
+    // Linha 0: empresa (col A) + categorias (cols F-H)
+    const setStyle = (r, c, s) => {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (ws[addr]) ws[addr].s = s;
+    };
+    setStyle(0, 0, sEmpresa);
+    [5, 6, 7].forEach(c => setStyle(0, c, sCategoria));
+
+    // Linha 1: período
+    setStyle(1, 0, sPeriodo);
+
+    // Linha 2: cabeçalho PLACA/MODELO/DESPESAS/A VISTA/TOTAL
+    [0, 1, 2, 3, 4].forEach(c => setStyle(2, c, sHeader));
+
+    // Linhas de dados
     for (let r = 3; r < 3 + f.placas.length; r++) {
-      const cell = ws[XLSX.utils.encode_cell({ r, c: 2 })];
-      if (cell) cell.z = '#,##0.00';
+      setStyle(r, 0, sDado);
+      setStyle(r, 1, sDado);
+      const cellNum = ws[XLSX.utils.encode_cell({ r, c: 2 })];
+      if (cellNum) { cellNum.s = sDadoNum; cellNum.z = '#,##0.00'; }
     }
 
     const wb = XLSX.utils.book_new();
