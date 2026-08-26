@@ -96,18 +96,19 @@ export default function Fechamentos() {
   function exportarXlsx(f) {
     const periodo = `${fmtData(f.periodoInicio)} a ${fmtData(f.periodoFim)}`;
 
-    // ── Estilos inline (xlsx-js-style exige estilo dentro do objeto de célula) ──
+    // ── Estilos inline ──
     const sEmpresa = {
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
-      fill: { patternType: 'solid', fgColor: { rgb: '404040' } },
-      alignment: { horizontal: 'center', vertical: 'center' },
-    };
-    const sCategoria = {
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
       fill: { patternType: 'solid', fgColor: { rgb: '000000' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sPeriodo = {
+      font: { sz: 11, color: { rgb: 'FFFFFF' } },
+      fill: { patternType: 'solid', fgColor: { rgb: '000000' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    };
+    const sCategoria = {
+      font: { bold: true, sz: 11, color: { rgb: '70AD47' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     };
     const sHeader = {
@@ -115,33 +116,36 @@ export default function Fechamentos() {
       fill: { patternType: 'solid', fgColor: { rgb: 'C00000' } },
       alignment: { horizontal: 'center', vertical: 'center' },
     };
-    const sDadoNum = {
-      alignment: { horizontal: 'right' },
-      numFmt: '#,##0.00',
-    };
+    const sDadoNum = { alignment: { horizontal: 'right' }, numFmt: '#,##0.00' };
 
-    const c = (v, s, t) => ({ v, s, t: t || (typeof v === 'number' ? 'n' : 's') });
+    const cx = (v, s, t) => ({ v, s, t: t || (typeof v === 'number' ? 'n' : 's') });
     const vazio = { v: '', t: 's' };
 
     const linhas = [
-      // Linha 1: empresa (A) + categorias (F–H)
-      [c(f.empresa, sEmpresa), vazio, vazio, vazio, vazio,
-       c('LUBRIFICAÇÃO', sCategoria), c('ABASTECIMENTO', sCategoria), c('LAVAGENS', sCategoria)],
-      // Linha 2: período
-      [c(`Período: ${periodo}`, sPeriodo), vazio, vazio, vazio, vazio, vazio, vazio, vazio],
+      // Linha 1: empresa (A–E mesclado) + categorias F–H
+      [cx(f.empresa, sEmpresa), vazio, vazio, vazio, vazio,
+       cx('LUBRIFICAÇÃO', sCategoria), cx('ABASTECIMENTO', sCategoria), cx('LAVAGENS', sCategoria)],
+      // Linha 2: período (A–E mesclado)
+      [cx(`Período: ${periodo}`, sPeriodo), vazio, vazio, vazio, vazio, vazio, vazio, vazio],
       // Linha 3: cabeçalho vermelho
-      [c('PLACA', sHeader), c('MODELO', sHeader), c('DESPESAS', sHeader),
-       c('A VISTA', sHeader), c('TOTAL', sHeader), vazio, vazio, vazio],
+      [cx('PLACA', sHeader), cx('MODELO', sHeader), cx('DESPESAS', sHeader),
+       cx('A VISTA', sHeader), cx('TOTAL', sHeader), vazio, vazio, vazio],
       // Dados
       ...f.placas.map(p => [
-        { v: p.placa,              t: 's' },
-        { v: p.modelo || '',       t: 's' },
+        { v: p.placa,                 t: 's' },
+        { v: p.modelo || '',          t: 's' },
         { v: Number(p.totalDespesas), s: sDadoNum, t: 'n', z: '#,##0.00' },
         vazio, vazio, vazio, vazio, vazio,
       ]),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(linhas);
+
+    // Mesclar A1:E1 e A2:E2
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+    ];
 
     ws['!cols'] = [
       { wch: 12.78 }, // PLACA
@@ -153,7 +157,7 @@ export default function Fechamentos() {
       { wch: 13    }, // ABASTECIMENTO
       { wch: 12.78 }, // LAVAGENS
     ];
-    ws['!rows'] = [{ hpt: 21.6 }, { hpt: 21.6 }];
+    ws['!rows'] = [{ hpt: 28 }, { hpt: 21.6 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Fechamento');
