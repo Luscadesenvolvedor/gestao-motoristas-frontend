@@ -988,26 +988,36 @@ export default function Levantamentos() {
           </div>
           <ResponsiveContainer width="100%" height={380}>
             <ComposedChart data={chartData} margin={{ top:16, right:16, left:0, bottom:4 }} barCategoryGap="25%" barGap={4}>
+              <defs>
+                <linearGradient id="gradFrota" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#065f46" stopOpacity={0.9} />
+                </linearGradient>
+                <linearGradient id="gradMeli" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#60a5fa" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.9} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" vertical={false} />
               <XAxis dataKey="mes" tick={{ fontSize:12, fill:'#94a3b8', fontWeight:500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize:11, fill:'#64748b' }} axisLine={false} tickLine={false} tickFormatter={fmtK} width={60} />
               <Tooltip content={<CustomTooltip fmtVal={fmt} />} cursor={{ fill:'rgba(255,255,255,0.04)' }} />
               {(!tipoFiltro || tipoFiltro === 'FROTA') && (
-                <Bar dataKey="FROTA" fill="#10b981" radius={[6,6,0,0]} maxBarSize={50} name="FROTA">
-                  <LabelList dataKey="FROTA" position="top" style={{ fontSize:10, fontWeight:700, fill:'#10b981' }} formatter={v => fmtK(v)} />
+                <Bar dataKey="FROTA" fill="url(#gradFrota)" radius={[8,8,0,0]} maxBarSize={50} name="FROTA">
+                  <LabelList dataKey="FROTA" position="top" style={{ fontSize:10, fontWeight:700, fill:'#6ee7b7' }} formatter={v => fmtK(v)} />
                   <LabelList dataKey="FROTA" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'FROTA'} />
                 </Bar>
               )}
               {(!tipoFiltro || tipoFiltro === 'MELI') && (
-                <Bar dataKey="MELI" fill="#3b82f6" radius={[6,6,0,0]} maxBarSize={50} name="OP. BAÚ">
-                  <LabelList dataKey="MELI" position="top" style={{ fontSize:10, fontWeight:700, fill:'#3b82f6' }} formatter={v => fmtK(v)} />
+                <Bar dataKey="MELI" fill="url(#gradMeli)" radius={[8,8,0,0]} maxBarSize={50} name="OP. BAÚ">
+                  <LabelList dataKey="MELI" position="top" style={{ fontSize:10, fontWeight:700, fill:'#93c5fd' }} formatter={v => fmtK(v)} />
                   <LabelList dataKey="MELI" position="insideBottom" style={{ fontSize:9, fontWeight:700, fill:'rgba(255,255,255,0.85)' }} formatter={() => 'OP. BAÚ'} />
                 </Bar>
               )}
               {tipoFiltro && (
-                <Line dataKey={tipoFiltro} type="monotone" stroke="#e2e8f0" strokeWidth={2}
-                  dot={{ fill:'#fff', stroke:'#e2e8f0', strokeWidth:2, r:4 }}
-                  activeDot={{ r:6, fill:'#fff' }} legendType="none" />
+                <Line dataKey={tipoFiltro} type="monotone" stroke="#fbbf24" strokeWidth={2}
+                  dot={{ fill:'#fbbf24', stroke:'#0f172a', strokeWidth:2, r:4 }}
+                  activeDot={{ r:6, fill:'#fbbf24' }} legendType="none" />
               )}
             </ComposedChart>
           </ResponsiveContainer>
