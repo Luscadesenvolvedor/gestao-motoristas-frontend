@@ -14,8 +14,9 @@ const UF_LABELS = {
 
 const FROTAS = ['FROTA', 'BAÚ'];
 const GEOJSON_URL = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson';
-const W = 520, H = 560;
-const EX = 7, EY = 13; // extrusion offset
+const W = 460, H = 500;    // tamanho do mapa projetado
+const PAD = 30;            // margem ao redor
+const EX = 6, EY = 11;    // extrusion offset
 
 function getTopColor(pct, maxPct) {
   if (!pct || !maxPct) return '#1e3a5f';
@@ -61,7 +62,7 @@ export default function MediasPrecoCombustivel() {
     fetch(GEOJSON_URL)
       .then(r => r.json())
       .then(geo => {
-        const proj = d3.geoMercator().fitSize([W, H], geo);
+        const proj = d3.geoMercator().fitExtent([[PAD, PAD], [W + PAD, H + PAD]], geo);
         const pathGen = d3.geoPath().projection(proj);
         const paths = geo.features
           .map(f => ({
@@ -151,19 +152,19 @@ export default function MediasPrecoCombustivel() {
           </div>
 
           {/* 3D perspective wrapper */}
-          <div style={{ perspective: '1000px', perspectiveOrigin: '50% 0%' }}>
+          <div style={{ perspective: '1200px', perspectiveOrigin: '50% 40%' }}>
             {geoLoading ? (
               <div style={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
                 Carregando mapa...
               </div>
             ) : (
               <svg
-                viewBox={`0 0 ${W + EX + 4} ${H + EY + 4}`}
+                viewBox={`0 0 ${W + PAD * 2 + EX} ${H + PAD * 2 + EY}`}
                 style={{
                   width: '100%',
                   display: 'block',
-                  transform: 'rotateX(32deg) scale(1.06)',
-                  transformOrigin: '50% 24%',
+                  transform: 'rotateX(22deg)',
+                  transformOrigin: '50% 50%',
                 }}
                 onMouseLeave={() => setHovUF(null)}
               >
