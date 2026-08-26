@@ -240,28 +240,10 @@ export default function MediasConsumo() {
   /* ─────────── render ─────────── */
   return (
     <div>
-      {/* ── BARRA SUPERIOR: título + import selector ── */}
+      {/* ── BARRA SUPERIOR: título ── */}
       <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'14px 20px', marginBottom:12 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          {/* título */}
-          <div style={{ flex:1 }}>
-            <h2 style={{ fontSize:17, fontWeight:700, color:'#1a1a2e', margin:0 }}>Médias de Consumo</h2>
-            <p style={{ fontSize:11, color:'#9ca3af', margin:0 }}>Dashboard de consumo por frota</p>
-          </div>
-
-          {/* seletor de importação */}
-          {importacoes.length > 0 && (
-            <select value={importacaoId}
-              onChange={e => { setImportacaoId(e.target.value); setPlaca(''); setBuscaPlaca(''); setMesSel(''); }}
-              style={{ padding:'5px 10px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:11, color:'#374151', background:'#f9fafb', maxWidth:260, cursor:'pointer', outline:'none' }}>
-              {importacoes.map(im => (
-                <option key={im.id} value={im.id}>
-                  {im.nomeArquivo.replace(/\.xlsx?$/i,'')} ({fmtDt(im.criadoEm?.slice(0,10))})
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        <h2 style={{ fontSize:17, fontWeight:700, color:'#1a1a2e', margin:0 }}>Médias de Consumo</h2>
+        <p style={{ fontSize:11, color:'#9ca3af', margin:0 }}>Dashboard de consumo por frota</p>
       </div>
 
       {/* ── LINHA DE FILTROS: frota pills + busca placa ── */}
