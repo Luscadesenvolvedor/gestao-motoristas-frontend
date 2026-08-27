@@ -476,7 +476,7 @@ function ConsultaPosto() {
 
           {/* Total Combustível */}
           <div style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
-            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL COMBUSTÍVEL</div>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL GASTO (DIESEL)</div>
             <div style={{ fontSize: 15, fontWeight: 800, color: D.orange }}>{fmtR(globalTotalGasto)}</div>
           </div>
 
