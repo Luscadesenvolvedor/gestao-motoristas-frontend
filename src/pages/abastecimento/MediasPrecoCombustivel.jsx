@@ -545,7 +545,8 @@ function ConsultaPosto() {
         </div>
 
 
-        {/* Gráfico — sempre visível, por ano */}
+        <div style={{ flex: 1 }} />
+        {/* Gráfico — sempre visível, por mês */}
         <div style={{ height: 220, flexShrink: 0, background: D.card, borderRadius: 14, padding: '12px 8px 8px', border: `1px solid ${D.border}` }}>
           {(loading || loadingGeral) ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted }}>Carregando...</div>
