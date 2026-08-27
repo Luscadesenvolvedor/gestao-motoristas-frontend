@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as d3 from 'd3';
 import api from '../../services/api';
+import {
+  ComposedChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 
 const UF_LABELS = {
   AC:'Acre', AL:'Alagoas', AM:'Amazonas', AP:'Amapá', BA:'Bahia',
@@ -293,8 +297,163 @@ function ModalRedes({ onClose }) {
 // Cores fixas para redes (cicla automaticamente)
 const REDE_CORES = ['#EB3238','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
 
+/* ─── Consulta Posto ─── */
+function ConsultaPosto() {
+  const [postos, setPostos]         = useState([]);
+  const [postoSel, setPostoSel]     = useState('');
+  const [dados, setDados]           = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [loadingPostos, setLoadingPostos] = useState(true);
+
+  useEffect(() => {
+    api.get('/medias-consumo/postos-lista')
+      .then(({ data }) => setPostos(data))
+      .catch(() => {})
+      .finally(() => setLoadingPostos(false));
+  }, []);
+
+  useEffect(() => {
+    if (!postoSel) return;
+    setLoading(true);
+    api.get('/medias-consumo/consulta-posto', { params: { posto: postoSel } })
+      .then(({ data }) => setDados(data))
+      .catch(() => setDados([]))
+      .finally(() => setLoading(false));
+  }, [postoSel]);
+
+  const totalLitros   = dados.reduce((a, d) => a + d.totalLitros, 0);
+  const totalGasto    = dados.reduce((a, d) => a + d.totalGasto, 0);
+  const avgPreco      = dados.length > 0 ? dados.reduce((a, d) => a + d.precoMedio, 0) / dados.length : 0;
+  const avgLitrosMes  = dados.length > 0 ? totalLitros / dados.length : 0;
+
+  // Score: preço baixo + litros alto = bom
+  let scoreLabel = null, scoreCor = '#94a3b8', scoreBg = '#f8fafc';
+  if (dados.length >= 2) {
+    // últimos 3 meses vs primeiros 3
+    const init = dados.slice(0, Math.min(3, dados.length));
+    const fim  = dados.slice(-Math.min(3, dados.length));
+    const precoSubiu   = fim.reduce((a, d) => a + d.precoMedio, 0)   / fim.length  > init.reduce((a, d) => a + d.precoMedio, 0)   / init.length;
+    const litrosSubiu  = fim.reduce((a, d) => a + d.totalLitros, 0)  / fim.length  > init.reduce((a, d) => a + d.totalLitros, 0)  / init.length;
+    if (!precoSubiu && litrosSubiu)       { scoreLabel = '✓ Tendência positiva — preço caindo, volume aumentando'; scoreCor = '#15803d'; scoreBg = '#f0fdf4'; }
+    else if (precoSubiu && !litrosSubiu)  { scoreLabel = '✗ Tendência negativa — preço subindo, volume caindo';   scoreCor = '#dc2626'; scoreBg = '#fef2f2'; }
+    else                                  { scoreLabel = '~ Tendência estável';                                    scoreCor = '#b45309'; scoreBg = '#fffbeb'; }
+  }
+
+  const fmtMes = (m) => {
+    if (!m) return m;
+    const [y, mo] = m.split('-');
+    const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return `${nomes[parseInt(mo) - 1]}/${y.slice(2)}`;
+  };
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+        <div style={{ fontWeight: 700, marginBottom: 6, color: '#1a1a2e' }}>{fmtMes(label)}</div>
+        {payload.map(p => (
+          <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
+            {p.name}: <strong>{p.dataKey === 'precoMedio' ? `R$ ${fmtN(p.value, 2)}/L` : `${fmtN(p.value, 0)} L`}</strong>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+      {/* Seletor de posto */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+        <select
+          value={postoSel}
+          onChange={e => setPostoSel(e.target.value)}
+          disabled={loadingPostos}
+          style={{ flex: 1, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#1a1a2e', outline: 'none', background: '#fff' }}
+        >
+          <option value="">{loadingPostos ? 'Carregando postos...' : 'Selecione um posto...'}</option>
+          {postos.map(p => <option key={p.posto} value={p.posto}>{p.posto}{p.redeNome ? ` — ${p.redeNome}` : ''}</option>)}
+        </select>
+      </div>
+
+      {!postoSel && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+          Selecione um posto para visualizar a análise
+        </div>
+      )}
+
+      {postoSel && loading && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+          Carregando...
+        </div>
+      )}
+
+      {postoSel && !loading && dados.length === 0 && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+          Nenhum dado de diesel encontrado para este posto
+        </div>
+      )}
+
+      {postoSel && !loading && dados.length > 0 && (
+        <>
+          {/* KPIs */}
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+            {[
+              { label: 'Preço médio/L',   val: `R$ ${fmtN(avgPreco, 2)}`,        cor: '#f59e0b' },
+              { label: 'Total litros',    val: `${fmtN(totalLitros, 0)} L`,        cor: '#3b82f6' },
+              { label: 'Total gasto',     val: fmtR(totalGasto),                   cor: '#EB3238' },
+              { label: 'Média litros/mês',val: `${fmtN(avgLitrosMes, 0)} L`,       cor: '#10b981' },
+            ].map(k => (
+              <div key={k.label} style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '10px 14px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${k.cor}` }}>
+                <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>{k.label.toUpperCase()}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>{k.val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Badge de tendência */}
+          {scoreLabel && (
+            <div style={{ padding: '8px 14px', borderRadius: 10, background: scoreBg, color: scoreCor, fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+              {scoreLabel}
+            </div>
+          )}
+
+          {/* Gráfico dual eixo */}
+          <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '16px 8px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', minHeight: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 6, paddingLeft: 12 }}>
+              Preço médio (R$/L) vs Volume abastecido (L) — Diesel · {postoSel}
+            </div>
+            <ResponsiveContainer width="100%" height="90%">
+              <ComposedChart data={dados} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="mes" tickFormatter={fmtMes} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                <YAxis yAxisId="left"  tick={{ fontSize: 10, fill: '#f59e0b' }}
+                  tickFormatter={v => `R$${fmtN(v, 2)}`}
+                  domain={['auto', 'auto']}
+                  width={64}
+                />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#3b82f6' }}
+                  tickFormatter={v => `${fmtN(v, 0)}L`}
+                  domain={['auto', 'auto']}
+                  width={60}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)"
+                  stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"
+                  stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ─── Página principal ─── */
 export default function MediasPrecoCombustivel() {
+  const [abaAtiva, setAbaAtiva]     = useState('mapa');
   const [dados, setDados]           = useState([]);
   const [loading, setLoading]       = useState(true);
   const [statePaths, setStatePaths] = useState([]);
@@ -376,7 +535,20 @@ export default function MediasPrecoCombustivel() {
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>Média Preço Combustível</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>Preço Combustível</h2>
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 4 }}>
+            {[{ id: 'mapa', label: '🗺 Mapa por Estado' }, { id: 'consulta', label: '🔍 Consulta Posto' }].map(t => (
+              <button key={t.id} onClick={() => setAbaAtiva(t.id)} style={{
+                padding: '5px 14px', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                background: abaAtiva === t.id ? '#fff' : 'transparent',
+                color: abaAtiva === t.id ? '#EB3238' : '#64748b',
+                boxShadow: abaAtiva === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+              }}>{t.label}</button>
+            ))}
+          </div>
+        </div>
         <button onClick={() => setModalRedes(true)} style={{
           padding: '6px 16px', borderRadius: 20, border: '1.5px solid #e2e8f0',
           background: '#fff', color: '#475569', fontSize: 12, fontWeight: 700,
@@ -386,7 +558,14 @@ export default function MediasPrecoCombustivel() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
+      {/* Consulta Posto */}
+      {abaAtiva === 'consulta' && (
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <ConsultaPosto />
+        </div>
+      )}
+
+      <div style={{ display: abaAtiva === 'mapa' ? 'flex' : 'none', gap: 16, flex: 1, minHeight: 0 }}>
         {/* ─── Mapa ─── */}
         <div
           ref={containerRef}
