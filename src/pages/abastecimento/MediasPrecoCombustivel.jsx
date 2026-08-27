@@ -360,7 +360,7 @@ export default function MediasPrecoCombustivel() {
         <div
           ref={containerRef}
           style={{
-            flex: '1 1 0',
+            flex: '0 0 38%',
             background: 'linear-gradient(160deg, #060d1a 0%, #0f172a 50%, #060d1a 100%)',
             borderRadius: 16, padding: '14px 16px 12px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
@@ -468,7 +468,7 @@ export default function MediasPrecoCombustivel() {
         </div>
 
         {/* ─── Painel direito ─── */}
-        <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
           {/* KPI */}
           <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238', flexShrink: 0 }}>
             <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL GASTO (DIESEL)</div>
