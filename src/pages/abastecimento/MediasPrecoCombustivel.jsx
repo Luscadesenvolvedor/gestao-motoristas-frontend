@@ -348,13 +348,22 @@ function ConsultaPosto() {
   }, []);
 
   useEffect(() => {
-    if (!postoSel) { setDadosChart([]); return; }
-    setLoading(true);
-    api.get('/medias-consumo/consulta-posto-anual', { params: { posto: postoSel } })
-      .then(({ data }) => setDadosChart(data))
-      .catch(() => setDadosChart([]))
-      .finally(() => setLoading(false));
-  }, [postoSel]);
+    if (postoSel) {
+      setLoading(true);
+      api.get('/medias-consumo/consulta-posto-anual', { params: { posto: postoSel } })
+        .then(({ data }) => setDadosChart(data))
+        .catch(() => setDadosChart([]))
+        .finally(() => setLoading(false));
+    } else if (redeSel) {
+      setLoading(true);
+      api.get('/medias-consumo/grafico-rede', { params: { redeId: redeSel.id } })
+        .then(({ data }) => setDadosChart(data))
+        .catch(() => setDadosChart([]))
+        .finally(() => setLoading(false));
+    } else {
+      setDadosChart([]);
+    }
+  }, [postoSel, redeSel]);
 
   const postosDaRede = redeSel ? todosPostos.filter(p => p.redeNome === redeSel.nome) : [];
   const redeStats    = rankingRedes.find(r => r.id === redeSel?.id);
@@ -541,10 +550,12 @@ function ConsultaPosto() {
           {(loading || loadingGeral) ? (
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted }}>Carregando...</div>
           ) : (() => {
-            const dados = postoSel ? dadosChart : dadosGeral;
+            const dados = (postoSel || redeSel) ? dadosChart : dadosGeral;
             const xKey  = 'mes';
             const titulo = postoSel
               ? <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>{postoSel}</span></>
+              : redeSel
+              ? <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>{redeSel.nome}</span></>
               : <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>Geral (todos os postos)</span></>;
             if (dados.length === 0) return (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted, fontSize: 13 }}>
