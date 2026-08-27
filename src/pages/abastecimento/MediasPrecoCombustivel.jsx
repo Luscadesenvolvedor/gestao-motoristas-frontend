@@ -14,9 +14,8 @@ const UF_LABELS = {
 
 const FROTAS = ['FROTA', 'BAÚ'];
 const GEOJSON_URL = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson';
-const W = 460, H = 500;    // tamanho do mapa projetado
-const PAD = 30;            // margem ao redor
-const EX = 6, EY = 11;    // extrusion offset
+const W = 460, H = 500;
+const PAD = 30;
 
 function getTopColor(pct, maxPct) {
   if (!pct || !maxPct) return '#1e3a5f';
@@ -29,17 +28,6 @@ function getTopColor(pct, maxPct) {
   if (t > 0.03) return '#34d399';
   return '#1d4b6a';
 }
-function getSideColor(pct, maxPct) {
-  if (!pct || !maxPct) return '#0a1525';
-  const t = pct / maxPct;
-  if (t > 0.75) return '#7f1d1d';
-  if (t > 0.55) return '#991b1b';
-  if (t > 0.38) return '#9a3412';
-  if (t > 0.22) return '#b45309';
-  if (t > 0.10) return '#d97706';
-  if (t > 0.03) return '#059669';
-  return '#0c2d42';
-}
 function fmtR(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
@@ -47,17 +35,274 @@ function fmtN(v, dec = 1) {
   return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
+/* ─── Modal Redes de Postos ─── */
+function ModalRedes({ onClose }) {
+  const [aba, setAba] = useState('redes');          // 'redes' | 'vincular'
+  const [redes, setRedes] = useState([]);
+  const [postos, setPostos] = useState([]);
+  const [novaRede, setNovaRede] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [busca, setBusca] = useState('');
+  const [selecionados, setSelecionados] = useState(new Set());
+  const [redeSel, setRedeSel] = useState('');
+  const [vinculando, setVinculando] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const carregarRedes = useCallback(async () => {
+    const { data } = await api.get('/medias-consumo/redes');
+    setRedes(data);
+  }, []);
+
+  const carregarPostos = useCallback(async () => {
+    const { data } = await api.get('/medias-consumo/postos-lista');
+    setPostos(data);
+  }, []);
+
+  useEffect(() => { carregarRedes(); }, [carregarRedes]);
+  useEffect(() => { if (aba === 'vincular') carregarPostos(); }, [aba, carregarPostos]);
+
+  async function criarRede() {
+    if (!novaRede.trim()) return;
+    setSalvando(true);
+    try {
+      const { data } = await api.post('/medias-consumo/redes', { nome: novaRede.trim() });
+      setRedes(r => [...r, data]);
+      setNovaRede('');
+      setMsg('Rede cadastrada!');
+    } catch (e) {
+      setMsg(e.response?.data?.error || 'Erro ao cadastrar');
+    } finally {
+      setSalvando(false);
+      setTimeout(() => setMsg(''), 2500);
+    }
+  }
+
+  async function excluirRede(id) {
+    if (!confirm('Excluir esta rede?')) return;
+    await api.delete(`/medias-consumo/redes/${id}`);
+    setRedes(r => r.filter(x => x.id !== id));
+  }
+
+  function toggleSel(posto) {
+    setSelecionados(prev => {
+      const n = new Set(prev);
+      n.has(posto) ? n.delete(posto) : n.add(posto);
+      return n;
+    });
+  }
+  function toggleTodos() {
+    const visiveis = postosFiltrados.map(p => p.posto);
+    const todosMarcados = visiveis.every(p => selecionados.has(p));
+    setSelecionados(prev => {
+      const n = new Set(prev);
+      if (todosMarcados) visiveis.forEach(p => n.delete(p));
+      else visiveis.forEach(p => n.add(p));
+      return n;
+    });
+  }
+
+  async function vincular() {
+    if (!selecionados.size) return setMsg('Selecione ao menos um posto');
+    if (!redeSel) return setMsg('Escolha uma rede');
+    setVinculando(true);
+    try {
+      await api.post('/medias-consumo/postos-vincular', {
+        postos: [...selecionados],
+        redeId: redeSel,
+      });
+      setMsg(`${selecionados.size} posto(s) vinculado(s)!`);
+      setSelecionados(new Set());
+      setRedeSel('');
+      await carregarPostos();
+    } catch (e) {
+      setMsg(e.response?.data?.error || 'Erro ao vincular');
+    } finally {
+      setVinculando(false);
+      setTimeout(() => setMsg(''), 3000);
+    }
+  }
+
+  const postosFiltrados = postos.filter(p =>
+    !busca || p.posto.toLowerCase().includes(busca.toLowerCase()) ||
+    (p.redeNome || '').toLowerCase().includes(busca.toLowerCase())
+  );
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 200,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: '#fff', borderRadius: 20, width: '92%', maxWidth: 720,
+        maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
+      }}>
+        {/* Modal header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1a1a2e' }}>Redes de Postos</h3>
+            <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 4 }}>
+              {[{ id:'redes', label:'Redes' }, { id:'vincular', label:'Vincular Postos' }].map(t => (
+                <button key={t.id} onClick={() => setAba(t.id)} style={{
+                  padding: '5px 14px', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  background: aba === t.id ? '#fff' : 'transparent',
+                  color:      aba === t.id ? '#EB3238' : '#64748b',
+                  boxShadow:  aba === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                }}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 20, color: '#94a3b8', lineHeight: 1 }}>×</button>
+        </div>
+
+        {/* Mensagem feedback */}
+        {msg && (
+          <div style={{ margin: '12px 24px 0', padding: '10px 16px', borderRadius: 10, background: msg.includes('Erro') || msg.includes('Selecione') || msg.includes('Escolha') ? '#fef2f2' : '#f0fdf4', color: msg.includes('Erro') || msg.includes('Selecione') || msg.includes('Escolha') ? '#dc2626' : '#16a34a', fontSize: 13, fontWeight: 600 }}>
+            {msg}
+          </div>
+        )}
+
+        {/* Aba Redes */}
+        {aba === 'redes' && (
+          <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+            {/* Adicionar rede */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+              <input
+                value={novaRede}
+                onChange={e => setNovaRede(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && criarRede()}
+                placeholder="Nome da rede (ex: Shell, Ipiranga, Petrobras...)"
+                style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, outline: 'none' }}
+              />
+              <button onClick={criarRede} disabled={salvando || !novaRede.trim()} style={{
+                padding: '10px 20px', borderRadius: 10, border: 'none', background: '#EB3238',
+                color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                opacity: !novaRede.trim() ? 0.5 : 1,
+              }}>Cadastrar</button>
+            </div>
+
+            {/* Lista de redes */}
+            {redes.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: 32 }}>Nenhuma rede cadastrada</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {redes.map(r => (
+                  <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{r.nome}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{r.total_postos} posto(s) vinculado(s)</div>
+                    </div>
+                    <button onClick={() => excluirRede(r.id)} style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      Excluir
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Aba Vincular Postos */}
+        {aba === 'vincular' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '16px 24px 20px' }}>
+            {/* Barra de ação */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+              <input
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar posto..."
+                style={{ flex: 1, minWidth: 200, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, outline: 'none' }}
+              />
+              <select
+                value={redeSel}
+                onChange={e => setRedeSel(e.target.value)}
+                style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#1a1a2e', outline: 'none', minWidth: 180 }}
+              >
+                <option value="">Selecionar rede...</option>
+                {redes.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
+              </select>
+              <button onClick={vincular} disabled={vinculando || !selecionados.size || !redeSel} style={{
+                padding: '9px 20px', borderRadius: 10, border: 'none',
+                background: selecionados.size && redeSel ? '#065f46' : '#f1f5f9',
+                color: selecionados.size && redeSel ? '#fff' : '#94a3b8',
+                fontSize: 13, fontWeight: 700, cursor: selecionados.size && redeSel ? 'pointer' : 'default',
+                transition: 'background 0.2s',
+              }}>
+                {vinculando ? 'Vinculando...' : `Vincular${selecionados.size ? ` (${selecionados.size})` : ''}`}
+              </button>
+            </div>
+
+            {/* Cabeçalho tabela */}
+            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 130px', gap: 8, padding: '6px 12px', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.8 }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox"
+                  checked={postosFiltrados.length > 0 && postosFiltrados.every(p => selecionados.has(p.posto))}
+                  onChange={toggleTodos}
+                  style={{ cursor: 'pointer' }}
+                />
+              </label>
+              <span>POSTO</span>
+              <span style={{ textAlign: 'right' }}>TOTAL DIESEL</span>
+              <span>REDE</span>
+            </div>
+
+            {/* Lista de postos */}
+            <div style={{ flex: 1, overflowY: 'auto', borderRadius: 12, border: '1px solid #f1f5f9' }}>
+              {postosFiltrados.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                  {postos.length === 0 ? 'Nenhum posto encontrado nos dados importados' : 'Nenhum posto encontrado para essa busca'}
+                </div>
+              ) : postosFiltrados.map((p, i) => (
+                <div key={p.posto} onClick={() => toggleSel(p.posto)} style={{
+                  display: 'grid', gridTemplateColumns: '36px 1fr 140px 130px', gap: 8,
+                  padding: '10px 12px', cursor: 'pointer',
+                  background: selecionados.has(p.posto) ? '#f0fdf4' : i % 2 === 0 ? '#fff' : '#fafafa',
+                  borderBottom: '1px solid #f1f5f9',
+                  transition: 'background 0.12s',
+                }}>
+                  <input type="checkbox" checked={selecionados.has(p.posto)} onChange={() => toggleSel(p.posto)}
+                    onClick={e => e.stopPropagation()} style={{ cursor: 'pointer' }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>{p.posto}</div>
+                    <div style={{ fontSize: 10, color: '#94a3b8' }}>{p.totalRegistros} abastecimentos</div>
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', alignSelf: 'center' }}>
+                    {fmtR(p.totalGasto)}
+                  </div>
+                  <div style={{ alignSelf: 'center' }}>
+                    {p.redeNome ? (
+                      <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+                        {p.redeNome}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#cbd5e1', fontSize: 11 }}>—</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+              {postosFiltrados.length} posto(s) exibido(s) · {selecionados.size} selecionado(s)
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Página principal ─── */
 export default function MediasPrecoCombustivel() {
-  const [frotaSel, setFrotaSel] = useState('');
-  const [dados, setDados] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [statePaths, setStatePaths] = useState([]); // [{ sigla, d, centroid }]
+  const [frotaSel, setFrotaSel]   = useState('');
+  const [dados, setDados]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [statePaths, setStatePaths] = useState([]);
   const [geoLoading, setGeoLoading] = useState(true);
-  const [hovUF, setHovUF] = useState(null);
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [hovUF, setHovUF]         = useState(null);
+  const [mouse, setMouse]         = useState({ x: 0, y: 0 });
+  const [modalRedes, setModalRedes] = useState(false);
   const containerRef = useRef();
 
-  // Fetch + project GeoJSON once
   useEffect(() => {
     fetch(GEOJSON_URL)
       .then(r => r.json())
@@ -93,46 +338,50 @@ export default function MediasPrecoCombustivel() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const byUF = Object.fromEntries(dados.map(d => [d.uf, d]));
-  const maxPct = dados.length > 0 ? Math.max(...dados.map(d => d.percentual)) : 1;
+  const byUF    = Object.fromEntries(dados.map(d => [d.uf, d]));
+  const maxPct  = dados.length > 0 ? Math.max(...dados.map(d => d.percentual)) : 1;
   const totalGasto = dados.reduce((a, d) => a + d.totalGasto, 0);
   const hovData = hovUF ? byUF[hovUF] : null;
 
   return (
     <div style={{ padding: '24px 28px', fontFamily: 'Inter, sans-serif', background: '#f8fafc', minHeight: '100vh' }}>
+      {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} />}
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>Média Preço Combustível</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={() => setModalRedes(true)} style={{
+            padding: '7px 18px', borderRadius: 20, border: '1.5px solid #e2e8f0',
+            background: '#fff', color: '#475569', fontSize: 12, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            🏪 Redes de Postos
+          </button>
           {FROTAS.map(f => {
             const bgAtivo = f === 'FROTA' ? '#065f46' : '#EB3238';
             return (
-              <button key={f} onClick={() => setFrotaSel(frotaSel === f ? '' : f)}
-                style={{
-                  padding: '6px 20px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  background: frotaSel === f ? bgAtivo : '#f1f5f9',
-                  color:      frotaSel === f ? '#fff'   : '#64748b',
-                  boxShadow:  frotaSel === f ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-                }}>
-                {f}
-              </button>
+              <button key={f} onClick={() => setFrotaSel(frotaSel === f ? '' : f)} style={{
+                padding: '6px 20px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                background: frotaSel === f ? bgAtivo : '#f1f5f9',
+                color:      frotaSel === f ? '#fff'   : '#64748b',
+                boxShadow:  frotaSel === f ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+              }}>{f}</button>
             );
           })}
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        {/* ─── Mapa 3D ─── */}
+        {/* ─── Mapa ─── */}
         <div
           ref={containerRef}
           style={{
             flex: '1 1 460px',
             background: 'linear-gradient(160deg, #060d1a 0%, #0f172a 50%, #060d1a 100%)',
-            borderRadius: 20,
-            padding: '24px 20px 28px',
+            borderRadius: 20, padding: '24px 20px 28px',
             boxShadow: '0 12px 48px rgba(0,0,0,0.45)',
-            position: 'relative',
-            overflow: 'hidden',
+            position: 'relative', overflow: 'hidden',
           }}
           onMouseMove={e => {
             if (!containerRef.current) return;
@@ -140,18 +389,15 @@ export default function MediasPrecoCombustivel() {
             setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
           }}
         >
-          {/* dot grid bg */}
           <div style={{
             position: 'absolute', inset: 0, opacity: 0.035,
             backgroundImage: 'radial-gradient(#60a5fa 1px, transparent 1px)',
             backgroundSize: '28px 28px', pointerEvents: 'none',
           }} />
-
           <div style={{ color: '#475569', fontSize: 10, marginBottom: 14, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-            Abastecimento por Estado — % do gasto total
+            Abastecimento por Estado — % do gasto total (Diesel)
           </div>
 
-          {/* 3D perspective wrapper */}
           <div style={{ perspective: '1200px', perspectiveOrigin: '50% 40%' }}>
             {geoLoading ? (
               <div style={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
@@ -159,23 +405,17 @@ export default function MediasPrecoCombustivel() {
               </div>
             ) : (
               <svg
-                viewBox={`0 0 ${W + PAD * 2 + EX} ${H + PAD * 2 + EY}`}
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  transform: 'rotateX(22deg)',
-                  transformOrigin: '50% 50%',
-                }}
+                viewBox={`0 0 ${W + PAD * 2} ${H + PAD * 2}`}
+                style={{ width: '100%', display: 'block', transform: 'rotateX(22deg)', transformOrigin: '50% 50%' }}
                 onMouseLeave={() => setHovUF(null)}
               >
-                {/* ── Estados ── */}
                 {statePaths.map(({ sigla, d, centroid }) => {
-                  const info = byUF[sigla];
+                  const info  = byUF[sigla];
                   const isHov = hovUF === sigla;
                   const [cx, cy] = centroid || [0, 0];
                   const validC = !isNaN(cx) && !isNaN(cy);
                   return (
-                    <g key={`top-${sigla}`}>
+                    <g key={sigla}>
                       <path
                         d={d}
                         fill={isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct)}
@@ -206,21 +446,17 @@ export default function MediasPrecoCombustivel() {
             )}
           </div>
 
-          {/* Floating tooltip */}
+          {/* Tooltip */}
           {hovUF && hovData && (
             <div style={{
               position: 'absolute',
               left: Math.min(mouse.x + 16, 260),
               top: Math.max(mouse.y - 90, 50),
               background: 'rgba(2,8,23,0.97)',
-              border: '1px solid #1e3a5f',
-              borderRadius: 14,
-              padding: '14px 18px',
-              fontSize: 12,
+              border: '1px solid #1e3a5f', borderRadius: 14,
+              padding: '14px 18px', fontSize: 12,
               boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-              minWidth: 210,
-              pointerEvents: 'none',
-              zIndex: 30,
+              minWidth: 210, pointerEvents: 'none', zIndex: 30,
             }}>
               <div style={{ fontWeight: 800, color: '#f0f9ff', fontSize: 13, marginBottom: 10 }}>
                 {hovUF} — {UF_LABELS[hovUF] || ''}
@@ -240,30 +476,21 @@ export default function MediasPrecoCombustivel() {
             </div>
           )}
 
-          {/* Gradient legend */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
             <span style={{ color: '#475569', fontSize: 9, fontWeight: 700 }}>BAIXO</span>
-            <div style={{
-              flex: 1, height: 6, borderRadius: 4,
-              background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)',
-            }} />
+            <div style={{ flex: 1, height: 6, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
             <span style={{ color: '#475569', fontSize: 9, fontWeight: 700 }}>ALTO</span>
           </div>
         </div>
 
-        {/* ─── Right panel ─── */}
+        {/* ─── Painel direito ─── */}
         <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* KPI */}
-          <div style={{
-            background: '#fff', borderRadius: 16, padding: '18px 20px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238',
-          }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>TOTAL GASTO</div>
+          <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>TOTAL GASTO (DIESEL)</div>
             <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1a2e' }}>{loading ? '—' : fmtR(totalGasto)}</div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{dados.length} estado(s) com abastecimento</div>
           </div>
 
-          {/* Ranking */}
           <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 13, color: '#1a1a2e' }}>
               Ranking por Estado
@@ -277,19 +504,10 @@ export default function MediasPrecoCombustivel() {
                 <div key={d.uf}
                   onMouseEnter={() => setHovUF(d.uf)}
                   onMouseLeave={() => setHovUF(null)}
-                  style={{
-                    padding: '10px 20px', borderBottom: '1px solid #f8fafc',
-                    background: hovUF === d.uf ? '#f0f9ff' : '#fff',
-                    cursor: 'default', transition: 'background 0.15s',
-                  }}>
+                  style={{ padding: '10px 20px', borderBottom: '1px solid #f8fafc', background: hovUF === d.uf ? '#f0f9ff' : '#fff', cursor: 'default', transition: 'background 0.15s' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 26, height: 26, borderRadius: 8,
-                        background: getTopColor(d.percentual, maxPct),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0,
-                      }}>{i + 1}</div>
+                      <div style={{ width: 26, height: 26, borderRadius: 8, background: getTopColor(d.percentual, maxPct), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{i + 1}</div>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1a2e' }}>{d.uf}</div>
                         <div style={{ fontSize: 10, color: '#94a3b8' }}>{UF_LABELS[d.uf] || ''}</div>
@@ -301,12 +519,7 @@ export default function MediasPrecoCombustivel() {
                     </div>
                   </div>
                   <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%', borderRadius: 4,
-                      width: `${(d.percentual / maxPct) * 100}%`,
-                      background: getTopColor(d.percentual, maxPct),
-                      transition: 'width 0.5s ease',
-                    }} />
+                    <div style={{ height: '100%', borderRadius: 4, width: `${(d.percentual / maxPct) * 100}%`, background: getTopColor(d.percentual, maxPct), transition: 'width 0.5s ease' }} />
                   </div>
                   <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 10, color: '#94a3b8' }}>
                     <span>{fmtN(d.totalLitros, 0)} L</span>
