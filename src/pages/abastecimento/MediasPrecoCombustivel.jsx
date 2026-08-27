@@ -12,7 +12,6 @@ const UF_LABELS = {
   TO:'Tocantins',
 };
 
-const FROTAS = ['FROTA', 'BAÚ'];
 const GEOJSON_URL = 'https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson';
 const W = 460, H = 500;
 const PAD = 30;
@@ -293,7 +292,6 @@ function ModalRedes({ onClose }) {
 
 /* ─── Página principal ─── */
 export default function MediasPrecoCombustivel() {
-  const [frotaSel, setFrotaSel]   = useState('');
   const [dados, setDados]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [statePaths, setStatePaths] = useState([]);
@@ -325,9 +323,7 @@ export default function MediasPrecoCombustivel() {
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (frotaSel) params.frota = frotaSel;
-      const { data } = await api.get('/medias-consumo/por-uf', { params });
+      const { data } = await api.get('/medias-consumo/por-uf');
       setDados(data);
     } catch (err) {
       console.error(err);
@@ -358,17 +354,6 @@ export default function MediasPrecoCombustivel() {
           }}>
             🏪 Redes de Postos
           </button>
-          {FROTAS.map(f => {
-            const bgAtivo = f === 'FROTA' ? '#065f46' : '#EB3238';
-            return (
-              <button key={f} onClick={() => setFrotaSel(frotaSel === f ? '' : f)} style={{
-                padding: '6px 20px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                background: frotaSel === f ? bgAtivo : '#f1f5f9',
-                color:      frotaSel === f ? '#fff'   : '#64748b',
-                boxShadow:  frotaSel === f ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-              }}>{f}</button>
-            );
-          })}
         </div>
       </div>
 
