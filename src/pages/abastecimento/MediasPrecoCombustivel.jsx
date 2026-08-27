@@ -573,8 +573,10 @@ function ConsultaPosto() {
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: D.blue }} tickFormatter={v => `${fmtN(v,0)}L`} domain={['auto','auto']} width={52} axisLine={false} tickLine={false} />
                     <Tooltip content={<DkTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 10, color: D.muted }} />
-                    <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)" stroke={D.orange} strokeWidth={2.5} dot={{ r: 3, fill: D.orange }} activeDot={{ r: 5 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"          stroke={D.blue}   strokeWidth={2.5} dot={{ r: 3, fill: D.blue }}   activeDot={{ r: 5 }} />
+                    <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)" stroke={D.orange} strokeWidth={2.5} dot={{ r: 3, fill: D.orange }} activeDot={{ r: 5 }}
+                      label={{ position: 'top', fontSize: 8, fill: D.orange, formatter: v => `R$${fmtN(v,2)}` }} />
+                    <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"          stroke={D.blue}   strokeWidth={2.5} dot={{ r: 3, fill: D.blue }}   activeDot={{ r: 5 }}
+                      label={{ position: 'bottom', fontSize: 8, fill: D.blue, formatter: v => `${fmtN(v,0)}L` }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </>
