@@ -389,71 +389,65 @@ function ConsultaPosto() {
     );
   };
 
-  const melhores = ranking.slice(0, 5);
-  const piores   = ranking.slice(-5).reverse();
+  const melhores = ranking.slice(0, 3);
+  const piores   = ranking.slice(-3).reverse();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
 
       {/* Seletor período */}
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
         {PERIODOS.map(p => (
           <button key={p.id} onClick={() => setPeriodo(p.id)} style={{
-            padding: '5px 12px', borderRadius: 20, border: '1.5px solid',
+            padding: '4px 10px', borderRadius: 20, border: '1.5px solid',
             borderColor: periodo === p.id ? '#EB3238' : '#e2e8f0',
             background: periodo === p.id ? '#EB3238' : '#fff',
             color: periodo === p.id ? '#fff' : '#64748b',
-            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            fontSize: 10, fontWeight: 600, cursor: 'pointer',
           }}>{p.label}</button>
         ))}
       </div>
 
       {/* Ranking melhores / piores */}
-      <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
         {/* Melhores preços */}
-        <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '10px 14px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #10b981' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#10b981', letterSpacing: 1, marginBottom: 8 }}>✓ MELHORES PREÇOS (DIESEL)</div>
+        <div style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '8px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #10b981' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: '#10b981', letterSpacing: 1, marginBottom: 5 }}>✓ MELHORES PREÇOS (DIESEL)</div>
           {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : melhores.map((p, i) => (
             <div key={p.posto} onClick={() => setPostoSel(p.posto)}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: i < melhores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#dcfce7', color: '#15803d', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#10b981' : '#1a1a2e', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
-                  {p.redeNome && <div style={{ fontSize: 9, color: '#94a3b8' }}>{p.redeNome}</div>}
-                </div>
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: i < melhores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#dcfce7', color: '#15803d', fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#10b981' : '#1a1a2e', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#10b981', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
             </div>
           ))}
         </div>
 
         {/* Piores preços */}
-        <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '10px 14px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #EB3238' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#EB3238', letterSpacing: 1, marginBottom: 8 }}>✗ PIORES PREÇOS (DIESEL)</div>
+        <div style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '8px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #EB3238' }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: '#EB3238', letterSpacing: 1, marginBottom: 5 }}>✗ PIORES PREÇOS (DIESEL)</div>
           {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : piores.map((p, i) => (
             <div key={p.posto} onClick={() => setPostoSel(p.posto)}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: i < piores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fef2f2', color: '#dc2626', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#EB3238' : '#1a1a2e', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
-                  {p.redeNome && <div style={{ fontSize: 9, color: '#94a3b8' }}>{p.redeNome}</div>}
-                </div>
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: i < piores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#fef2f2', color: '#dc2626', fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#EB3238' : '#1a1a2e', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
               </div>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#EB3238', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#EB3238', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Seletor de posto */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
         <select
           value={postoSel}
           onChange={e => setPostoSel(e.target.value)}
           disabled={loadingPostos}
-          style={{ flex: 1, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#1a1a2e', outline: 'none', background: '#fff' }}
+          style={{ flex: 1, padding: '7px 12px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 12, color: '#1a1a2e', outline: 'none', background: '#fff' }}
         >
           <option value="">{loadingPostos ? 'Carregando postos...' : 'Selecione um posto para ver o histórico...'}</option>
           {postos.map(p => <option key={p.posto} value={p.posto}>{p.posto}{p.redeNome ? ` — ${p.redeNome}` : ''}</option>)}
@@ -480,27 +474,25 @@ function ConsultaPosto() {
 
       {postoSel && !loading && dados.length > 0 && (
         <>
-          {/* KPIs */}
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          {/* KPIs + tendência em linha */}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'stretch' }}>
             {[
-              { label: 'Preço médio/L',   val: `R$ ${fmtN(avgPreco, 2)}`,        cor: '#f59e0b' },
-              { label: 'Total litros',    val: `${fmtN(totalLitros, 0)} L`,        cor: '#3b82f6' },
-              { label: 'Total gasto',     val: fmtR(totalGasto),                   cor: '#EB3238' },
-              { label: 'Média litros/mês',val: `${fmtN(avgLitrosMes, 0)} L`,       cor: '#10b981' },
+              { label: 'Preço médio/L',    val: `R$ ${fmtN(avgPreco, 2)}`,   cor: '#f59e0b' },
+              { label: 'Total litros',     val: `${fmtN(totalLitros, 0)} L`,  cor: '#3b82f6' },
+              { label: 'Total gasto',      val: fmtR(totalGasto),              cor: '#EB3238' },
+              { label: 'Média litros/mês', val: `${fmtN(avgLitrosMes, 0)} L`, cor: '#10b981' },
             ].map(k => (
-              <div key={k.label} style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '10px 14px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${k.cor}` }}>
-                <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>{k.label.toUpperCase()}</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>{k.val}</div>
+              <div key={k.label} style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '6px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${k.cor}` }}>
+                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.8, marginBottom: 2 }}>{k.label.toUpperCase()}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#1a1a2e' }}>{k.val}</div>
               </div>
             ))}
+            {scoreLabel && (
+              <div style={{ flex: 1.2, padding: '6px 10px', borderRadius: 10, background: scoreBg, color: scoreCor, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+                {scoreLabel}
+              </div>
+            )}
           </div>
-
-          {/* Badge de tendência */}
-          {scoreLabel && (
-            <div style={{ padding: '8px 14px', borderRadius: 10, background: scoreBg, color: scoreCor, fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
-              {scoreLabel}
-            </div>
-          )}
 
           {/* Gráfico dual eixo */}
           <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '16px 8px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', minHeight: 0 }}>
