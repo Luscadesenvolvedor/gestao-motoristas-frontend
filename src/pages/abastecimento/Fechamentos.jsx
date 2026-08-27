@@ -131,7 +131,13 @@ export default function Fechamentos() {
       [cx('PLACA', sHeader), cx('MODELO', sHeader), cx('DESPESAS', sHeader),
        cx('A VISTA', sHeader), cx('TOTAL', sHeader), vazio, vazio, vazio],
       // Dados (ordenados alfabeticamente por placa)
-      ...[...f.placas].sort((a, b) => (a.placa || '').localeCompare(b.placa || '')).map(p => [
+      ...[...f.placas]
+        .sort((a, b) => {
+          const pa = (a.placa || '').toUpperCase();
+          const pb = (b.placa || '').toUpperCase();
+          return pa < pb ? -1 : pa > pb ? 1 : 0;
+        })
+        .map(p => [
         { v: p.placa,                 t: 's' },
         { v: p.modelo || '',          t: 's' },
         { v: Number(p.totalDespesas), s: sDadoNum, t: 'n', z: '#,##0.00' },
