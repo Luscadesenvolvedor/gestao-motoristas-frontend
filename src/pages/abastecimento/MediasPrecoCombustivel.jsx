@@ -480,29 +480,6 @@ function ConsultaPosto() {
           </div>
         )}
 
-        {/* Ranking melhores / piores */}
-        {!postoSel && (
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-            {[
-              { titulo: '✓ MELHORES PREÇOS', cor: D.green,  items: melhores },
-              { titulo: '✗ PIORES PREÇOS',   cor: D.red,    items: piores },
-            ].map(({ titulo, cor, items }) => (
-              <div key={titulo} style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 12px', border: `1px solid ${D.border}` }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: cor, letterSpacing: 1, marginBottom: 6 }}>{titulo} (DIESEL)</div>
-                {items.map((p, i) => (
-                  <div key={p.posto} onClick={() => { setPostoSel(p.posto); }}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: i < items.length - 1 ? `1px solid ${D.border}` : 'none', cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: cor, width: 14, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
-                      <div style={{ fontSize: 10, color: D.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: cor, flexShrink: 0, marginLeft: 6 }}>R$ {fmtN(p.precoMedio, 2)}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Gráfico */}
         {postoSel && (
