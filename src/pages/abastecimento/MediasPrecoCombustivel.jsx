@@ -319,23 +319,11 @@ function ConsultaPosto() {
   const [resumoGeral, setResumoGeral] = useState({ totalGasto: 0, totalLitros: 0, melhorPreco: 0, piorPreco: 0, precoMedio: 0 });
   const [redeSel, setRedeSel]       = useState(null);
   const [postoSel, setPostoSel]     = useState('');
-  const [dadosChart, setDadosChart] = useState([]);
-  const [loading, setLoading]       = useState(false);
-  const [periodo, setPeriodo]       = useState('3m');
-
-  const PERIODOS = [
-    { id: '1m', label: '1M' }, { id: '3m', label: '3M' },
-    { id: '6m', label: '6M' }, { id: '12m', label: '1A' },
-    { id: 'all', label: 'Tudo' },
-  ];
-
-  function calcDatas(p) {
-    if (p === 'all') return {};
-    const fim = new Date(), ini = new Date();
-    ini.setMonth(ini.getMonth() - ({ '1m':1,'3m':3,'6m':6,'12m':12 }[p]));
-    const fmt = d => d.toISOString().slice(0, 10);
-    return { dataInicio: fmt(ini), dataFim: fmt(fim) };
-  }
+  const [dadosChart, setDadosChart]       = useState([]);
+  const [dadosGeral, setDadosGeral]       = useState([]);
+  const [loading, setLoading]             = useState(false);
+  const [loadingGeral, setLoadingGeral]   = useState(true);
+  const [periodo]                         = useState('3m'); // mantido para ranking
 
   useEffect(() => {
     Promise.all([
@@ -343,28 +331,30 @@ function ConsultaPosto() {
       api.get('/medias-consumo/ranking-redes'),
       api.get('/medias-consumo/postos-lista'),
       api.get('/medias-consumo/resumo-diesel'),
-    ]).then(([r1, r2, r3, r4]) => {
+      api.get('/medias-consumo/grafico-anual'),
+    ]).then(([r1, r2, r3, r4, r5]) => {
       setRedes(r1.data);
       setRankingRedes(r2.data);
       setTodosPostos(r3.data);
       setResumoGeral(r4.data);
-    }).catch(() => {});
+      setDadosGeral(r5.data);
+    }).catch(() => {}).finally(() => setLoadingGeral(false));
   }, []);
 
   useEffect(() => {
-    api.get('/medias-consumo/ranking-postos', { params: calcDatas(periodo) })
+    api.get('/medias-consumo/ranking-postos')
       .then(({ data }) => setRankingPostos(data))
       .catch(() => {});
-  }, [periodo]);
+  }, []);
 
   useEffect(() => {
-    if (!postoSel) return;
+    if (!postoSel) { setDadosChart([]); return; }
     setLoading(true);
-    api.get('/medias-consumo/consulta-posto', { params: { posto: postoSel, ...calcDatas(periodo) } })
+    api.get('/medias-consumo/consulta-posto-anual', { params: { posto: postoSel } })
       .then(({ data }) => setDadosChart(data))
       .catch(() => setDadosChart([]))
       .finally(() => setLoading(false));
-  }, [postoSel, periodo]);
+  }, [postoSel]);
 
   const postosDaRede = redeSel ? todosPostos.filter(p => p.redeNome === redeSel.nome) : [];
   const redeStats    = rankingRedes.find(r => r.id === redeSel?.id);
@@ -390,7 +380,7 @@ function ConsultaPosto() {
     if (!active || !payload?.length) return null;
     return (
       <div style={{ background: D.card2, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 12 }}>
-        <div style={{ fontWeight: 700, marginBottom: 6, color: D.text }}>{fmtMes(label)}</div>
+        <div style={{ fontWeight: 700, marginBottom: 6, color: D.text }}>{label}</div>
         {payload.map(p => (
           <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
             {p.name}: <strong>{p.dataKey === 'precoMedio' ? `R$ ${fmtN(p.value, 2)}/L` : `${fmtN(p.value, 0)} L`}</strong>
@@ -546,32 +536,28 @@ function ConsultaPosto() {
         </div>
 
 
-        {/* Gráfico */}
-        {postoSel && (
-          <div style={{ flex: 1, background: D.card, borderRadius: 14, padding: '12px 8px 8px', border: `1px solid ${D.border}`, minHeight: 0 }}>
-            {loading ? (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted }}>Carregando...</div>
-            ) : dadosChart.length === 0 ? (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted, fontSize: 13 }}>Nenhum dado de diesel para este posto</div>
-            ) : (
+        {/* Gráfico — sempre visível, por ano */}
+        <div style={{ flex: 1, background: D.card, borderRadius: 14, padding: '12px 8px 8px', border: `1px solid ${D.border}`, minHeight: 0 }}>
+          {(loading || loadingGeral) ? (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted }}>Carregando...</div>
+          ) : (() => {
+            const dados = postoSel ? dadosChart : dadosGeral;
+            const xKey  = 'ano';
+            const titulo = postoSel
+              ? <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>{postoSel}</span></>
+              : <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>Geral (todos os postos)</span></>;
+            if (dados.length === 0) return (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted, fontSize: 13 }}>
+                Nenhum dado disponível
+              </div>
+            );
+            return (
               <>
-                <div style={{ fontSize: 11, fontWeight: 700, color: D.muted, marginBottom: 6, paddingLeft: 8 }}>
-                  Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>{postoSel}</span>
-                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: D.muted, marginBottom: 6, paddingLeft: 8 }}>{titulo}</div>
                 <ResponsiveContainer width="100%" height="90%">
-                  <ComposedChart data={dadosChart} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
-                    <defs>
-                      <linearGradient id="gradPreco" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={D.orange} stopOpacity={0.2} />
-                        <stop offset="95%" stopColor={D.orange} stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="gradVol" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={D.blue} stopOpacity={0.2} />
-                        <stop offset="95%" stopColor={D.blue} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
+                  <ComposedChart data={dados} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="mes" tickFormatter={fmtMes} tick={{ fontSize: 9, fill: D.muted }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey={xKey} tick={{ fontSize: 9, fill: D.muted }} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="left"  tick={{ fontSize: 9, fill: D.orange }} tickFormatter={v => `R$${fmtN(v,2)}`} domain={['auto','auto']} width={58} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: D.blue }} tickFormatter={v => `${fmtN(v,0)}L`} domain={['auto','auto']} width={52} axisLine={false} tickLine={false} />
                     <Tooltip content={<DkTooltip />} />
@@ -581,15 +567,9 @@ function ConsultaPosto() {
                   </ComposedChart>
                 </ResponsiveContainer>
               </>
-            )}
-          </div>
-        )}
-
-        {!postoSel && !redeSel && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted, fontSize: 13 }}>
-            Selecione uma rede na barra lateral para começar
-          </div>
-        )}
+            );
+          })()}
+        </div>
       </div>
     </div>
   );
