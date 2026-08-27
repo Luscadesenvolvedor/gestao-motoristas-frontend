@@ -130,8 +130,8 @@ export default function Fechamentos() {
       // Linha 3: cabeçalho vermelho
       [cx('PLACA', sHeader), cx('MODELO', sHeader), cx('DESPESAS', sHeader),
        cx('A VISTA', sHeader), cx('TOTAL', sHeader), vazio, vazio, vazio],
-      // Dados
-      ...f.placas.map(p => [
+      // Dados (ordenados alfabeticamente por placa)
+      ...[...f.placas].sort((a, b) => (a.placa || '').localeCompare(b.placa || '')).map(p => [
         { v: p.placa,                 t: 's' },
         { v: p.modelo || '',          t: 's' },
         { v: Number(p.totalDespesas), s: sDadoNum, t: 'n', z: '#,##0.00' },
