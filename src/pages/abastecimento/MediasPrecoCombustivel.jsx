@@ -304,12 +304,18 @@ function ConsultaPosto() {
   const [dados, setDados]           = useState([]);
   const [loading, setLoading]       = useState(false);
   const [loadingPostos, setLoadingPostos] = useState(true);
+  const [ranking, setRanking]       = useState([]);
+  const [loadingRanking, setLoadingRanking] = useState(true);
 
   useEffect(() => {
     api.get('/medias-consumo/postos-lista')
       .then(({ data }) => setPostos(data))
       .catch(() => {})
       .finally(() => setLoadingPostos(false));
+    api.get('/medias-consumo/ranking-postos')
+      .then(({ data }) => setRanking(data))
+      .catch(() => {})
+      .finally(() => setLoadingRanking(false));
   }, []);
 
   useEffect(() => {
@@ -360,8 +366,51 @@ function ConsultaPosto() {
     );
   };
 
+  const melhores = ranking.slice(0, 5);
+  const piores   = ranking.slice(-5).reverse();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+
+      {/* Ranking melhores / piores */}
+      <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+        {/* Melhores preços */}
+        <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '10px 14px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #10b981' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#10b981', letterSpacing: 1, marginBottom: 8 }}>✓ MELHORES PREÇOS (DIESEL)</div>
+          {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : melhores.map((p, i) => (
+            <div key={p.posto} onClick={() => setPostoSel(p.posto)}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: i < melhores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#dcfce7', color: '#15803d', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#10b981' : '#1a1a2e', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
+                  {p.redeNome && <div style={{ fontSize: 9, color: '#94a3b8' }}>{p.redeNome}</div>}
+                </div>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#10b981', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Piores preços */}
+        <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '10px 14px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #EB3238' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#EB3238', letterSpacing: 1, marginBottom: 8 }}>✗ PIORES PREÇOS (DIESEL)</div>
+          {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : piores.map((p, i) => (
+            <div key={p.posto} onClick={() => setPostoSel(p.posto)}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: i < piores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fef2f2', color: '#dc2626', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#EB3238' : '#1a1a2e', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
+                  {p.redeNome && <div style={{ fontSize: 9, color: '#94a3b8' }}>{p.redeNome}</div>}
+                </div>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#EB3238', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Seletor de posto */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
         <select
@@ -370,7 +419,7 @@ function ConsultaPosto() {
           disabled={loadingPostos}
           style={{ flex: 1, padding: '9px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#1a1a2e', outline: 'none', background: '#fff' }}
         >
-          <option value="">{loadingPostos ? 'Carregando postos...' : 'Selecione um posto...'}</option>
+          <option value="">{loadingPostos ? 'Carregando postos...' : 'Selecione um posto para ver o histórico...'}</option>
           {postos.map(p => <option key={p.posto} value={p.posto}>{p.posto}{p.redeNome ? ` — ${p.redeNome}` : ''}</option>)}
         </select>
       </div>
