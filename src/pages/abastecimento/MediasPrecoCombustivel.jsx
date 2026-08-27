@@ -397,13 +397,36 @@ function ConsultaPosto() {
     );
   };
 
-  // KPIs globais calculados de rankingPostos (todos os postos)
-  const globalTotalGasto  = rankingPostos.reduce((a, p) => a + p.totalGasto, 0);
-  const globalTotalLitros = rankingPostos.reduce((a, p) => a + p.totalLitros, 0);
-  const precos = rankingPostos.filter(p => p.precoMedio > 0).map(p => p.precoMedio);
-  const globalMelhorPreco = precos.length > 0 ? Math.min(...precos) : 0;
-  const globalPiorPreco   = precos.length > 0 ? Math.max(...precos) : 0;
-  const globalPrecoMedio  = precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0;
+  // Base dos KPIs: posto selecionado > rede selecionada > global
+  const kpiBase = (() => {
+    if (postoSel && dadosChart.length > 0) {
+      // dados do posto selecionado
+      const tGasto  = dadosChart.reduce((a, d) => a + d.totalGasto, 0);
+      const tLitros = dadosChart.reduce((a, d) => a + d.totalLitros, 0);
+      const precos  = dadosChart.filter(d => d.precoMedio > 0).map(d => d.precoMedio);
+      return {
+        totalGasto:  tGasto,
+        totalLitros: tLitros,
+        melhorPreco: precos.length > 0 ? Math.min(...precos) : 0,
+        piorPreco:   precos.length > 0 ? Math.max(...precos) : 0,
+        precoMedio:  precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0,
+      };
+    }
+    const fonte = redeSel
+      ? rankingPostos.filter(p => p.redeNome === redeSel.nome)
+      : rankingPostos;
+    const precos = fonte.filter(p => p.precoMedio > 0).map(p => p.precoMedio);
+    return {
+      totalGasto:  fonte.reduce((a, p) => a + p.totalGasto, 0),
+      totalLitros: fonte.reduce((a, p) => a + p.totalLitros, 0),
+      melhorPreco: precos.length > 0 ? Math.min(...precos) : 0,
+      piorPreco:   precos.length > 0 ? Math.max(...precos) : 0,
+      precoMedio:  precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0,
+    };
+  })();
+  const { totalGasto: globalTotalGasto, totalLitros: globalTotalLitros,
+          melhorPreco: globalMelhorPreco, piorPreco: globalPiorPreco,
+          precoMedio: globalPrecoMedio } = kpiBase;
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 10, background: D.bg, borderRadius: 16, padding: 12, overflow: 'hidden', boxSizing: 'border-box' }}>
