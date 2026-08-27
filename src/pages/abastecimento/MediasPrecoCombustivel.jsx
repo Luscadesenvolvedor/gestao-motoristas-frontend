@@ -297,89 +297,97 @@ function ModalRedes({ onClose }) {
 // Cores fixas para redes (cicla automaticamente)
 const REDE_CORES = ['#EB3238','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
 
-/* ─── Consulta Posto ─── */
+/* ─── Dashboard Consulta Posto ─── */
+const D = {
+  bg:      '#0d1117',
+  card:    '#161b27',
+  card2:   '#1c2333',
+  border:  'rgba(255,255,255,0.08)',
+  text:    '#e2e8f0',
+  muted:   '#6b7280',
+  green:   '#4ade80',
+  orange:  '#fb923c',
+  red:     '#f87171',
+  blue:    '#60a5fa',
+};
+
 function ConsultaPosto() {
-  const [postos, setPostos]         = useState([]);
+  const [redes, setRedes]           = useState([]);
+  const [rankingRedes, setRankingRedes] = useState([]);
+  const [todosPostos, setTodosPostos] = useState([]);
+  const [rankingPostos, setRankingPostos] = useState([]);
+  const [redeSel, setRedeSel]       = useState(null);
   const [postoSel, setPostoSel]     = useState('');
-  const [dados, setDados]           = useState([]);
+  const [dadosChart, setDadosChart] = useState([]);
   const [loading, setLoading]       = useState(false);
-  const [loadingPostos, setLoadingPostos] = useState(true);
-  const [ranking, setRanking]       = useState([]);
-  const [loadingRanking, setLoadingRanking] = useState(true);
   const [periodo, setPeriodo]       = useState('3m');
 
   const PERIODOS = [
-    { id: '1m',  label: 'Último mês' },
-    { id: '3m',  label: 'Últimos 3 meses' },
-    { id: '6m',  label: 'Últimos 6 meses' },
-    { id: '12m', label: 'Último ano' },
-    { id: 'all', label: 'Todo o período' },
+    { id: '1m', label: '1M' }, { id: '3m', label: '3M' },
+    { id: '6m', label: '6M' }, { id: '12m', label: '1A' },
+    { id: 'all', label: 'Tudo' },
   ];
 
   function calcDatas(p) {
     if (p === 'all') return {};
-    const fim = new Date();
-    const ini = new Date();
-    const meses = { '1m': 1, '3m': 3, '6m': 6, '12m': 12 }[p];
-    ini.setMonth(ini.getMonth() - meses);
+    const fim = new Date(), ini = new Date();
+    ini.setMonth(ini.getMonth() - ({ '1m':1,'3m':3,'6m':6,'12m':12 }[p]));
     const fmt = d => d.toISOString().slice(0, 10);
     return { dataInicio: fmt(ini), dataFim: fmt(fim) };
   }
 
   useEffect(() => {
-    api.get('/medias-consumo/postos-lista')
-      .then(({ data }) => setPostos(data))
-      .catch(() => {})
-      .finally(() => setLoadingPostos(false));
+    Promise.all([
+      api.get('/medias-consumo/redes'),
+      api.get('/medias-consumo/ranking-redes'),
+      api.get('/medias-consumo/postos-lista'),
+    ]).then(([r1, r2, r3]) => {
+      setRedes(r1.data);
+      setRankingRedes(r2.data);
+      setTodosPostos(r3.data);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    setLoadingRanking(true);
     api.get('/medias-consumo/ranking-postos', { params: calcDatas(periodo) })
-      .then(({ data }) => setRanking(data))
-      .catch(() => {})
-      .finally(() => setLoadingRanking(false));
+      .then(({ data }) => setRankingPostos(data))
+      .catch(() => {});
   }, [periodo]);
 
   useEffect(() => {
     if (!postoSel) return;
     setLoading(true);
     api.get('/medias-consumo/consulta-posto', { params: { posto: postoSel, ...calcDatas(periodo) } })
-      .then(({ data }) => setDados(data))
-      .catch(() => setDados([]))
+      .then(({ data }) => setDadosChart(data))
+      .catch(() => setDadosChart([]))
       .finally(() => setLoading(false));
   }, [postoSel, periodo]);
 
-  const totalLitros   = dados.reduce((a, d) => a + d.totalLitros, 0);
-  const totalGasto    = dados.reduce((a, d) => a + d.totalGasto, 0);
-  const avgPreco      = dados.length > 0 ? dados.reduce((a, d) => a + d.precoMedio, 0) / dados.length : 0;
-  const avgLitrosMes  = dados.length > 0 ? totalLitros / dados.length : 0;
+  const postosDaRede = redeSel ? todosPostos.filter(p => p.redeNome === redeSel.nome) : [];
+  const redeStats    = rankingRedes.find(r => r.id === redeSel?.id);
 
-  // Score: preço baixo + litros alto = bom
-  let scoreLabel = null, scoreCor = '#94a3b8', scoreBg = '#f8fafc';
-  if (dados.length >= 2) {
-    // últimos 3 meses vs primeiros 3
-    const init = dados.slice(0, Math.min(3, dados.length));
-    const fim  = dados.slice(-Math.min(3, dados.length));
-    const precoSubiu   = fim.reduce((a, d) => a + d.precoMedio, 0)   / fim.length  > init.reduce((a, d) => a + d.precoMedio, 0)   / init.length;
-    const litrosSubiu  = fim.reduce((a, d) => a + d.totalLitros, 0)  / fim.length  > init.reduce((a, d) => a + d.totalLitros, 0)  / init.length;
-    if (!precoSubiu && litrosSubiu)       { scoreLabel = '✓ Tendência positiva — preço caindo, volume aumentando'; scoreCor = '#15803d'; scoreBg = '#f0fdf4'; }
-    else if (precoSubiu && !litrosSubiu)  { scoreLabel = '✗ Tendência negativa — preço subindo, volume caindo';   scoreCor = '#dc2626'; scoreBg = '#fef2f2'; }
-    else                                  { scoreLabel = '~ Tendência estável';                                    scoreCor = '#b45309'; scoreBg = '#fffbeb'; }
-  }
+  const rankingDaRede = redeSel
+    ? rankingPostos.filter(p => p.redeNome === redeSel.nome)
+    : rankingPostos;
+  const melhores = rankingDaRede.slice(0, 5);
+  const piores   = rankingDaRede.slice(-5).reverse();
 
-  const fmtMes = (m) => {
+  const totalLitros  = dadosChart.reduce((a, d) => a + d.totalLitros, 0);
+  const totalGasto   = dadosChart.reduce((a, d) => a + d.totalGasto, 0);
+  const avgPreco     = dadosChart.length > 0 ? dadosChart.reduce((a, d) => a + d.precoMedio, 0) / dadosChart.length : 0;
+  const avgLitrosMes = dadosChart.length > 0 ? totalLitros / dadosChart.length : 0;
+
+  const fmtMes = m => {
     if (!m) return m;
     const [y, mo] = m.split('-');
-    const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    return `${nomes[parseInt(mo) - 1]}/${y.slice(2)}`;
+    return `${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mo)-1]}/${y.slice(2)}`;
   };
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const DkTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 14px', fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-        <div style={{ fontWeight: 700, marginBottom: 6, color: '#1a1a2e' }}>{fmtMes(label)}</div>
+      <div style={{ background: D.card2, border: `1px solid ${D.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 12 }}>
+        <div style={{ fontWeight: 700, marginBottom: 6, color: D.text }}>{fmtMes(label)}</div>
         {payload.map(p => (
           <div key={p.dataKey} style={{ color: p.color, marginBottom: 2 }}>
             {p.name}: <strong>{p.dataKey === 'precoMedio' ? `R$ ${fmtN(p.value, 2)}/L` : `${fmtN(p.value, 0)} L`}</strong>
@@ -389,112 +397,158 @@ function ConsultaPosto() {
     );
   };
 
-  const melhores = ranking.slice(0, 5);
-  const piores   = ranking.slice(-5).reverse();
+  const kpisRede = redeStats ? [
+    { label: 'Total gasto (rede)',  val: fmtR(redeStats.totalGasto),              cor: D.orange },
+    { label: 'Total litros (rede)', val: `${fmtN(redeStats.totalLitros, 0)} L`,   cor: D.blue },
+    { label: '% do abastecimento',  val: `${fmtN(redeStats.percentual, 1)}%`,     cor: D.green },
+    { label: 'Postos vinculados',   val: redeStats.totalPostos,                    cor: D.muted },
+  ] : [];
+
+  const kpisPostos = postoSel && dadosChart.length > 0 ? [
+    { label: 'Preço médio/L',  val: `R$ ${fmtN(avgPreco, 2)}`,   cor: D.orange },
+    { label: 'Total litros',   val: `${fmtN(totalLitros, 0)} L`,  cor: D.blue },
+    { label: 'Total gasto',    val: fmtR(totalGasto),              cor: D.red },
+    { label: 'Média/mês',      val: `${fmtN(avgLitrosMes, 0)} L`, cor: D.green },
+  ] : [];
+
+  const kpis = kpisPostos.length > 0 ? kpisPostos : kpisRede;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%', minHeight: 0, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', gap: 10, background: D.bg, borderRadius: 16, padding: 12, overflow: 'hidden', boxSizing: 'border-box' }}>
 
-      {/* Seletor período */}
-      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-        {PERIODOS.map(p => (
-          <button key={p.id} onClick={() => setPeriodo(p.id)} style={{
-            padding: '4px 10px', borderRadius: 20, border: '1.5px solid',
-            borderColor: periodo === p.id ? '#EB3238' : '#e2e8f0',
-            background: periodo === p.id ? '#EB3238' : '#fff',
-            color: periodo === p.id ? '#fff' : '#64748b',
-            fontSize: 10, fontWeight: 600, cursor: 'pointer',
-          }}>{p.label}</button>
-        ))}
+      {/* ── Sidebar ── */}
+      <div style={{ width: 200, display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', flexShrink: 0 }}>
+        {/* Período */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
+          {PERIODOS.map(p => (
+            <button key={p.id} onClick={() => setPeriodo(p.id)} style={{
+              padding: '3px 8px', borderRadius: 6, border: `1px solid ${periodo === p.id ? D.green : D.border}`,
+              background: periodo === p.id ? 'rgba(74,222,128,0.15)' : 'transparent',
+              color: periodo === p.id ? D.green : D.muted,
+              fontSize: 10, fontWeight: 700, cursor: 'pointer',
+            }}>{p.label}</button>
+          ))}
+        </div>
+
+        {/* Redes */}
+        <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1.2, marginBottom: 2 }}>REDES</div>
+        {redes.length === 0 && <div style={{ fontSize: 11, color: D.muted }}>Nenhuma rede cadastrada</div>}
+        {redes.map(r => {
+          const sel = redeSel?.id === r.id;
+          return (
+            <div key={r.id} onClick={() => { setRedeSel(sel ? null : r); setPostoSel(''); }}
+              style={{ padding: '7px 10px', borderRadius: 9, cursor: 'pointer', transition: 'all 0.15s',
+                background: sel ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${sel ? D.green : D.border}` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: sel ? D.green : D.text }}>{r.nome}</div>
+              <div style={{ fontSize: 10, color: D.muted }}>{r.total_postos ?? r.totalPostos ?? '—'} postos</div>
+            </div>
+          );
+        })}
+
+        {/* Postos da rede */}
+        {redeSel && postosDaRede.length > 0 && (
+          <>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1.2, marginTop: 8, marginBottom: 2 }}>POSTOS — {redeSel.nome}</div>
+            {postosDaRede.map(p => {
+              const sel = postoSel === p.posto;
+              return (
+                <div key={p.posto} onClick={() => setPostoSel(sel ? '' : p.posto)}
+                  style={{ padding: '5px 10px', borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s',
+                    background: sel ? 'rgba(251,146,60,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${sel ? D.orange : D.border}` }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: sel ? D.orange : D.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
-      {/* Ranking melhores / piores */}
-      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-        {[
-          { titulo: '✓ MELHORES PREÇOS (DIESEL)', cor: '#10b981', bgNum: '#dcfce7', items: melhores },
-          { titulo: '✗ PIORES PREÇOS (DIESEL)',   cor: '#EB3238', bgNum: '#fef2f2', items: piores },
-        ].map(({ titulo, cor, bgNum, items }) => (
-          <div key={titulo} style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '7px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${cor}` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: cor, letterSpacing: 1, marginBottom: 4 }}>{titulo}</div>
-            {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : items.map((p, i) => (
-              <div key={p.posto} onClick={() => setPostoSel(p.posto)}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                  <span style={{ width: 15, height: 15, borderRadius: '50%', background: bgNum, color: cor, fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: postoSel === p.posto ? cor : '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: cor, flexShrink: 0, marginLeft: 4 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+      {/* ── Conteúdo principal ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+
+        {/* KPI cards */}
+        {kpis.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+            {kpis.map(k => (
+              <div key={k.label} style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
+                <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>{k.label.toUpperCase()}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: k.cor }}>{k.val}</div>
               </div>
             ))}
           </div>
-        ))}
-      </div>
+        )}
 
-      {/* Seletor de posto */}
-      <div style={{ flexShrink: 0 }}>
-        <select value={postoSel} onChange={e => setPostoSel(e.target.value)} disabled={loadingPostos}
-          style={{ width: '100%', padding: '7px 12px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 12, color: '#1a1a2e', outline: 'none', background: '#fff' }}>
-          <option value="">{loadingPostos ? 'Carregando postos...' : 'Selecione um posto para ver o histórico...'}</option>
-          {postos.map(p => <option key={p.posto} value={p.posto}>{p.posto}{p.redeNome ? ` — ${p.redeNome}` : ''}</option>)}
-        </select>
-      </div>
-
-      {!postoSel && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-          Selecione um posto para visualizar a análise
-        </div>
-      )}
-      {postoSel && loading && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>Carregando...</div>
-      )}
-      {postoSel && !loading && dados.length === 0 && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-          Nenhum dado de diesel encontrado para este posto
-        </div>
-      )}
-
-      {postoSel && !loading && dados.length > 0 && (
-        <>
-          {/* KPIs + tendência */}
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+        {/* Ranking melhores / piores */}
+        {!postoSel && (
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
             {[
-              { label: 'Preço médio/L',    val: `R$ ${fmtN(avgPreco, 2)}`,   cor: '#f59e0b' },
-              { label: 'Total litros',     val: `${fmtN(totalLitros, 0)} L`,  cor: '#3b82f6' },
-              { label: 'Total gasto',      val: fmtR(totalGasto),              cor: '#EB3238' },
-              { label: 'Média/mês',        val: `${fmtN(avgLitrosMes, 0)} L`, cor: '#10b981' },
-            ].map(k => (
-              <div key={k.label} style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '5px 8px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${k.cor}` }}>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.8, marginBottom: 1 }}>{k.label.toUpperCase()}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#1a1a2e' }}>{k.val}</div>
+              { titulo: '✓ MELHORES PREÇOS', cor: D.green,  items: melhores },
+              { titulo: '✗ PIORES PREÇOS',   cor: D.red,    items: piores },
+            ].map(({ titulo, cor, items }) => (
+              <div key={titulo} style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 12px', border: `1px solid ${D.border}` }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: cor, letterSpacing: 1, marginBottom: 6 }}>{titulo} (DIESEL)</div>
+                {items.map((p, i) => (
+                  <div key={p.posto} onClick={() => { setPostoSel(p.posto); }}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: i < items.length - 1 ? `1px solid ${D.border}` : 'none', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: cor, width: 14, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                      <div style={{ fontSize: 10, color: D.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: cor, flexShrink: 0, marginLeft: 6 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+                  </div>
+                ))}
               </div>
             ))}
-            {scoreLabel && (
-              <div style={{ flex: 1.4, padding: '5px 8px', borderRadius: 10, background: scoreBg, color: scoreCor, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                {scoreLabel}
-              </div>
+          </div>
+        )}
+
+        {/* Gráfico */}
+        {postoSel && (
+          <div style={{ flex: 1, background: D.card, borderRadius: 14, padding: '12px 8px 8px', border: `1px solid ${D.border}`, minHeight: 0 }}>
+            {loading ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted }}>Carregando...</div>
+            ) : dadosChart.length === 0 ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted, fontSize: 13 }}>Nenhum dado de diesel para este posto</div>
+            ) : (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: D.muted, marginBottom: 6, paddingLeft: 8 }}>
+                  Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>{postoSel}</span>
+                </div>
+                <ResponsiveContainer width="100%" height="90%">
+                  <ComposedChart data={dadosChart} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+                    <defs>
+                      <linearGradient id="gradPreco" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={D.orange} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={D.orange} stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gradVol" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor={D.blue} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={D.blue} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="mes" tickFormatter={fmtMes} tick={{ fontSize: 9, fill: D.muted }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="left"  tick={{ fontSize: 9, fill: D.orange }} tickFormatter={v => `R$${fmtN(v,2)}`} domain={['auto','auto']} width={58} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: D.blue }} tickFormatter={v => `${fmtN(v,0)}L`} domain={['auto','auto']} width={52} axisLine={false} tickLine={false} />
+                    <Tooltip content={<DkTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 10, color: D.muted }} />
+                    <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)" stroke={D.orange} strokeWidth={2.5} dot={{ r: 3, fill: D.orange }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"          stroke={D.blue}   strokeWidth={2.5} dot={{ r: 3, fill: D.blue }}   activeDot={{ r: 5 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </>
             )}
           </div>
+        )}
 
-          {/* Gráfico */}
-          <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '10px 8px 6px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', minHeight: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', marginBottom: 4, paddingLeft: 8 }}>
-              Preço (R$/L) vs Volume (L) — {postoSel}
-            </div>
-            <ResponsiveContainer width="100%" height="90%">
-              <ComposedChart data={dados} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="mes" tickFormatter={fmtMes} tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                <YAxis yAxisId="left"  tick={{ fontSize: 9, fill: '#f59e0b' }} tickFormatter={v => `R$${fmtN(v, 2)}`} domain={['auto', 'auto']} width={58} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: '#3b82f6' }} tickFormatter={v => `${fmtN(v, 0)}L`} domain={['auto', 'auto']} width={52} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"          stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
+        {!postoSel && !redeSel && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted, fontSize: 13 }}>
+            Selecione uma rede na barra lateral para começar
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
