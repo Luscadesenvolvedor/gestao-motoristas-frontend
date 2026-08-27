@@ -542,7 +542,7 @@ function ConsultaPosto() {
             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: D.muted }}>Carregando...</div>
           ) : (() => {
             const dados = postoSel ? dadosChart : dadosGeral;
-            const xKey  = 'ano';
+            const xKey  = 'mes';
             const titulo = postoSel
               ? <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>{postoSel}</span></>
               : <>Preço (R$/L) vs Volume (L) — <span style={{ color: D.text }}>Geral (todos os postos)</span></>;
@@ -557,7 +557,7 @@ function ConsultaPosto() {
                 <ResponsiveContainer width="100%" height="90%">
                   <ComposedChart data={dados} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey={xKey} tick={{ fontSize: 9, fill: D.muted }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey={xKey} tickFormatter={fmtMes} tick={{ fontSize: 9, fill: D.muted }} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="left"  tick={{ fontSize: 9, fill: D.orange }} tickFormatter={v => `R$${fmtN(v,2)}`} domain={['auto','auto']} width={58} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: D.blue }} tickFormatter={v => `${fmtN(v,0)}L`} domain={['auto','auto']} width={52} axisLine={false} tickLine={false} />
                     <Tooltip content={<DkTooltip />} />
