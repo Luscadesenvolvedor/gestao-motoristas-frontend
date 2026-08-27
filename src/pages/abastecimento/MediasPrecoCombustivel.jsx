@@ -306,26 +306,49 @@ function ConsultaPosto() {
   const [loadingPostos, setLoadingPostos] = useState(true);
   const [ranking, setRanking]       = useState([]);
   const [loadingRanking, setLoadingRanking] = useState(true);
+  const [periodo, setPeriodo]       = useState('3m');
+
+  const PERIODOS = [
+    { id: '1m',  label: 'Último mês' },
+    { id: '3m',  label: 'Últimos 3 meses' },
+    { id: '6m',  label: 'Últimos 6 meses' },
+    { id: '12m', label: 'Último ano' },
+    { id: 'all', label: 'Todo o período' },
+  ];
+
+  function calcDatas(p) {
+    if (p === 'all') return {};
+    const fim = new Date();
+    const ini = new Date();
+    const meses = { '1m': 1, '3m': 3, '6m': 6, '12m': 12 }[p];
+    ini.setMonth(ini.getMonth() - meses);
+    const fmt = d => d.toISOString().slice(0, 10);
+    return { dataInicio: fmt(ini), dataFim: fmt(fim) };
+  }
 
   useEffect(() => {
     api.get('/medias-consumo/postos-lista')
       .then(({ data }) => setPostos(data))
       .catch(() => {})
       .finally(() => setLoadingPostos(false));
-    api.get('/medias-consumo/ranking-postos')
+  }, []);
+
+  useEffect(() => {
+    setLoadingRanking(true);
+    api.get('/medias-consumo/ranking-postos', { params: calcDatas(periodo) })
       .then(({ data }) => setRanking(data))
       .catch(() => {})
       .finally(() => setLoadingRanking(false));
-  }, []);
+  }, [periodo]);
 
   useEffect(() => {
     if (!postoSel) return;
     setLoading(true);
-    api.get('/medias-consumo/consulta-posto', { params: { posto: postoSel } })
+    api.get('/medias-consumo/consulta-posto', { params: { posto: postoSel, ...calcDatas(periodo) } })
       .then(({ data }) => setDados(data))
       .catch(() => setDados([]))
       .finally(() => setLoading(false));
-  }, [postoSel]);
+  }, [postoSel, periodo]);
 
   const totalLitros   = dados.reduce((a, d) => a + d.totalLitros, 0);
   const totalGasto    = dados.reduce((a, d) => a + d.totalGasto, 0);
@@ -371,6 +394,19 @@ function ConsultaPosto() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+
+      {/* Seletor período */}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {PERIODOS.map(p => (
+          <button key={p.id} onClick={() => setPeriodo(p.id)} style={{
+            padding: '5px 12px', borderRadius: 20, border: '1.5px solid',
+            borderColor: periodo === p.id ? '#EB3238' : '#e2e8f0',
+            background: periodo === p.id ? '#EB3238' : '#fff',
+            color: periodo === p.id ? '#fff' : '#64748b',
+            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          }}>{p.label}</button>
+        ))}
+      </div>
 
       {/* Ranking melhores / piores */}
       <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
