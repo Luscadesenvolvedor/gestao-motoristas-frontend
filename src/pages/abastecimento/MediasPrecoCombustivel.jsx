@@ -290,15 +290,20 @@ function ModalRedes({ onClose }) {
   );
 }
 
+// Cores fixas para redes (cicla automaticamente)
+const REDE_CORES = ['#EB3238','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+
 /* ─── Página principal ─── */
 export default function MediasPrecoCombustivel() {
-  const [dados, setDados]         = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [dados, setDados]           = useState([]);
+  const [loading, setLoading]       = useState(true);
   const [statePaths, setStatePaths] = useState([]);
   const [geoLoading, setGeoLoading] = useState(true);
-  const [hovUF, setHovUF]         = useState(null);
-  const [mouse, setMouse]         = useState({ x: 0, y: 0 });
+  const [hovUF, setHovUF]           = useState(null);
+  const [mouse, setMouse]           = useState({ x: 0, y: 0 });
   const [modalRedes, setModalRedes] = useState(false);
+  const [redes, setRedes]           = useState([]);
+  const [loadingRedes, setLoadingRedes] = useState(true);
   const containerRef = useRef();
 
   useEffect(() => {
@@ -332,7 +337,20 @@ export default function MediasPrecoCombustivel() {
     }
   }, []);
 
+  const carregarRedes = useCallback(async () => {
+    setLoadingRedes(true);
+    try {
+      const { data } = await api.get('/medias-consumo/ranking-redes');
+      setRedes(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRedes(false);
+    }
+  }, []);
+
   useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregarRedes(); }, [carregarRedes]);
 
   const byUF    = Object.fromEntries(dados.map(d => [d.uf, d]));
   const maxPct  = dados.length > 0 ? Math.max(...dados.map(d => d.percentual)) : 1;
@@ -476,7 +494,49 @@ export default function MediasPrecoCombustivel() {
             <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{dados.length} estado(s) com abastecimento</div>
           </div>
 
-          {/* Ranking */}
+          {/* Ranking Redes */}
+          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 12, color: '#1a1a2e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Ranking por Rede</span>
+              <button onClick={carregarRedes} title="Atualizar" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8' }}>↻</button>
+            </div>
+            {loadingRedes ? (
+              <div style={{ padding: '14px', color: '#94a3b8', fontSize: 12, textAlign: 'center' }}>Carregando...</div>
+            ) : redes.length === 0 ? (
+              <div style={{ padding: '14px 14px', color: '#94a3b8', fontSize: 11 }}>
+                Nenhuma rede vinculada ainda. Use <strong>Redes de Postos</strong> para cadastrar e vincular.
+              </div>
+            ) : (
+              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {redes.map((r, i) => {
+                  const cor = REDE_CORES[i % REDE_CORES.length];
+                  return (
+                    <div key={r.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: cor, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e' }}>{r.nome}</span>
+                          <span style={{ fontSize: 9, color: '#94a3b8' }}>{r.totalPostos} posto(s)</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: cor }}>{fmtN(r.percentual, 1)}%</span>
+                          <span style={{ fontSize: 9, color: '#94a3b8', marginLeft: 6 }}>{fmtR(r.totalGasto)}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 4, width: `${r.percentual}%`, background: cor, transition: 'width 0.6s ease' }} />
+                      </div>
+                      <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
+                        {fmtN(r.totalLitros, 0)} L · R$/L {fmtR(r.precoMedio)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Ranking por Estado */}
           <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 12, color: '#1a1a2e', flexShrink: 0 }}>
               Ranking por Estado
