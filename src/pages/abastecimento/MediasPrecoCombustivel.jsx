@@ -340,33 +340,32 @@ export default function MediasPrecoCombustivel() {
   const hovData = hovUF ? byUF[hovUF] : null;
 
   return (
-    <div style={{ padding: '24px 28px', fontFamily: 'Inter, sans-serif', background: '#f8fafc', minHeight: '100vh' }}>
+    <div style={{ padding: '14px 20px', fontFamily: 'Inter, sans-serif', background: '#f8fafc', height: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} />}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>Média Preço Combustível</h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => setModalRedes(true)} style={{
-            padding: '7px 18px', borderRadius: 20, border: '1.5px solid #e2e8f0',
-            background: '#fff', color: '#475569', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            🏪 Redes de Postos
-          </button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>Média Preço Combustível</h2>
+        <button onClick={() => setModalRedes(true)} style={{
+          padding: '6px 16px', borderRadius: 20, border: '1.5px solid #e2e8f0',
+          background: '#fff', color: '#475569', fontSize: 12, fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          🏪 Redes de Postos
+        </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0 }}>
         {/* ─── Mapa ─── */}
         <div
           ref={containerRef}
           style={{
-            flex: '1 1 460px',
+            flex: '1 1 0',
             background: 'linear-gradient(160deg, #060d1a 0%, #0f172a 50%, #060d1a 100%)',
-            borderRadius: 20, padding: '24px 20px 28px',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.45)',
+            borderRadius: 16, padding: '14px 16px 12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
             position: 'relative', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column',
           }}
           onMouseMove={e => {
             if (!containerRef.current) return;
@@ -379,19 +378,19 @@ export default function MediasPrecoCombustivel() {
             backgroundImage: 'radial-gradient(#60a5fa 1px, transparent 1px)',
             backgroundSize: '28px 28px', pointerEvents: 'none',
           }} />
-          <div style={{ color: '#475569', fontSize: 10, marginBottom: 14, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          <div style={{ color: '#475569', fontSize: 9, marginBottom: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', flexShrink: 0 }}>
             Abastecimento por Estado — % do gasto total (Diesel)
           </div>
 
-          <div style={{ perspective: '1200px', perspectiveOrigin: '50% 40%' }}>
+          <div style={{ perspective: '1200px', perspectiveOrigin: '50% 40%', flex: 1, minHeight: 0 }}>
             {geoLoading ? (
-              <div style={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
                 Carregando mapa...
               </div>
             ) : (
               <svg
                 viewBox={`0 0 ${W + PAD * 2} ${H + PAD * 2}`}
-                style={{ width: '100%', display: 'block', transform: 'rotateX(22deg)', transformOrigin: '50% 50%' }}
+                style={{ width: '100%', height: '100%', display: 'block', transform: 'rotateX(22deg)', transformOrigin: '50% 50%' }}
                 onMouseLeave={() => setHovUF(null)}
               >
                 {statePaths.map(({ sigla, d, centroid }) => {
@@ -461,55 +460,52 @@ export default function MediasPrecoCombustivel() {
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-            <span style={{ color: '#475569', fontSize: 9, fontWeight: 700 }}>BAIXO</span>
-            <div style={{ flex: 1, height: 6, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
-            <span style={{ color: '#475569', fontSize: 9, fontWeight: 700 }}>ALTO</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexShrink: 0 }}>
+            <span style={{ color: '#475569', fontSize: 8, fontWeight: 700 }}>BAIXO</span>
+            <div style={{ flex: 1, height: 5, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
+            <span style={{ color: '#475569', fontSize: 8, fontWeight: 700 }}>ALTO</span>
           </div>
         </div>
 
         {/* ─── Painel direito ─── */}
-        <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', boxShadow: '0 2px 12px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>TOTAL GASTO (DIESEL)</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#1a1a2e' }}>{loading ? '—' : fmtR(totalGasto)}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{dados.length} estado(s) com abastecimento</div>
+        <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+          {/* KPI */}
+          <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238', flexShrink: 0 }}>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL GASTO (DIESEL)</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e' }}>{loading ? '—' : fmtR(totalGasto)}</div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{dados.length} estado(s) com abastecimento</div>
           </div>
 
-          <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 13, color: '#1a1a2e' }}>
+          {/* Ranking */}
+          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 12, color: '#1a1a2e', flexShrink: 0 }}>
               Ranking por Estado
             </div>
-            <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
               {loading ? (
-                <div style={{ padding: 24, color: '#94a3b8', textAlign: 'center', fontSize: 13 }}>Carregando...</div>
+                <div style={{ padding: 20, color: '#94a3b8', textAlign: 'center', fontSize: 12 }}>Carregando...</div>
               ) : dados.length === 0 ? (
-                <div style={{ padding: 24, color: '#94a3b8', textAlign: 'center', fontSize: 13 }}>Nenhum dado encontrado</div>
+                <div style={{ padding: 20, color: '#94a3b8', textAlign: 'center', fontSize: 12 }}>Nenhum dado encontrado</div>
               ) : dados.map((d, i) => (
                 <div key={d.uf}
                   onMouseEnter={() => setHovUF(d.uf)}
                   onMouseLeave={() => setHovUF(null)}
-                  style={{ padding: '10px 20px', borderBottom: '1px solid #f8fafc', background: hovUF === d.uf ? '#f0f9ff' : '#fff', cursor: 'default', transition: 'background 0.15s' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: 8, background: getTopColor(d.percentual, maxPct), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{i + 1}</div>
+                  style={{ padding: '7px 14px', borderBottom: '1px solid #f8fafc', background: hovUF === d.uf ? '#f0f9ff' : '#fff', cursor: 'default', transition: 'background 0.15s' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, background: getTopColor(d.percentual, maxPct), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{i + 1}</div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1a2e' }}>{d.uf}</div>
-                        <div style={{ fontSize: 10, color: '#94a3b8' }}>{UF_LABELS[d.uf] || ''}</div>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: '#1a1a2e' }}>{d.uf}</div>
+                        <div style={{ fontSize: 9, color: '#94a3b8' }}>{UF_LABELS[d.uf] || ''}</div>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: '#EB3238' }}>{fmtN(d.percentual, 1)}%</div>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>{fmtR(d.totalGasto)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: '#EB3238' }}>{fmtN(d.percentual, 1)}%</div>
+                      <div style={{ fontSize: 9, color: '#64748b' }}>{fmtR(d.totalGasto)}</div>
                     </div>
                   </div>
-                  <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: 3, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ height: '100%', borderRadius: 4, width: `${(d.percentual / maxPct) * 100}%`, background: getTopColor(d.percentual, maxPct), transition: 'width 0.5s ease' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 10, color: '#94a3b8' }}>
-                    <span>{fmtN(d.totalLitros, 0)} L</span>
-                    <span>R$/L: {fmtR(d.precoMedio)}</span>
-                    <span>{d.totalRegistros} reg.</span>
                   </div>
                 </div>
               ))}
