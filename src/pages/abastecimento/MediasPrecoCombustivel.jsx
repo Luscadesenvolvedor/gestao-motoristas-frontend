@@ -397,21 +397,13 @@ function ConsultaPosto() {
     );
   };
 
-  const kpisRede = redeStats ? [
-    { label: 'Total gasto (rede)',  val: fmtR(redeStats.totalGasto),              cor: D.orange },
-    { label: 'Total litros (rede)', val: `${fmtN(redeStats.totalLitros, 0)} L`,   cor: D.blue },
-    { label: '% do abastecimento',  val: `${fmtN(redeStats.percentual, 1)}%`,     cor: D.green },
-    { label: 'Postos vinculados',   val: redeStats.totalPostos,                    cor: D.muted },
-  ] : [];
-
-  const kpisPostos = postoSel && dadosChart.length > 0 ? [
-    { label: 'Preço médio/L',  val: `R$ ${fmtN(avgPreco, 2)}`,   cor: D.orange },
-    { label: 'Total litros',   val: `${fmtN(totalLitros, 0)} L`,  cor: D.blue },
-    { label: 'Total gasto',    val: fmtR(totalGasto),              cor: D.red },
-    { label: 'Média/mês',      val: `${fmtN(avgLitrosMes, 0)} L`, cor: D.green },
-  ] : [];
-
-  const kpis = kpisPostos.length > 0 ? kpisPostos : kpisRede;
+  // KPIs globais calculados de rankingPostos (todos os postos)
+  const globalTotalGasto  = rankingPostos.reduce((a, p) => a + p.totalGasto, 0);
+  const globalTotalLitros = rankingPostos.reduce((a, p) => a + p.totalLitros, 0);
+  const precos = rankingPostos.filter(p => p.precoMedio > 0).map(p => p.precoMedio);
+  const globalMelhorPreco = precos.length > 0 ? Math.min(...precos) : 0;
+  const globalPiorPreco   = precos.length > 0 ? Math.max(...precos) : 0;
+  const globalPrecoMedio  = precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0;
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 10, background: D.bg, borderRadius: 16, padding: 12, overflow: 'hidden', boxSizing: 'border-box' }}>
@@ -456,17 +448,75 @@ function ConsultaPosto() {
       {/* ── Conteúdo principal ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
 
-        {/* KPI cards */}
-        {kpis.length > 0 && (
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-            {kpis.map(k => (
-              <div key={k.label} style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
-                <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>{k.label.toUpperCase()}</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: k.cor }}>{k.val}</div>
-              </div>
-            ))}
+        {/* ── KPI cards globais ── */}
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+
+          {/* Total Combustível */}
+          <div style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL COMBUSTÍVEL</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: D.orange }}>{fmtR(globalTotalGasto)}</div>
           </div>
-        )}
+
+          {/* Litragem — com galão animado */}
+          <div style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flexShrink: 0 }}>
+              <svg width="36" height="48" viewBox="0 0 36 48" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <clipPath id="canClip">
+                    <rect x="4" y="6" width="28" height="38" rx="4" />
+                  </clipPath>
+                  <linearGradient id="fuelGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#0369a1" stopOpacity="1" />
+                  </linearGradient>
+                </defs>
+                {/* corpo */}
+                <rect x="4" y="6" width="28" height="38" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
+                {/* bico */}
+                <rect x="13" y="1" width="10" height="6" rx="2" fill="rgba(255,255,255,0.15)" />
+                {/* líquido animado */}
+                <g clipPath="url(#canClip)">
+                  <rect x="4" y="22" width="28" height="22" fill="url(#fuelGrad)">
+                    <animate attributeName="y" values="22;20;22" dur="2s" repeatCount="indefinite" />
+                  </rect>
+                  {/* onda */}
+                  <path d="M4,22 Q10,19 18,22 Q26,25 32,22 L32,44 L4,44 Z" fill="#38bdf8" opacity="0.4">
+                    <animate attributeName="d"
+                      values="M4,22 Q10,19 18,22 Q26,25 32,22 L32,44 L4,44 Z;M4,20 Q10,23 18,20 Q26,17 32,20 L32,44 L4,44 Z;M4,22 Q10,19 18,22 Q26,25 32,22 L32,44 L4,44 Z"
+                      dur="2s" repeatCount="indefinite" />
+                  </path>
+                </g>
+                {/* marcações */}
+                <line x1="28" y1="16" x2="31" y2="16" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+                <line x1="28" y1="24" x2="31" y2="24" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+                <line x1="28" y1="32" x2="31" y2="32" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL LITROS</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#38bdf8' }}>{fmtN(globalTotalLitros, 0)} L</div>
+            </div>
+          </div>
+
+          {/* Melhor preço */}
+          <div style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>MELHOR PREÇO/L</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: D.green }}>R$ {fmtN(globalMelhorPreco, 2)}</div>
+          </div>
+
+          {/* Preço médio */}
+          <div style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>PREÇO MÉDIO/L</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: D.orange }}>R$ {fmtN(globalPrecoMedio, 2)}</div>
+          </div>
+
+          {/* Pior preço */}
+          <div style={{ flex: 1, background: D.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${D.border}` }}>
+            <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>PIOR PREÇO/L</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: D.red }}>R$ {fmtN(globalPiorPreco, 2)}</div>
+          </div>
+
+        </div>
 
 
         {/* Gráfico */}
