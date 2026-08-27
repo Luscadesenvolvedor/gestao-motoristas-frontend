@@ -302,8 +302,9 @@ export default function MediasPrecoCombustivel() {
   const [hovUF, setHovUF]           = useState(null);
   const [mouse, setMouse]           = useState({ x: 0, y: 0 });
   const [modalRedes, setModalRedes] = useState(false);
-  const [redes, setRedes]           = useState([]);
+  const [redes, setRedes]               = useState([]);
   const [loadingRedes, setLoadingRedes] = useState(true);
+  const [ufsDaRede, setUfsDaRede]       = useState({});     // { [redeId]: [...] }
   const containerRef = useRef();
 
   useEffect(() => {
@@ -351,6 +352,18 @@ export default function MediasPrecoCombustivel() {
 
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { carregarRedes(); }, [carregarRedes]);
+
+  // Carrega UFs de todas as redes após carregar o ranking
+  useEffect(() => {
+    if (!redes.length) return;
+    redes.forEach(async r => {
+      if (ufsDaRede[r.id]) return;
+      try {
+        const { data } = await api.get(`/medias-consumo/ranking-redes/${r.id}/por-uf`);
+        setUfsDaRede(prev => ({ ...prev, [r.id]: data }));
+      } catch {}
+    });
+  }, [redes]);
 
   const byUF    = Object.fromEntries(dados.map(d => [d.uf, d]));
   const maxPct  = dados.length > 0 ? Math.max(...dados.map(d => d.percentual)) : 1;
@@ -507,12 +520,13 @@ export default function MediasPrecoCombustivel() {
                 Nenhuma rede vinculada ainda. Use <strong>Redes de Postos</strong> para cadastrar e vincular.
               </div>
             ) : (
-              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {redes.map((r, i) => {
-                  const cor = REDE_CORES[i % REDE_CORES.length];
+                  const cor     = REDE_CORES[i % REDE_CORES.length];
+                  const estados = ufsDaRede[r.id] || [];
                   return (
-                    <div key={r.id}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                    <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: cor, flexShrink: 0 }} />
                           <span style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e' }}>{r.nome}</span>
@@ -523,11 +537,21 @@ export default function MediasPrecoCombustivel() {
                           <span style={{ fontSize: 9, color: '#94a3b8', marginLeft: 6 }}>{fmtR(r.totalGasto)}</span>
                         </div>
                       </div>
-                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
                         <div style={{ height: '100%', borderRadius: 4, width: `${r.percentual}%`, background: cor, transition: 'width 0.6s ease' }} />
                       </div>
-                      <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
-                        {fmtN(r.totalLitros, 0)} L · R$/L {fmtR(r.precoMedio)}
+                      {/* Estados em linha: SP 32% · MG 20% · ... */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                        {estados.length === 0 ? (
+                          <span style={{ fontSize: 9, color: '#cbd5e1' }}>carregando...</span>
+                        ) : estados.map((u, idx) => (
+                          <span key={u.uf} title={UF_LABELS[u.uf] || u.uf}
+                            style={{ fontSize: 10, color: '#475569', whiteSpace: 'nowrap' }}>
+                            <strong style={{ color: cor }}>{u.uf}</strong>
+                            {' '}{fmtN(u.percentual, 1)}%
+                            {idx < estados.length - 1 && <span style={{ color: '#cbd5e1', marginLeft: 6 }}>·</span>}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   );
