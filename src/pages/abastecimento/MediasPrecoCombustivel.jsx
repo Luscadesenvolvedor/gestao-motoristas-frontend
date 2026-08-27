@@ -330,7 +330,7 @@ export default function MediasPrecoCombustivel() {
     } finally {
       setLoading(false);
     }
-  }, [frotaSel]);
+  }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
 
