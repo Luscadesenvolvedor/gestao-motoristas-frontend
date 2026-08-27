@@ -418,18 +418,6 @@ function ConsultaPosto() {
 
       {/* ── Sidebar ── */}
       <div style={{ width: 200, display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', flexShrink: 0 }}>
-        {/* Período */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
-          {PERIODOS.map(p => (
-            <button key={p.id} onClick={() => setPeriodo(p.id)} style={{
-              padding: '3px 8px', borderRadius: 6, border: `1px solid ${periodo === p.id ? D.green : D.border}`,
-              background: periodo === p.id ? 'rgba(74,222,128,0.15)' : 'transparent',
-              color: periodo === p.id ? D.green : D.muted,
-              fontSize: 10, fontWeight: 700, cursor: 'pointer',
-            }}>{p.label}</button>
-          ))}
-        </div>
-
         {/* Redes */}
         <div style={{ fontSize: 9, color: D.muted, fontWeight: 700, letterSpacing: 1.2, marginBottom: 2 }}>REDES</div>
         {redes.length === 0 && <div style={{ fontSize: 11, color: D.muted }}>Nenhuma rede cadastrada</div>}
