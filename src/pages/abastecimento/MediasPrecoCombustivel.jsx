@@ -316,6 +316,7 @@ function ConsultaPosto() {
   const [rankingRedes, setRankingRedes] = useState([]);
   const [todosPostos, setTodosPostos] = useState([]);
   const [rankingPostos, setRankingPostos] = useState([]);
+  const [resumoGeral, setResumoGeral] = useState({ totalGasto: 0, totalLitros: 0, melhorPreco: 0, piorPreco: 0, precoMedio: 0 });
   const [redeSel, setRedeSel]       = useState(null);
   const [postoSel, setPostoSel]     = useState('');
   const [dadosChart, setDadosChart] = useState([]);
@@ -341,10 +342,12 @@ function ConsultaPosto() {
       api.get('/medias-consumo/redes'),
       api.get('/medias-consumo/ranking-redes'),
       api.get('/medias-consumo/postos-lista'),
-    ]).then(([r1, r2, r3]) => {
+      api.get('/medias-consumo/resumo-diesel'),
+    ]).then(([r1, r2, r3, r4]) => {
       setRedes(r1.data);
       setRankingRedes(r2.data);
       setTodosPostos(r3.data);
+      setResumoGeral(r4.data);
     }).catch(() => {});
   }, []);
 
@@ -397,10 +400,9 @@ function ConsultaPosto() {
     );
   };
 
-  // Base dos KPIs: posto selecionado > rede selecionada > global
+  // Base dos KPIs: posto selecionado > rede selecionada > resumo geral do banco
   const kpiBase = (() => {
     if (postoSel && dadosChart.length > 0) {
-      // dados do posto selecionado
       const tGasto  = dadosChart.reduce((a, d) => a + d.totalGasto, 0);
       const tLitros = dadosChart.reduce((a, d) => a + d.totalLitros, 0);
       const precos  = dadosChart.filter(d => d.precoMedio > 0).map(d => d.precoMedio);
@@ -412,17 +414,19 @@ function ConsultaPosto() {
         precoMedio:  precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0,
       };
     }
-    const fonte = redeSel
-      ? rankingPostos.filter(p => p.redeNome === redeSel.nome)
-      : rankingPostos;
-    const precos = fonte.filter(p => p.precoMedio > 0).map(p => p.precoMedio);
-    return {
-      totalGasto:  fonte.reduce((a, p) => a + p.totalGasto, 0),
-      totalLitros: fonte.reduce((a, p) => a + p.totalLitros, 0),
-      melhorPreco: precos.length > 0 ? Math.min(...precos) : 0,
-      piorPreco:   precos.length > 0 ? Math.max(...precos) : 0,
-      precoMedio:  precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0,
-    };
+    if (redeSel) {
+      const fonte = rankingPostos.filter(p => p.redeNome === redeSel.nome);
+      const precos = fonte.filter(p => p.precoMedio > 0).map(p => p.precoMedio);
+      return {
+        totalGasto:  fonte.reduce((a, p) => a + p.totalGasto, 0),
+        totalLitros: fonte.reduce((a, p) => a + p.totalLitros, 0),
+        melhorPreco: precos.length > 0 ? Math.min(...precos) : 0,
+        piorPreco:   precos.length > 0 ? Math.max(...precos) : 0,
+        precoMedio:  precos.length > 0 ? precos.reduce((a, v) => a + v, 0) / precos.length : 0,
+      };
+    }
+    // nada selecionado → usa resumo completo do banco
+    return resumoGeral;
   })();
   const { totalGasto: globalTotalGasto, totalLitros: globalTotalLitros,
           melhorPreco: globalMelhorPreco, piorPreco: globalPiorPreco,
