@@ -389,11 +389,27 @@ function ConsultaPosto() {
     );
   };
 
-  const melhores = ranking.slice(0, 3);
-  const piores   = ranking.slice(-3).reverse();
+  const melhores = ranking.slice(0, 5);
+  const piores   = ranking.slice(-5).reverse();
+
+  const RankingCard = ({ titulo, cor, bgNum, items }) => (
+    <div style={{ background: '#fff', borderRadius: 12, padding: '8px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${cor}` }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: cor, letterSpacing: 1, marginBottom: 5 }}>{titulo}</div>
+      {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : items.map((p, i) => (
+        <div key={p.posto} onClick={() => setPostoSel(p.posto)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            <span style={{ width: 15, height: 15, borderRadius: '50%', background: bgNum, color: cor, fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+            <div style={{ fontSize: 10, fontWeight: 600, color: postoSel === p.posto ? cor : '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: cor, flexShrink: 0, marginLeft: 4 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%', minHeight: 0 }}>
 
       {/* Seletor período */}
       <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
@@ -408,122 +424,85 @@ function ConsultaPosto() {
         ))}
       </div>
 
-      {/* Ranking melhores / piores */}
-      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-        {/* Melhores preços */}
-        <div style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '8px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #10b981' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#10b981', letterSpacing: 1, marginBottom: 5 }}>✓ MELHORES PREÇOS (DIESEL)</div>
-          {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : melhores.map((p, i) => (
-            <div key={p.posto} onClick={() => setPostoSel(p.posto)}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: i < melhores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#dcfce7', color: '#15803d', fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#10b981' : '#1a1a2e', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
-            </div>
-          ))}
+      {/* Layout 2 colunas: ranking | gráfico */}
+      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0 }}>
+
+        {/* Coluna esquerda — ranking + seletor */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: '0 0 300px' }}>
+          <RankingCard titulo="✓ MELHORES PREÇOS (DIESEL)" cor="#10b981" bgNum="#dcfce7" items={melhores} />
+          <RankingCard titulo="✗ PIORES PREÇOS (DIESEL)"   cor="#EB3238" bgNum="#fef2f2" items={piores} />
+          <select
+            value={postoSel}
+            onChange={e => setPostoSel(e.target.value)}
+            disabled={loadingPostos}
+            style={{ padding: '7px 10px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 11, color: '#1a1a2e', outline: 'none', background: '#fff', width: '100%' }}
+          >
+            <option value="">{loadingPostos ? 'Carregando...' : 'Selecione um posto...'}</option>
+            {postos.map(p => <option key={p.posto} value={p.posto}>{p.posto}{p.redeNome ? ` — ${p.redeNome}` : ''}</option>)}
+          </select>
         </div>
 
-        {/* Piores preços */}
-        <div style={{ flex: 1, background: '#fff', borderRadius: 12, padding: '8px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '3px solid #EB3238' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: '#EB3238', letterSpacing: 1, marginBottom: 5 }}>✗ PIORES PREÇOS (DIESEL)</div>
-          {loadingRanking ? <div style={{ fontSize: 11, color: '#94a3b8' }}>Carregando...</div> : piores.map((p, i) => (
-            <div key={p.posto} onClick={() => setPostoSel(p.posto)}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: i < piores.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#fef2f2', color: '#dc2626', fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                <div style={{ fontSize: 11, fontWeight: 600, color: postoSel === p.posto ? '#EB3238' : '#1a1a2e', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.posto}</div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#EB3238', flexShrink: 0 }}>R$ {fmtN(p.precoMedio, 2)}</span>
+        {/* Coluna direita — gráfico */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+          {!postoSel && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13, background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+              Clique em um posto do ranking ou selecione no menu
             </div>
-          ))}
+          )}
+          {postoSel && loading && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13, background: '#fff', borderRadius: 14 }}>
+              Carregando...
+            </div>
+          )}
+          {postoSel && !loading && dados.length === 0 && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13, background: '#fff', borderRadius: 14 }}>
+              Nenhum dado de diesel para este posto
+            </div>
+          )}
+          {postoSel && !loading && dados.length > 0 && (
+            <>
+              {/* KPIs */}
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                {[
+                  { label: 'Preço médio/L',    val: `R$ ${fmtN(avgPreco, 2)}`,   cor: '#f59e0b' },
+                  { label: 'Total litros',     val: `${fmtN(totalLitros, 0)} L`,  cor: '#3b82f6' },
+                  { label: 'Total gasto',      val: fmtR(totalGasto),              cor: '#EB3238' },
+                  { label: 'Média/mês',        val: `${fmtN(avgLitrosMes, 0)} L`, cor: '#10b981' },
+                ].map(k => (
+                  <div key={k.label} style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '6px 8px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${k.cor}` }}>
+                    <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.8, marginBottom: 2 }}>{k.label.toUpperCase()}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#1a1a2e' }}>{k.val}</div>
+                  </div>
+                ))}
+                {scoreLabel && (
+                  <div style={{ flex: 1.4, padding: '6px 8px', borderRadius: 10, background: scoreBg, color: scoreCor, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+                    {scoreLabel}
+                  </div>
+                )}
+              </div>
+
+              {/* Gráfico */}
+              <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '10px 8px 6px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', minHeight: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', marginBottom: 4, paddingLeft: 8 }}>
+                  Preço (R$/L) vs Volume (L) — {postoSel}
+                </div>
+                <ResponsiveContainer width="100%" height="90%">
+                  <ComposedChart data={dados} margin={{ top: 4, right: 20, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="mes" tickFormatter={fmtMes} tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                    <YAxis yAxisId="left"  tick={{ fontSize: 9, fill: '#f59e0b' }} tickFormatter={v => `R$${fmtN(v, 2)}`} domain={['auto', 'auto']} width={58} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: '#3b82f6' }} tickFormatter={v => `${fmtN(v, 0)}L`} domain={['auto', 'auto']} width={52} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"          stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Seletor de posto */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-        <select
-          value={postoSel}
-          onChange={e => setPostoSel(e.target.value)}
-          disabled={loadingPostos}
-          style={{ flex: 1, padding: '7px 12px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 12, color: '#1a1a2e', outline: 'none', background: '#fff' }}
-        >
-          <option value="">{loadingPostos ? 'Carregando postos...' : 'Selecione um posto para ver o histórico...'}</option>
-          {postos.map(p => <option key={p.posto} value={p.posto}>{p.posto}{p.redeNome ? ` — ${p.redeNome}` : ''}</option>)}
-        </select>
-      </div>
-
-      {!postoSel && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-          Selecione um posto para visualizar a análise
-        </div>
-      )}
-
-      {postoSel && loading && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-          Carregando...
-        </div>
-      )}
-
-      {postoSel && !loading && dados.length === 0 && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
-          Nenhum dado de diesel encontrado para este posto
-        </div>
-      )}
-
-      {postoSel && !loading && dados.length > 0 && (
-        <>
-          {/* KPIs + tendência em linha */}
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'stretch' }}>
-            {[
-              { label: 'Preço médio/L',    val: `R$ ${fmtN(avgPreco, 2)}`,   cor: '#f59e0b' },
-              { label: 'Total litros',     val: `${fmtN(totalLitros, 0)} L`,  cor: '#3b82f6' },
-              { label: 'Total gasto',      val: fmtR(totalGasto),              cor: '#EB3238' },
-              { label: 'Média litros/mês', val: `${fmtN(avgLitrosMes, 0)} L`, cor: '#10b981' },
-            ].map(k => (
-              <div key={k.label} style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '6px 10px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: `3px solid ${k.cor}` }}>
-                <div style={{ fontSize: 8, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.8, marginBottom: 2 }}>{k.label.toUpperCase()}</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#1a1a2e' }}>{k.val}</div>
-              </div>
-            ))}
-            {scoreLabel && (
-              <div style={{ flex: 1.2, padding: '6px 10px', borderRadius: 10, background: scoreBg, color: scoreCor, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-                {scoreLabel}
-              </div>
-            )}
-          </div>
-
-          {/* Gráfico dual eixo */}
-          <div style={{ flex: 1, background: '#fff', borderRadius: 14, padding: '16px 8px 8px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', minHeight: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 6, paddingLeft: 12 }}>
-              Preço médio (R$/L) vs Volume abastecido (L) — Diesel · {postoSel}
-            </div>
-            <ResponsiveContainer width="100%" height="90%">
-              <ComposedChart data={dados} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="mes" tickFormatter={fmtMes} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                <YAxis yAxisId="left"  tick={{ fontSize: 10, fill: '#f59e0b' }}
-                  tickFormatter={v => `R$${fmtN(v, 2)}`}
-                  domain={['auto', 'auto']}
-                  width={64}
-                />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#3b82f6' }}
-                  tickFormatter={v => `${fmtN(v, 0)}L`}
-                  domain={['auto', 'auto']}
-                  width={60}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line yAxisId="left"  type="monotone" dataKey="precoMedio"  name="Preço médio (R$/L)"
-                  stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                <Line yAxisId="right" type="monotone" dataKey="totalLitros" name="Volume (L)"
-                  stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </>
-      )}
     </div>
   );
 }
