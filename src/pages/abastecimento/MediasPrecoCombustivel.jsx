@@ -615,6 +615,11 @@ export default function MediasPrecoCombustivel() {
   const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
   const [coordsOk, setCoordsOk]     = useState(false);
   const [painelBidAberto, setPainelBidAberto] = useState(false);
+  const [trrs, setTrrs]             = useState([]);
+  const [modalTrr, setModalTrr]     = useState(false);
+  const [editingTrr, setEditingTrr] = useState(null);
+  const [formTrr, setFormTrr]       = useState({ nome: '', uf: '', precoDiesel: '' });
+  const [savingTrr, setSavingTrr]   = useState(false);
   const [savingBid, setSavingBid]   = useState(false);
   const [toastBid, setToastBid]     = useState(null); // { msg, type }
   const toastTimerRef = useRef(null);
@@ -713,9 +718,14 @@ export default function MediasPrecoCombustivel() {
     await carregarPostosBid();
   };
 
+  const carregarTrrs = useCallback(async () => {
+    try { const { data } = await api.get('/trr'); setTrrs(data); } catch {}
+  }, []);
+
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { carregarRedes(); }, [carregarRedes]);
   useEffect(() => { if (abaAtiva === 'bid') carregarPostosBid(); }, [abaAtiva, carregarPostosBid]);
+  useEffect(() => { if (abaAtiva === 'mapa') carregarTrrs(); }, [abaAtiva, carregarTrrs]);
 
   // Zoom interativo (só na aba BID)
   useEffect(() => {
@@ -762,6 +772,79 @@ export default function MediasPrecoCombustivel() {
     <div style={{ padding: '8px 12px', fontFamily: 'Inter, sans-serif', background: Dk.bg, height: 'calc(100% + 48px)', margin: -24, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} />}
 
+      {/* ── Modal TRR ── */}
+      {modalTrr && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background: Dk.card, borderRadius:16, padding:24, width:380, border:`1px solid ${Dk.border}` }}>
+            <div style={{ fontWeight:700, fontSize:14, color:Dk.text, marginBottom:16 }}>
+              {editingTrr ? 'Editar TRR' : 'Cadastrar TRR'}
+            </div>
+
+            {/* Lista de TRRs existentes */}
+            {trrs.length > 0 && (
+              <div style={{ marginBottom:16, maxHeight:160, overflowY:'auto' }}>
+                {trrs.map(t => (
+                  <div key={t.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', borderRadius:8, background:'rgba(255,255,255,0.04)', marginBottom:4 }}>
+                    <div>
+                      <span style={{ fontWeight:600, fontSize:12, color:Dk.text }}>{t.nome}</span>
+                      <span style={{ fontSize:11, color:Dk.muted, marginLeft:8 }}>{t.uf}</span>
+                      {t.precoDiesel && <span style={{ fontSize:11, color:'#4ade80', marginLeft:8 }}>R$ {Number(t.precoDiesel).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}/L</span>}
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={() => { setEditingTrr(t); setFormTrr({ nome:t.nome, uf:t.uf, precoDiesel: t.precoDiesel ?? '' }); }}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#60a5fa', fontSize:12 }}>✏</button>
+                      <button onClick={async () => { await api.delete(`/trr/${t.id}`); carregarTrrs(); }}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#f87171', fontSize:12 }}>✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulário */}
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <input placeholder="Nome do TRR" value={formTrr.nome}
+                onChange={e => setFormTrr(f => ({ ...f, nome: e.target.value }))}
+                style={{ padding:'8px 12px', borderRadius:8, border:`1px solid ${Dk.border}`, background:Dk.card2, color:Dk.text, fontSize:12 }} />
+              <select value={formTrr.uf} onChange={e => setFormTrr(f => ({ ...f, uf: e.target.value }))}
+                style={{ padding:'8px 12px', borderRadius:8, border:`1px solid ${Dk.border}`, background:Dk.card2, color:Dk.text, fontSize:12 }}>
+                <option value="">Selecione o Estado</option>
+                {Object.entries({AC:'Acre',AL:'Alagoas',AM:'Amazonas',AP:'Amapá',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',MA:'Maranhão',MG:'Minas Gerais',MS:'Mato Grosso do Sul',MT:'Mato Grosso',PA:'Pará',PB:'Paraíba',PE:'Pernambuco',PI:'Piauí',PR:'Paraná',RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RO:'Rondônia',RR:'Roraima',RS:'Rio Grande do Sul',SC:'Santa Catarina',SE:'Sergipe',SP:'São Paulo',TO:'Tocantins'}).map(([uf,nome]) => (
+                  <option key={uf} value={uf}>{uf} — {nome}</option>
+                ))}
+              </select>
+              <input placeholder="Preço Diesel (ex: 5,89)" value={formTrr.precoDiesel}
+                onChange={e => setFormTrr(f => ({ ...f, precoDiesel: e.target.value }))}
+                style={{ padding:'8px 12px', borderRadius:8, border:`1px solid ${Dk.border}`, background:Dk.card2, color:Dk.text, fontSize:12 }} />
+            </div>
+
+            <div style={{ display:'flex', gap:8, marginTop:16 }}>
+              <button onClick={() => { setModalTrr(false); setEditingTrr(null); }}
+                style={{ flex:1, padding:'8px', borderRadius:8, border:`1px solid ${Dk.border}`, background:'transparent', color:Dk.muted, fontSize:12, cursor:'pointer' }}>
+                Fechar
+              </button>
+              <button disabled={savingTrr || !formTrr.nome || !formTrr.uf}
+                onClick={async () => {
+                  setSavingTrr(true);
+                  try {
+                    if (editingTrr) {
+                      await api.put(`/trr/${editingTrr.id}`, formTrr);
+                    } else {
+                      await api.post('/trr', formTrr);
+                    }
+                    setFormTrr({ nome:'', uf:'', precoDiesel:'' });
+                    setEditingTrr(null);
+                    await carregarTrrs();
+                  } finally { setSavingTrr(false); }
+                }}
+                style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:'#60a5fa', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', opacity: (!formTrr.nome||!formTrr.uf)?0.5:1 }}>
+                {savingTrr ? 'Salvando...' : editingTrr ? 'Salvar' : 'Cadastrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header compacto */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -784,13 +867,22 @@ export default function MediasPrecoCombustivel() {
           )}
         </div>
         {abaAtiva === 'mapa' && (
-          <button onClick={() => setModalRedes(true)} style={{
-            padding: '4px 12px', borderRadius: 8, border: `1px solid ${Dk.border}`,
-            background: Dk.card, color: Dk.text, fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-          }}>
-            🏪 Redes de Postos
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => setModalRedes(true)} style={{
+              padding: '4px 12px', borderRadius: 8, border: `1px solid ${Dk.border}`,
+              background: Dk.card, color: Dk.text, fontSize: 11, fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              🏪 Redes de Postos
+            </button>
+            <button onClick={() => { setEditingTrr(null); setFormTrr({ nome: '', uf: '', precoDiesel: '' }); setModalTrr(true); }} style={{
+              padding: '4px 12px', borderRadius: 8, border: `1px solid ${Dk.border}`,
+              background: Dk.card, color: '#60a5fa', fontSize: 11, fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              🚛 TRR
+            </button>
+          </div>
         )}
       </div>
 
@@ -1057,7 +1149,9 @@ export default function MediasPrecoCombustivel() {
               <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Carregando...</div>
             ) : dados.length === 0 ? (
               <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Nenhum dado</div>
-            ) : dados.slice(0, limiteEstados).map((d, i) => (
+            ) : dados.slice(0, limiteEstados).map((d, i) => {
+              const trrDoEstado = trrs.find(t => t.uf === d.uf);
+              return (
               <div key={d.uf}
                 onMouseEnter={() => setHovUF(d.uf)}
                 onMouseLeave={() => setHovUF(null)}
@@ -1070,13 +1164,21 @@ export default function MediasPrecoCombustivel() {
                       <div style={{ fontSize: 9, color: Dk.muted }}>{fmtR(d.totalGasto)}</div>
                     </div>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 11, color: Dk.red, flexShrink: 0 }}>{fmtN(d.percentual, 1)}%</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 11, color: Dk.red }}>{fmtN(d.percentual, 1)}%</div>
+                    {trrDoEstado && trrDoEstado.precoDiesel && (
+                      <div title={`TRR: ${trrDoEstado.nome}`} style={{ fontSize: 9, color: '#4ade80', fontWeight: 600 }}>
+                        🚛 R$ {Number(trrDoEstado.precoDiesel).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}/L
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ height: '100%', borderRadius: 4, width: `${(d.percentual / maxPct) * 100}%`, background: getTopColor(d.percentual, maxPct), transition: 'width 0.5s ease' }} />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>}
 
