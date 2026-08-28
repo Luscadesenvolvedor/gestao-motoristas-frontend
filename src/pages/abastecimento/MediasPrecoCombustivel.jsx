@@ -614,6 +614,7 @@ export default function MediasPrecoCombustivel() {
   const [editingBid, setEditingBid] = useState(null);
   const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
   const [coordsOk, setCoordsOk]     = useState(false);
+  const [painelBidAberto, setPainelBidAberto] = useState(false);
   const [savingBid, setSavingBid]   = useState(false);
   const [toastBid, setToastBid]     = useState(null); // { msg, type }
   const toastTimerRef = useRef(null);
@@ -782,13 +783,15 @@ export default function MediasPrecoCombustivel() {
             </div>
           )}
         </div>
-        <button onClick={() => setModalRedes(true)} style={{
-          padding: '4px 12px', borderRadius: 8, border: `1px solid ${Dk.border}`,
-          background: Dk.card, color: Dk.text, fontSize: 11, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-        }}>
-          🏪 Redes de Postos
-        </button>
+        {abaAtiva === 'mapa' && (
+          <button onClick={() => setModalRedes(true)} style={{
+            padding: '4px 12px', borderRadius: 8, border: `1px solid ${Dk.border}`,
+            background: Dk.card, color: Dk.text, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            🏪 Redes de Postos
+          </button>
+        )}
       </div>
 
       {/* Consulta Posto */}
@@ -1077,39 +1080,48 @@ export default function MediasPrecoCombustivel() {
           </div>
         </div>}
 
-        {/* ─── Painel BID Postos ─── */}
+        {/* ─── Painel BID Postos (recolhível) ─── */}
         {abaAtiva === 'bid' && (
-          <div style={{ width: 200, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ fontWeight: 700, fontSize: 11, color: Dk.text }}>📍 Postos Cadastrados</span>
-                <button onClick={() => { setEditingBid(null); setFormBid({ nome:'', rede:'', cidade:'', uf:'', latitude:'', longitude:'' }); setModalBid(true); }}
-                  style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: Dk.red, color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
-                  + Novo
-                </button>
-              </div>
-              <div style={{ overflowY: 'auto', flex: 1 }}>
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, width: painelBidAberto ? 200 : 'auto' }}>
+            {/* Header sempre visível */}
+            <div style={{ background: Dk.card, borderRadius: painelBidAberto ? '12px 12px 0 0' : 12, border: `1px solid ${Dk.border}`, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => setPainelBidAberto(v => !v)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: Dk.muted, padding: 0, lineHeight: 1 }}>
+                {painelBidAberto ? '◀' : '▶'}
+              </button>
+              <span style={{ fontWeight: 700, fontSize: 10, color: Dk.text, whiteSpace: 'nowrap' }}>
+                📍 {painelBidAberto ? 'Postos' : ''} {postosBid.length > 0 ? `(${postosBid.length})` : ''}
+              </span>
+              <button onClick={() => { setEditingBid(null); setFormBid({ nome:'', rede:'', cidade:'', uf:'', latitude:'', longitude:'', precoDiesel:'', linkMaps:'' }); setCoordsOk(false); setModalBid(true); }}
+                style={{ padding: '2px 8px', borderRadius: 5, border: 'none', background: Dk.red, color: '#fff', fontSize: 9, fontWeight: 700, cursor: 'pointer', marginLeft: 'auto' }}>
+                +
+              </button>
+            </div>
+
+            {/* Lista — só quando aberto */}
+            {painelBidAberto && (
+              <div style={{ background: Dk.card, borderRadius: '0 0 12px 12px', border: `1px solid ${Dk.border}`, borderTop: 'none', overflowY: 'auto', flex: 1 }}>
                 {postosBid.length === 0 ? (
-                  <div style={{ padding: 24, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Nenhum posto cadastrado ainda</div>
+                  <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 11 }}>Nenhum posto ainda</div>
                 ) : postosBid.map(p => (
-                  <div key={p.id} style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div key={p.id} style={{ padding: '7px 10px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <div style={{ fontWeight: 700, fontSize: 10, color: Dk.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</div>
-                        {p.precoDiesel && <span style={{ fontSize: 10, fontWeight: 800, color: '#4ade80', flexShrink: 0 }}>R$ {Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
+                        {p.precoDiesel && <span style={{ fontSize: 9, fontWeight: 800, color: '#4ade80', flexShrink: 0 }}>R$ {Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
                       </div>
-                      <div style={{ fontSize: 9, color: Dk.muted, marginTop: 2 }}>{[p.rede, p.cidade, p.uf].filter(Boolean).join(' · ')}</div>
+                      <div style={{ fontSize: 9, color: Dk.muted }}>{[p.rede, p.cidade, p.uf].filter(Boolean).join(' · ')}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                      <button onClick={() => { setEditingBid(p); setFormBid({ nome: p.nome, rede: p.rede||'', cidade: p.cidade||'', uf: p.uf, latitude: p.latitude, longitude: p.longitude, precoDiesel: p.precoDiesel||'' }); setModalBid(true); }}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Editar">✏️</button>
+                      <button onClick={() => { setEditingBid(p); setFormBid({ nome: p.nome, rede: p.rede||'', cidade: p.cidade||'', uf: p.uf, latitude: p.latitude, longitude: p.longitude, precoDiesel: p.precoDiesel||'', linkMaps:'' }); setCoordsOk(false); setModalBid(true); }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, padding: '1px 3px' }}>✏️</button>
                       <button onClick={() => deletarBid(p.id)}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Remover">🗑️</button>
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, padding: '1px 3px' }}>🗑️</button>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
