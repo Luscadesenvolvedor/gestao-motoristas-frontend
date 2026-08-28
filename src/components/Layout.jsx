@@ -157,7 +157,7 @@ export default function Layout() {
       </aside>
 
       {/* Conteúdo */}
-      <main id="main-content" style={{ flex:1, overflow:'auto', background:'#f5f5f7', padding:0, display:'flex', flexDirection:'column' }}>
+      <main id="main-content" style={{ flex:1, overflow:'auto', background:'#f5f5f7', padding:24 }}>
         <Outlet />
       </main>
     </div>
