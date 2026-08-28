@@ -59,8 +59,9 @@ export default function SinoAbastecimento() {
         onClick={() => setAberto(v => !v)}
         title="Notificações de Abastecimento"
         style={{
-          position: 'relative', background: aberto ? 'rgba(235,50,56,0.15)' : 'none',
-          border: `1px solid ${aberto ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+          position: 'relative',
+          background: aberto ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)',
+          border: '1px solid rgba(255,255,255,0.35)',
           cursor: 'pointer', padding: '5px 9px', borderRadius: 8, fontSize: 16,
           transition: 'all 0.15s',
         }}
