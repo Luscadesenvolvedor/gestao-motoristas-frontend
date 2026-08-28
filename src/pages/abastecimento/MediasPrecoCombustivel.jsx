@@ -758,12 +758,12 @@ export default function MediasPrecoCombustivel() {
                     <g key={sigla}>
                       <path
                         d={d}
-                        fill={isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct)}
-                        stroke={isHov ? '#7dd3fc' : '#03070f'}
-                        strokeWidth={isHov ? 1.6 : 0.5}
-                        style={{ cursor: 'pointer', transition: 'fill 0.18s' }}
-                        onMouseEnter={() => setHovUF(sigla)}
-                        onMouseLeave={() => setHovUF(null)}
+                        fill={abaAtiva === 'bid' ? '#1c2333' : (isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct))}
+                        stroke={abaAtiva === 'bid' ? 'rgba(255,255,255,0.12)' : (isHov ? '#7dd3fc' : '#03070f')}
+                        strokeWidth={isHov && abaAtiva !== 'bid' ? 1.6 : 0.5}
+                        style={{ cursor: abaAtiva === 'bid' ? 'default' : 'pointer', transition: 'fill 0.18s' }}
+                        onMouseEnter={() => abaAtiva !== 'bid' && setHovUF(sigla)}
+                        onMouseLeave={() => abaAtiva !== 'bid' && setHovUF(null)}
                       />
                       {validC && abaAtiva !== 'bid' && (
                         <g style={{ pointerEvents: 'none' }}>
@@ -787,7 +787,7 @@ export default function MediasPrecoCombustivel() {
           </div>
 
           {/* Tooltip */}
-          {hovUF && hovData && (
+          {hovUF && hovData && abaAtiva !== 'bid' && (
             <div style={{
               position: 'absolute',
               left: Math.min(mouse.x + 16, 260),
@@ -816,11 +816,13 @@ export default function MediasPrecoCombustivel() {
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexShrink: 0 }}>
-            <span style={{ color: Dk.muted, fontSize: 8, fontWeight: 700 }}>BAIXO</span>
-            <div style={{ flex: 1, height: 4, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
-            <span style={{ color: Dk.muted, fontSize: 8, fontWeight: 700 }}>ALTO</span>
-          </div>
+          {abaAtiva !== 'bid' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexShrink: 0 }}>
+              <span style={{ color: Dk.muted, fontSize: 8, fontWeight: 700 }}>BAIXO</span>
+              <div style={{ flex: 1, height: 4, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
+              <span style={{ color: Dk.muted, fontSize: 8, fontWeight: 700 }}>ALTO</span>
+            </div>
+          )}
         </div>
 
         {/* ─── Ranking Redes ─── */}
