@@ -63,7 +63,7 @@ export default function MediasConsumo() {
   const [importacaoId, setImportacaoId] = useState('');
   const [loadingImps,  setLoadingImps]  = useState(true);
 
-  const [frotaSel,    setFrotaSel]    = useState('BAÚ'); // filtro rápido de frota
+  const [frotaSel,    setFrotaSel]    = useState(''); // filtro rápido de frota ('' = todas)
   const [abaAtiva,    setAbaAtiva]    = useState('geral'); // 'geral' | 'placa'
 
   const FROTAS = ['BAÚ', 'FROTA'];
@@ -114,7 +114,7 @@ export default function MediasConsumo() {
   }, []);
 
   // chave estável: evita duplo disparo quando frotaSel muda importacaoId
-  const queryKey = frotaSel ? `frota:${frotaSel}` : importacaoId ? `imp:${importacaoId}` : '';
+  const queryKey = frotaSel ? `frota:${frotaSel}` : 'todas';
 
   /* ── buscar placas, meses e resumo geral quando filtro muda ── */
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function MediasConsumo() {
       setResumoChart([]); setRegistros([]);
       return;
     }
-    const p = frotaSel ? { frota: frotaSel } : { importacaoId };
+    const p = frotaSel ? { frota: frotaSel } : {};
     api.get('/medias-consumo/placas', { params: p })
       .then(r => { setPlacas(r.data); setPlaca(''); setBuscaPlaca(''); setMesSel(''); setRegistros([]); })
       .catch(() => {});
@@ -145,7 +145,7 @@ export default function MediasConsumo() {
     // quando há placa, ignora frota e busca em todas as importações
     const params = placa
       ? { placa }
-      : frotaSel ? { frota: frotaSel } : { importacaoId };
+      : frotaSel ? { frota: frotaSel } : {};
     api.get('/medias-consumo/resumo-mensal', { params })
       .then(r => setResumoChart(r.data))
       .catch(() => {})
@@ -168,7 +168,7 @@ export default function MediasConsumo() {
   /* ── carregar resumo por motorista quando mesFiltro muda ── */
   useEffect(() => {
     if (!queryKey || !mesFiltro) { setResumoMotoristas([]); return; }
-    const base = frotaSel ? { frota: frotaSel } : { importacaoId };
+    const base = frotaSel ? { frota: frotaSel } : {};
     const [ano, mes] = mesFiltro.split('-');
     setLoadingResMot(true);
     api.get('/medias-consumo/resumo-motoristas', { params: { ...base, mes, ano } })
@@ -286,6 +286,13 @@ export default function MediasConsumo() {
         <>
           {/* ── FROTA PILLS ── */}
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:10 }}>
+            <button onClick={() => setFrotaSel('')}
+              style={{ padding:'6px 20px', borderRadius:20, border:'none', fontSize:12, fontWeight:700, cursor:'pointer',
+                background: !frotaSel ? '#475569' : '#f1f5f9',
+                color:      !frotaSel ? '#fff'    : '#64748b',
+                boxShadow:  !frotaSel ? '0 2px 8px rgba(0,0,0,0.15)' : 'none' }}>
+              Todas
+            </button>
             {FROTAS.map(f => {
               const bgAtivo = f === 'FROTA' ? '#065f46' : '#EB3238';
               return (
