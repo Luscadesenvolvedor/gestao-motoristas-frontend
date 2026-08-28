@@ -612,7 +612,8 @@ export default function MediasPrecoCombustivel() {
   const [postosBid, setPostosBid]   = useState([]);
   const [modalBid, setModalBid]     = useState(false);
   const [editingBid, setEditingBid] = useState(null);
-  const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '' });
+  const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
+  const [coordsOk, setCoordsOk]     = useState(false);
   const [savingBid, setSavingBid]   = useState(false);
   const [toastBid, setToastBid]     = useState(null); // { msg, type }
   const toastTimerRef = useRef(null);
@@ -699,7 +700,8 @@ export default function MediasPrecoCombustivel() {
       await carregarPostosBid();
       setModalBid(false);
       setEditingBid(null);
-      setFormBid({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '' });
+      setFormBid({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
+      setCoordsOk(false);
     } catch (err) { console.error(err); }
     finally { setSavingBid(false); }
   };
@@ -1120,13 +1122,11 @@ export default function MediasPrecoCombustivel() {
           <div style={{ background: '#1c2333', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', padding: 24, width: 400, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
             <div style={{ fontWeight: 800, fontSize: 14, color: '#e2e8f0', marginBottom: 20 }}>{editingBid ? '✏️ Editar Posto' : '📍 Cadastrar Posto'}</div>
             {[
-              { key: 'nome',      label: 'Nome / Razão Social *', placeholder: 'Ex: Posto BR Centro' },
-              { key: 'rede',      label: 'Rede / Bandeira',       placeholder: 'Ex: Shell, Ipiranga, BR...' },
-              { key: 'cidade',    label: 'Cidade',                placeholder: 'Ex: São Paulo' },
-              { key: 'uf',        label: 'UF *',                  placeholder: 'Ex: SP' },
-              { key: 'latitude',  label: 'Latitude *',            placeholder: 'Ex: -23.5505' },
-              { key: 'longitude',   label: 'Longitude *',              placeholder: 'Ex: -46.6333' },
-              { key: 'precoDiesel', label: 'Preço Diesel (R$/L)',       placeholder: 'Ex: 6.290' },
+              { key: 'nome',        label: 'Nome / Razão Social *', placeholder: 'Ex: Posto BR Centro' },
+              { key: 'rede',        label: 'Rede / Bandeira',       placeholder: 'Ex: Shell, Ipiranga, BR...' },
+              { key: 'cidade',      label: 'Cidade',                placeholder: 'Ex: São Paulo' },
+              { key: 'uf',          label: 'UF *',                  placeholder: 'Ex: SP' },
+              { key: 'precoDiesel', label: 'Preço Diesel (R$/L)',   placeholder: 'Ex: 5,90' },
             ].map(({ key, label, placeholder }) => (
               <div key={key} style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</label>
@@ -1139,8 +1139,50 @@ export default function MediasPrecoCombustivel() {
                 />
               </div>
             ))}
+
+            {/* Link do Google Maps */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                Link do Google Maps *
+              </label>
+              <input
+                value={formBid.linkMaps}
+                onChange={e => {
+                  const url = e.target.value;
+                  setFormBid(f => ({ ...f, linkMaps: url }));
+                  // tenta extrair @lat,lng
+                  const m1 = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                  // tenta extrair ?q=lat,lng ou ?ll=lat,lng
+                  const m2 = url.match(/[?&](?:q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                  const match = m1 || m2;
+                  if (match) {
+                    setFormBid(f => ({ ...f, linkMaps: url, latitude: match[1], longitude: match[2] }));
+                    setCoordsOk(true);
+                  } else {
+                    setCoordsOk(false);
+                  }
+                }}
+                placeholder="Cole o link do Google Maps aqui"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: `1px solid ${coordsOk ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: '#0d1117', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
+              />
+              {coordsOk && (
+                <div style={{ fontSize: 10, color: '#4ade80', marginTop: 4 }}>
+                  ✓ Coordenadas identificadas: {Number(formBid.latitude).toFixed(4)}, {Number(formBid.longitude).toFixed(4)}
+                </div>
+              )}
+              {formBid.linkMaps && !coordsOk && (
+                <div style={{ fontSize: 10, color: '#f87171', marginTop: 4 }}>
+                  ✗ Não foi possível extrair coordenadas — verifique o link
+                </div>
+              )}
+            </div>
+            {editingBid && formBid.latitude && !coordsOk && (
+              <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 12 }}>
+                📍 Localização atual: {Number(formBid.latitude).toFixed(4)}, {Number(formBid.longitude).toFixed(4)}
+              </div>
+            )}
             <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 18, lineHeight: 1.5 }}>
-              💡 Para pegar as coordenadas: abra o Google Maps, clique com botão direito no posto e copie os números (latitude, longitude).
+              💡 No Google Maps: clique no posto → toque nos três pontos → <strong style={{ color: '#e2e8f0' }}>Compartilhar</strong> → copie o link.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => { setModalBid(false); setEditingBid(null); }}
