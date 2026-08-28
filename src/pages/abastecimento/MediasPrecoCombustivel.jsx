@@ -589,46 +589,6 @@ function ConsultaPosto() {
   );
 }
 
-/* ─── Painel arrastável ─── */
-function DraggablePanel({ children, defaultX, defaultY, width }) {
-  const [pos, setPos] = useState({ x: defaultX, y: defaultY });
-  const dragging = useRef(false);
-  const offset   = useRef({ x: 0, y: 0 });
-
-  const onMouseDown = (e) => {
-    e.preventDefault();
-    dragging.current = true;
-    offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-    const move = (ev) => {
-      if (!dragging.current) return;
-      setPos({ x: ev.clientX - offset.current.x, y: ev.clientY - offset.current.y });
-    };
-    const up = () => {
-      dragging.current = false;
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  };
-
-  return (
-    <div style={{ position: 'fixed', left: pos.x, top: pos.y, width, zIndex: 200, userSelect: 'none' }}>
-      <div
-        onMouseDown={onMouseDown}
-        style={{
-          height: 8, borderRadius: '10px 10px 0 0',
-          background: 'rgba(255,255,255,0.07)',
-          cursor: 'grab', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <div style={{ width: 28, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
-      </div>
-      {children}
-    </div>
-  );
-}
-
 /* ─── Página principal ─── */
 export default function MediasPrecoCombustivel() {
   const [abaAtiva, setAbaAtiva]     = useState('mapa');
@@ -863,7 +823,7 @@ export default function MediasPrecoCombustivel() {
         <div
           ref={containerRef}
           style={{
-            flex: '1 1 0',
+            flex: abaAtiva === 'bid' ? '1 1 0' : '0 0 38%',
             background: 'transparent',
             borderRadius: 16, padding: '4px 8px',
             position: 'relative', overflow: 'hidden',
@@ -1014,11 +974,10 @@ export default function MediasPrecoCombustivel() {
         </div>
 
         {/* ─── Ranking Redes ─── */}
-        {abaAtiva === 'mapa' && <DraggablePanel defaultX={window.innerWidth - 510} defaultY={80} width={260}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {abaAtiva === 'mapa' && <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
 
           {/* Ranking Redes */}
-          <div style={{ background: Dk.card, borderRadius: '0 0 12px 12px', border: `1px solid ${Dk.border}`, overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', flexShrink: 0 }}>
             <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Ranking por Rede</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1076,13 +1035,11 @@ export default function MediasPrecoCombustivel() {
             )}
           </div>
 
-          </div>
-        </DraggablePanel>}
+        </div>}
 
         {/* ─── Ranking por Estado ─── */}
         {abaAtiva === 'mapa' &&
-        <DraggablePanel defaultX={window.innerWidth - 244} defaultY={80} width={230}>
-        <div style={{ background: Dk.card, borderRadius: '0 0 12px 12px', border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 120px)' }}>
+        <div style={{ width: 230, flexShrink: 0, background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignSelf: 'flex-start', maxHeight: '100%' }}>
           <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Ranking por Estado</span>
             <div style={{ display: 'flex', gap: 4 }}>
@@ -1121,8 +1078,7 @@ export default function MediasPrecoCombustivel() {
               </div>
             ))}
           </div>
-        </div>
-        </DraggablePanel>}
+        </div>}
 
         {/* ─── Painel BID Postos (recolhível) ─── */}
         {abaAtiva === 'bid' && (
