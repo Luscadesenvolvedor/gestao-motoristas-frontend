@@ -779,7 +779,7 @@ export default function MediasPrecoCombustivel() {
         <div
           ref={containerRef}
           style={{
-            flex: '0 0 38%',
+            flex: abaAtiva === 'bid' ? '1 1 0' : '0 0 38%',
             background: 'transparent',
             borderRadius: 16, padding: '4px 8px',
             position: 'relative', overflow: 'hidden',
@@ -1040,7 +1040,7 @@ export default function MediasPrecoCombustivel() {
 
         {/* ─── Painel BID Postos ─── */}
         {abaAtiva === 'bid' && (
-          <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ width: 200, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               <div style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <span style={{ fontWeight: 700, fontSize: 11, color: Dk.text }}>📍 Postos Cadastrados</span>
