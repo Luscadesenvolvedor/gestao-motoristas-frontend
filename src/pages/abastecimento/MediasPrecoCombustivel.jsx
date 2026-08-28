@@ -614,6 +614,8 @@ export default function MediasPrecoCombustivel() {
   const [editingBid, setEditingBid] = useState(null);
   const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '' });
   const [savingBid, setSavingBid]   = useState(false);
+  const [toastBid, setToastBid]     = useState(null); // { msg, type }
+  const toastTimerRef = useRef(null);
 
   useEffect(() => {
     fetch(GEOJSON_URL)
@@ -666,14 +668,34 @@ export default function MediasPrecoCombustivel() {
     } catch (err) { console.error(err); }
   }, []);
 
+  const showToast = (msg, type = 'alert') => {
+    clearTimeout(toastTimerRef.current);
+    setToastBid({ msg, type });
+    toastTimerRef.current = setTimeout(() => setToastBid(null), 5000);
+  };
+
   const salvarBid = async () => {
     setSavingBid(true);
     try {
+      const precoAnterior = editingBid?.precoDiesel;
+      const precoNovo = formBid.precoDiesel
+        ? parseFloat(String(formBid.precoDiesel).replace(',', '.'))
+        : null;
+
       if (editingBid) {
         await api.put(`/postos-bid/${editingBid.id}`, formBid);
+        // detecta mudança de preço
+        if (precoNovo != null && precoAnterior != null && Math.abs(precoNovo - precoAnterior) > 0.001) {
+          const fmt = v => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          showToast(`⚠️ Preço atualizado — ${formBid.nome}: R$ ${fmt(precoAnterior)} → R$ ${fmt(precoNovo)}`, 'alert');
+        } else if (precoNovo != null && precoAnterior == null) {
+          showToast(`📌 Preço cadastrado — ${formBid.nome}: R$ ${Number(precoNovo).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'info');
+        }
       } else {
         await api.post('/postos-bid', formBid);
+        showToast(`✅ Posto cadastrado: ${formBid.nome}`, 'info');
       }
+
       await carregarPostosBid();
       setModalBid(false);
       setEditingBid(null);
@@ -771,6 +793,23 @@ export default function MediasPrecoCombustivel() {
       {abaAtiva === 'consulta' && (
         <div style={{ flex: 1, minHeight: 0 }}>
           <ConsultaPosto />
+        </div>
+      )}
+
+      {/* Toast BID */}
+      {toastBid && (
+        <div style={{
+          position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 300, padding: '12px 20px', borderRadius: 12,
+          background: toastBid.type === 'alert' ? 'rgba(234,88,12,0.97)' : 'rgba(22,163,74,0.97)',
+          color: '#fff', fontWeight: 700, fontSize: 13,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', gap: 12,
+          border: `1px solid ${toastBid.type === 'alert' ? '#f97316' : '#4ade80'}`,
+          maxWidth: '90vw', whiteSpace: 'nowrap',
+        }}>
+          {toastBid.msg}
+          <button onClick={() => setToastBid(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 16, padding: 0, marginLeft: 4, opacity: 0.7 }}>✕</button>
         </div>
       )}
 
