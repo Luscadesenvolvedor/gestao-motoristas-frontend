@@ -765,7 +765,7 @@ export default function MediasPrecoCombustivel() {
                         onMouseEnter={() => setHovUF(sigla)}
                         onMouseLeave={() => setHovUF(null)}
                       />
-                      {validC && (
+                      {validC && abaAtiva !== 'bid' && (
                         <g style={{ pointerEvents: 'none' }}>
                           <text x={cx} y={cy - 1} textAnchor="middle" fontSize={7.5} fontWeight="800"
                             fill={isHov ? '#0284c7' : 'rgba(255,255,255,0.95)'}>
