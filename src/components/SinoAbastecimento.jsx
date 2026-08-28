@@ -60,7 +60,7 @@ export default function SinoAbastecimento() {
         title="Notificações de Abastecimento"
         style={{
           position: 'relative', background: aberto ? 'rgba(235,50,56,0.15)' : 'none',
-          border: `1px solid ${aberto ? '#EB3238' : 'rgba(255,255,255,0.1)'}`,
+          border: `1px solid ${aberto ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
           cursor: 'pointer', padding: '5px 9px', borderRadius: 8, fontSize: 16,
           transition: 'all 0.15s',
         }}
@@ -69,7 +69,7 @@ export default function SinoAbastecimento() {
         {naoLidas > 0 && (
           <span style={{
             position: 'absolute', top: -4, right: -4,
-            background: '#EB3238', color: '#fff', borderRadius: '50%',
+            background: '#f59e0b', color: '#fff', borderRadius: '50%',
             width: 17, height: 17, fontSize: 10, fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
@@ -93,7 +93,7 @@ export default function SinoAbastecimento() {
             <span style={{ fontWeight: 700, fontSize: 13, color: '#e2e8f0' }}>
               ⛽ Preços Diesel
               {naoLidas > 0 && (
-                <span style={{ background: '#EB3238', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, marginLeft: 6 }}>
+                <span style={{ background: '#f59e0b', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: 10, marginLeft: 6 }}>
                   {naoLidas}
                 </span>
               )}
@@ -129,9 +129,9 @@ export default function SinoAbastecimento() {
                   onClick={() => marcarLida(n.id, !n.lida)}
                   style={{
                     flexShrink: 0, background: 'none',
-                    border: `1px solid ${n.lida ? 'rgba(255,255,255,0.1)' : '#EB3238'}`,
+                    border: `1px solid ${n.lida ? 'rgba(255,255,255,0.1)' : '#f59e0b'}`,
                     borderRadius: 6, padding: '3px 8px', fontSize: 10, cursor: 'pointer',
-                    color: n.lida ? '#6b7280' : '#EB3238', whiteSpace: 'nowrap',
+                    color: n.lida ? '#6b7280' : '#f59e0b', whiteSpace: 'nowrap',
                   }}
                 >
                   {n.lida ? '↩' : '✓ Lida'}
