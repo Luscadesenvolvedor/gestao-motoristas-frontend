@@ -894,17 +894,15 @@ export default function MediasPrecoCombustivel() {
                   const [px, py] = coords;
                   return (
                     <g key={p.id} style={{ pointerEvents: 'none' }}>
-                      {/* ponto mínimo de localização */}
-                      <circle cx={px} cy={py} r={2} fill="#4ade80" opacity={0.9} />
-                      {/* preço em destaque */}
-                      {p.precoDiesel && (
-                        <text x={px} y={py - 5} textAnchor="middle" fontSize={4} fontWeight="800" fill="#4ade80">
-                          R$ {Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </text>
-                      )}
                       {/* nome menor acima */}
-                      <text x={px} y={py - (p.precoDiesel ? 11 : 5)} textAnchor="middle" fontSize={3} fontWeight="600" fill="rgba(255,255,255,0.55)">
+                      <text x={px} y={py - 5} textAnchor="middle" fontSize={3} fontWeight="600" fill="rgba(255,255,255,0.55)">
                         {p.nome}
+                      </text>
+                      {/* preço no lugar do círculo */}
+                      <text x={px} y={py + 1} textAnchor="middle" fontSize={4} fontWeight="800" fill="#4ade80">
+                        {p.precoDiesel
+                          ? `R$ ${Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : '·'}
                       </text>
                     </g>
                   );
