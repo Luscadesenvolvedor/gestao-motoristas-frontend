@@ -759,7 +759,7 @@ export default function MediasPrecoCombustivel() {
   const Dk = { bg: '#0d1117', card: '#161b27', card2: '#1c2333', border: 'rgba(255,255,255,0.08)', text: '#e2e8f0', muted: '#6b7280', red: '#EB3238' };
 
   return (
-    <div style={{ padding: '8px 12px', fontFamily: 'Inter, sans-serif', background: Dk.bg, height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <div style={{ padding: '8px 12px', fontFamily: 'Inter, sans-serif', background: Dk.bg, height: 'calc(100% + 48px)', margin: -24, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} />}
 
       {/* Header compacto */}
