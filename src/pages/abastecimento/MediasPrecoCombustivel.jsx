@@ -600,7 +600,7 @@ export default function MediasPrecoCombustivel() {
   const [mouse, setMouse]           = useState({ x: 0, y: 0 });
   const [modalRedes, setModalRedes] = useState(false);
   const [limiteRedes, setLimiteRedes]   = useState(5);
-  const [limiteEstados, setLimiteEstados] = useState(10);
+  const [limiteEstados, setLimiteEstados] = useState(5);
   const [redes, setRedes]               = useState([]);
   const [loadingRedes, setLoadingRedes] = useState(true);
   const [ufsDaRede, setUfsDaRede]       = useState({});     // { [redeId]: [...] }
@@ -892,7 +892,7 @@ export default function MediasPrecoCombustivel() {
           <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Ranking por Estado</span>
             <div style={{ display: 'flex', gap: 4 }}>
-              {[10, 20, 999].map(n => (
+              {[5, 10, 20, 999].map(n => (
                 <button key={n} onClick={() => setLimiteEstados(n)} style={{
                   padding: '2px 6px', borderRadius: 4, border: `1px solid ${limiteEstados === n ? Dk.red : Dk.border}`,
                   background: limiteEstados === n ? 'rgba(235,50,56,0.15)' : 'transparent',
