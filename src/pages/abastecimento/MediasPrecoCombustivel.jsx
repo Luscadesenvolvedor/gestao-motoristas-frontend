@@ -858,7 +858,7 @@ export default function MediasPrecoCombustivel() {
                       {/* preço em destaque */}
                       {p.precoDiesel && (
                         <text x={px} y={py - 5} textAnchor="middle" fontSize={5.5} fontWeight="800" fill="#4ade80">
-                          R$ {Number(p.precoDiesel).toFixed(3)}
+                          R$ {Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                         </text>
                       )}
                       {/* nome menor acima */}
@@ -1057,7 +1057,7 @@ export default function MediasPrecoCombustivel() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                         <div style={{ fontWeight: 700, fontSize: 10, color: Dk.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</div>
-                        {p.precoDiesel && <span style={{ fontSize: 10, fontWeight: 800, color: '#4ade80', flexShrink: 0 }}>R$ {Number(p.precoDiesel).toFixed(3)}</span>}
+                        {p.precoDiesel && <span style={{ fontSize: 10, fontWeight: 800, color: '#4ade80', flexShrink: 0 }}>R$ {Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</span>}
                       </div>
                       <div style={{ fontSize: 9, color: Dk.muted, marginTop: 2 }}>{[p.rede, p.cidade, p.uf].filter(Boolean).join(' · ')}</div>
                     </div>
