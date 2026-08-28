@@ -6,7 +6,8 @@ const ICONES = {
   ferias: '🏖️',
   atestado: '🏥',
   afastamento: '⚠️',
-  abandono: '🚪'
+  abandono: '🚪',
+  preco_diesel: '⛽',
 };
 
 export default function Notificacoes() {
