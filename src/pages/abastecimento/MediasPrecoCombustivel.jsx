@@ -888,7 +888,7 @@ export default function MediasPrecoCombustivel() {
         </div>
 
         {/* ─── Ranking por Estado ─── */}
-        <div style={{ width: 230, flexShrink: 0, background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ width: 230, flexShrink: 0, background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignSelf: 'flex-start', maxHeight: '100%' }}>
           <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Ranking por Estado</span>
             <div style={{ display: 'flex', gap: 4 }}>
