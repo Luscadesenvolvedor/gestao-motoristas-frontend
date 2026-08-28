@@ -599,6 +599,8 @@ export default function MediasPrecoCombustivel() {
   const [hovUF, setHovUF]           = useState(null);
   const [mouse, setMouse]           = useState({ x: 0, y: 0 });
   const [modalRedes, setModalRedes] = useState(false);
+  const [limiteRedes, setLimiteRedes]   = useState(5);
+  const [limiteEstados, setLimiteEstados] = useState(10);
   const [redes, setRedes]               = useState([]);
   const [loadingRedes, setLoadingRedes] = useState(true);
   const [ufsDaRede, setUfsDaRede]       = useState({});     // { [redeId]: [...] }
@@ -826,9 +828,18 @@ export default function MediasPrecoCombustivel() {
 
           {/* Ranking Redes */}
           <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', flexShrink: 0 }}>
-            <div style={{ padding: '8px 14px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Ranking por Rede</span>
-              <button onClick={carregarRedes} title="Atualizar" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: Dk.muted }}>↻</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {[5, 10, 999].map(n => (
+                  <button key={n} onClick={() => setLimiteRedes(n)} style={{
+                    padding: '2px 6px', borderRadius: 4, border: `1px solid ${limiteRedes === n ? Dk.red : Dk.border}`,
+                    background: limiteRedes === n ? 'rgba(235,50,56,0.15)' : 'transparent',
+                    color: limiteRedes === n ? Dk.red : Dk.muted, fontSize: 9, fontWeight: 700, cursor: 'pointer',
+                  }}>{n === 999 ? 'Todos' : n}</button>
+                ))}
+                <button onClick={carregarRedes} title="Atualizar" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: Dk.muted, marginLeft: 2 }}>↻</button>
+              </div>
             </div>
             {loadingRedes ? (
               <div style={{ padding: '12px', color: Dk.muted, fontSize: 12, textAlign: 'center' }}>Carregando...</div>
@@ -838,7 +849,7 @@ export default function MediasPrecoCombustivel() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {redes.map((r, i) => {
+                {redes.slice(0, limiteRedes).map((r, i) => {
                   const cor     = REDE_CORES[i % REDE_CORES.length];
                   const estados = ufsDaRede[r.id] || [];
                   return (
@@ -878,15 +889,24 @@ export default function MediasPrecoCombustivel() {
 
         {/* ─── Ranking por Estado ─── */}
         <div style={{ width: 230, flexShrink: 0, background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0 }}>
-            Ranking por Estado
+          <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Ranking por Estado</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[10, 20, 999].map(n => (
+                <button key={n} onClick={() => setLimiteEstados(n)} style={{
+                  padding: '2px 6px', borderRadius: 4, border: `1px solid ${limiteEstados === n ? Dk.red : Dk.border}`,
+                  background: limiteEstados === n ? 'rgba(235,50,56,0.15)' : 'transparent',
+                  color: limiteEstados === n ? Dk.red : Dk.muted, fontSize: 9, fontWeight: 700, cursor: 'pointer',
+                }}>{n === 999 ? 'Todos' : n}</button>
+              ))}
+            </div>
           </div>
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {loading ? (
               <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Carregando...</div>
             ) : dados.length === 0 ? (
               <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Nenhum dado</div>
-            ) : dados.map((d, i) => (
+            ) : dados.slice(0, limiteEstados).map((d, i) => (
               <div key={d.uf}
                 onMouseEnter={() => setHovUF(d.uf)}
                 onMouseLeave={() => setHovUF(null)}
