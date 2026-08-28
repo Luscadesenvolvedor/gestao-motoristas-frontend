@@ -667,29 +667,29 @@ export default function MediasPrecoCombustivel() {
   const totalGasto = dados.reduce((a, d) => a + d.totalGasto, 0);
   const hovData = hovUF ? byUF[hovUF] : null;
 
+  const Dk = { bg: '#0d1117', card: '#161b27', card2: '#1c2333', border: 'rgba(255,255,255,0.08)', text: '#e2e8f0', muted: '#6b7280', red: '#EB3238' };
+
   return (
-    <div style={{ padding: '14px 20px', fontFamily: 'Inter, sans-serif', background: '#f8fafc', height: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <div style={{ padding: '12px 16px', fontFamily: 'Inter, sans-serif', background: Dk.bg, height: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
       {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} />}
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>Preço Combustível</h2>
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 4 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: Dk.text, margin: 0 }}>Preço Combustível</h2>
+          <div style={{ display: 'flex', gap: 2, background: Dk.card, borderRadius: 10, padding: 3, border: `1px solid ${Dk.border}` }}>
             {[{ id: 'mapa', label: '🗺 Mapa por Estado' }, { id: 'consulta', label: '🔍 Consulta Posto' }].map(t => (
               <button key={t.id} onClick={() => setAbaAtiva(t.id)} style={{
                 padding: '5px 14px', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                background: abaAtiva === t.id ? '#fff' : 'transparent',
-                color: abaAtiva === t.id ? '#EB3238' : '#64748b',
-                boxShadow: abaAtiva === t.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                background: abaAtiva === t.id ? Dk.red : 'transparent',
+                color: abaAtiva === t.id ? '#fff' : Dk.muted,
               }}>{t.label}</button>
             ))}
           </div>
         </div>
         <button onClick={() => setModalRedes(true)} style={{
-          padding: '6px 16px', borderRadius: 20, border: '1.5px solid #e2e8f0',
-          background: '#fff', color: '#475569', fontSize: 12, fontWeight: 700,
+          padding: '6px 16px', borderRadius: 20, border: `1px solid ${Dk.border}`,
+          background: Dk.card, color: Dk.text, fontSize: 12, fontWeight: 600,
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
         }}>
           🏪 Redes de Postos
@@ -703,7 +703,7 @@ export default function MediasPrecoCombustivel() {
         </div>
       )}
 
-      <div style={{ display: abaAtiva === 'mapa' ? 'flex' : 'none', gap: 16, flex: 1, minHeight: 0 }}>
+      <div style={{ display: abaAtiva === 'mapa' ? 'flex' : 'none', gap: 12, flex: 1, minHeight: 0 }}>
         {/* ─── Mapa ─── */}
         <div
           ref={containerRef}
@@ -807,33 +807,34 @@ export default function MediasPrecoCombustivel() {
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexShrink: 0 }}>
-            <span style={{ color: '#475569', fontSize: 8, fontWeight: 700 }}>BAIXO</span>
-            <div style={{ flex: 1, height: 5, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
-            <span style={{ color: '#475569', fontSize: 8, fontWeight: 700 }}>ALTO</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexShrink: 0 }}>
+            <span style={{ color: Dk.muted, fontSize: 8, fontWeight: 700 }}>BAIXO</span>
+            <div style={{ flex: 1, height: 4, borderRadius: 4, background: 'linear-gradient(to right, #1d4b6a, #34d399, #fbbf24, #f97316, #ea580c, #dc2626, #b91c1c)' }} />
+            <span style={{ color: Dk.muted, fontSize: 8, fontWeight: 700 }}>ALTO</span>
           </div>
         </div>
 
         {/* ─── Painel direito ─── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+
           {/* KPI */}
-          <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', borderLeft: '4px solid #EB3238', flexShrink: 0 }}>
-            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TOTAL GASTO (DIESEL)</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e' }}>{loading ? '—' : fmtR(totalGasto)}</div>
-            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{dados.length} estado(s) com abastecimento</div>
+          <div style={{ background: Dk.card, borderRadius: 12, padding: '10px 16px', border: `1px solid ${Dk.border}`, borderLeft: `3px solid ${Dk.red}`, flexShrink: 0 }}>
+            <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 2 }}>TOTAL GASTO (DIESEL)</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: Dk.red }}>{loading ? '—' : fmtR(totalGasto)}</div>
+            <div style={{ fontSize: 10, color: Dk.muted, marginTop: 1 }}>{dados.length} estado(s) com abastecimento</div>
           </div>
 
           {/* Ranking Redes */}
-          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', overflow: 'hidden', flexShrink: 0 }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 12, color: '#1a1a2e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ padding: '8px 14px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Ranking por Rede</span>
-              <button onClick={carregarRedes} title="Atualizar" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: '#94a3b8' }}>↻</button>
+              <button onClick={carregarRedes} title="Atualizar" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: Dk.muted }}>↻</button>
             </div>
             {loadingRedes ? (
-              <div style={{ padding: '14px', color: '#94a3b8', fontSize: 12, textAlign: 'center' }}>Carregando...</div>
+              <div style={{ padding: '12px', color: Dk.muted, fontSize: 12, textAlign: 'center' }}>Carregando...</div>
             ) : redes.length === 0 ? (
-              <div style={{ padding: '14px 14px', color: '#94a3b8', fontSize: 11 }}>
-                Nenhuma rede vinculada ainda. Use <strong>Redes de Postos</strong> para cadastrar e vincular.
+              <div style={{ padding: '12px 14px', color: Dk.muted, fontSize: 11 }}>
+                Nenhuma rede vinculada. Use <strong style={{ color: Dk.text }}>Redes de Postos</strong> para cadastrar.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -841,31 +842,28 @@ export default function MediasPrecoCombustivel() {
                   const cor     = REDE_CORES[i % REDE_CORES.length];
                   const estados = ufsDaRede[r.id] || [];
                   return (
-                    <div key={r.id} style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                    <div key={r.id} style={{ padding: '8px 14px', borderBottom: `1px solid ${Dk.border}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: cor, flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e' }}>{r.nome}</span>
-                          <span style={{ fontSize: 9, color: '#94a3b8' }}>{r.totalPostos} posto(s)</span>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: cor, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: Dk.text }}>{r.nome}</span>
+                          <span style={{ fontSize: 9, color: Dk.muted }}>{r.totalPostos} posto(s)</span>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: cor }}>{fmtN(r.percentual, 1)}%</span>
-                          <span style={{ fontSize: 9, color: '#94a3b8', marginLeft: 6 }}>{fmtR(r.totalGasto)}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: cor }}>{fmtN(r.percentual, 1)}%</span>
+                          <span style={{ fontSize: 9, color: Dk.muted, marginLeft: 6 }}>{fmtR(r.totalGasto)}</span>
                         </div>
                       </div>
-                      <div style={{ height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
+                      <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
                         <div style={{ height: '100%', borderRadius: 4, width: `${r.percentual}%`, background: cor, transition: 'width 0.6s ease' }} />
                       </div>
-                      {/* Estados em linha: SP 32% · MG 20% · ... */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
                         {estados.length === 0 ? (
-                          <span style={{ fontSize: 9, color: '#cbd5e1' }}>carregando...</span>
+                          <span style={{ fontSize: 9, color: Dk.muted }}>carregando...</span>
                         ) : estados.map((u, idx) => (
-                          <span key={u.uf} title={UF_LABELS[u.uf] || u.uf}
-                            style={{ fontSize: 10, color: '#475569', whiteSpace: 'nowrap' }}>
-                            <strong style={{ color: cor }}>{u.uf}</strong>
-                            {' '}{fmtN(u.percentual, 1)}%
-                            {idx < estados.length - 1 && <span style={{ color: '#cbd5e1', marginLeft: 6 }}>·</span>}
+                          <span key={u.uf} title={UF_LABELS[u.uf] || u.uf} style={{ fontSize: 9, color: Dk.muted, whiteSpace: 'nowrap' }}>
+                            <strong style={{ color: cor }}>{u.uf}</strong> {fmtN(u.percentual, 1)}%
+                            {idx < estados.length - 1 && <span style={{ color: Dk.border, marginLeft: 4 }}>·</span>}
                           </span>
                         ))}
                       </div>
@@ -877,34 +875,34 @@ export default function MediasPrecoCombustivel() {
           </div>
 
           {/* Ranking por Estado */}
-          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.07)', overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontWeight: 700, fontSize: 12, color: '#1a1a2e', flexShrink: 0 }}>
+          <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '8px 14px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0 }}>
               Ranking por Estado
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
               {loading ? (
-                <div style={{ padding: 20, color: '#94a3b8', textAlign: 'center', fontSize: 12 }}>Carregando...</div>
+                <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Carregando...</div>
               ) : dados.length === 0 ? (
-                <div style={{ padding: 20, color: '#94a3b8', textAlign: 'center', fontSize: 12 }}>Nenhum dado encontrado</div>
+                <div style={{ padding: 20, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Nenhum dado encontrado</div>
               ) : dados.map((d, i) => (
                 <div key={d.uf}
                   onMouseEnter={() => setHovUF(d.uf)}
                   onMouseLeave={() => setHovUF(null)}
-                  style={{ padding: '7px 14px', borderBottom: '1px solid #f8fafc', background: hovUF === d.uf ? '#f0f9ff' : '#fff', cursor: 'default', transition: 'background 0.15s' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  style={{ padding: '6px 14px', borderBottom: `1px solid ${Dk.border}`, background: hovUF === d.uf ? 'rgba(255,255,255,0.04)' : 'transparent', cursor: 'default', transition: 'background 0.15s' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: 6, background: getTopColor(d.percentual, maxPct), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{i + 1}</div>
+                      <div style={{ width: 20, height: 20, borderRadius: 6, background: getTopColor(d.percentual, maxPct), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{i + 1}</div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 12, color: '#1a1a2e' }}>{d.uf}</div>
-                        <div style={{ fontSize: 9, color: '#94a3b8' }}>{UF_LABELS[d.uf] || ''}</div>
+                        <div style={{ fontWeight: 700, fontSize: 11, color: Dk.text }}>{d.uf}</div>
+                        <div style={{ fontSize: 9, color: Dk.muted }}>{UF_LABELS[d.uf] || ''}</div>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: '#EB3238' }}>{fmtN(d.percentual, 1)}%</div>
-                      <div style={{ fontSize: 9, color: '#64748b' }}>{fmtR(d.totalGasto)}</div>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: Dk.red }}>{fmtN(d.percentual, 1)}%</div>
+                      <div style={{ fontSize: 9, color: Dk.muted }}>{fmtR(d.totalGasto)}</div>
                     </div>
                   </div>
-                  <div style={{ height: 3, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ height: '100%', borderRadius: 4, width: `${(d.percentual / maxPct) * 100}%`, background: getTopColor(d.percentual, maxPct), transition: 'width 0.5s ease' }} />
                   </div>
                 </div>
