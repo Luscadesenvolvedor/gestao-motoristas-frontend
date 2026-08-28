@@ -605,7 +605,10 @@ export default function MediasPrecoCombustivel() {
   const [loadingRedes, setLoadingRedes] = useState(true);
   const [ufsDaRede, setUfsDaRede]       = useState({});     // { [redeId]: [...] }
   const containerRef = useRef();
-  const projRef      = useRef(null);
+  const projRef          = useRef(null);
+  const svgRef           = useRef(null);
+  const zoomBehaviorRef  = useRef(null);
+  const [zoomT, setZoomT]           = useState({ x: 0, y: 0, k: 1 });
   const [postosBid, setPostosBid]   = useState([]);
   const [modalBid, setModalBid]     = useState(false);
   const [editingBid, setEditingBid] = useState(null);
@@ -688,6 +691,28 @@ export default function MediasPrecoCombustivel() {
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { carregarRedes(); }, [carregarRedes]);
   useEffect(() => { if (abaAtiva === 'bid') carregarPostosBid(); }, [abaAtiva, carregarPostosBid]);
+
+  // Zoom interativo (só na aba BID)
+  useEffect(() => {
+    if (!svgRef.current || geoLoading || abaAtiva !== 'bid') return;
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 14])
+      .on('zoom', e => setZoomT({ x: e.transform.x, y: e.transform.y, k: e.transform.k }));
+    zoomBehaviorRef.current = zoom;
+    const sel = d3.select(svgRef.current);
+    sel.call(zoom);
+    sel.on('dblclick.zoom', () =>
+      sel.transition().duration(350).call(zoom.transform, d3.zoomIdentity));
+    return () => {
+      sel.on('.zoom', null);
+      zoomBehaviorRef.current = null;
+      setZoomT({ x: 0, y: 0, k: 1 });
+    };
+  }, [geoLoading, abaAtiva]);
+
+  const zoomIn    = () => svgRef.current && zoomBehaviorRef.current && d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 1.6);
+  const zoomOut   = () => svgRef.current && zoomBehaviorRef.current && d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 0.625);
+  const zoomReset = () => svgRef.current && zoomBehaviorRef.current && d3.select(svgRef.current).transition().duration(350).call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
 
   // Carrega UFs de todas as redes após carregar o ranking
   useEffect(() => {
@@ -775,17 +800,19 @@ export default function MediasPrecoCombustivel() {
             Abastecimento por Estado — % do gasto total (Diesel)
           </div>
 
-          <div style={{ perspective: '1200px', perspectiveOrigin: '50% 40%', flex: 1, minHeight: 0 }}>
+          <div style={{ perspective: abaAtiva === 'bid' ? 'none' : '1200px', perspectiveOrigin: '50% 40%', flex: 1, minHeight: 0, position: 'relative' }}>
             {geoLoading ? (
               <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 13 }}>
                 Carregando mapa...
               </div>
             ) : (
               <svg
+                ref={svgRef}
                 viewBox={`${PAD} ${PAD} ${W} ${H}`}
-                style={{ width: '100%', height: '100%', display: 'block', transform: 'rotateX(22deg)', transformOrigin: '50% 50%' }}
+                style={{ width: '100%', height: '100%', display: 'block', transform: abaAtiva === 'bid' ? 'none' : 'rotateX(22deg)', transformOrigin: '50% 50%', cursor: abaAtiva === 'bid' ? 'grab' : 'default' }}
                 onMouseLeave={() => setHovUF(null)}
               >
+                <g transform={abaAtiva === 'bid' ? `translate(${zoomT.x},${zoomT.y}) scale(${zoomT.k})` : undefined}>
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info  = byUF[sigla];
                   const isHov = hovUF === sigla;
@@ -835,7 +862,27 @@ export default function MediasPrecoCombustivel() {
                     </g>
                   );
                 })}
+                </g>
               </svg>
+            )}
+
+            {/* Controles de zoom (BID) */}
+            {abaAtiva === 'bid' && !geoLoading && (
+              <div style={{ position: 'absolute', bottom: 14, right: 14, display: 'flex', flexDirection: 'column', gap: 4, zIndex: 10 }}>
+                {[
+                  { label: '+', action: zoomIn,    title: 'Aproximar' },
+                  { label: '⊙', action: zoomReset, title: 'Resetar zoom' },
+                  { label: '−', action: zoomOut,   title: 'Afastar' },
+                ].map(({ label, action, title }) => (
+                  <button key={label} onClick={action} title={title} style={{
+                    width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(22,27,39,0.92)', color: '#e2e8f0', fontSize: 16, fontWeight: 700,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backdropFilter: 'blur(4px)', lineHeight: 1,
+                  }}>{label}</button>
+                ))}
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 2 }}>scroll / drag</div>
+              </div>
             )}
           </div>
 
