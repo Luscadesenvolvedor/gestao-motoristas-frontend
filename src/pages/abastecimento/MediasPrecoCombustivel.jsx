@@ -605,12 +605,19 @@ export default function MediasPrecoCombustivel() {
   const [loadingRedes, setLoadingRedes] = useState(true);
   const [ufsDaRede, setUfsDaRede]       = useState({});     // { [redeId]: [...] }
   const containerRef = useRef();
+  const projRef      = useRef(null);
+  const [postosBid, setPostosBid]   = useState([]);
+  const [modalBid, setModalBid]     = useState(false);
+  const [editingBid, setEditingBid] = useState(null);
+  const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '' });
+  const [savingBid, setSavingBid]   = useState(false);
 
   useEffect(() => {
     fetch(GEOJSON_URL)
       .then(r => r.json())
       .then(geo => {
         const proj = d3.geoMercator().fitExtent([[PAD, PAD], [W + PAD, H + PAD]], geo);
+        projRef.current = proj;
         const pathGen = d3.geoPath().projection(proj);
         const paths = geo.features
           .map(f => ({
@@ -649,8 +656,38 @@ export default function MediasPrecoCombustivel() {
     }
   }, []);
 
+  const carregarPostosBid = useCallback(async () => {
+    try {
+      const { data } = await api.get('/postos-bid');
+      setPostosBid(data);
+    } catch (err) { console.error(err); }
+  }, []);
+
+  const salvarBid = async () => {
+    setSavingBid(true);
+    try {
+      if (editingBid) {
+        await api.put(`/postos-bid/${editingBid.id}`, formBid);
+      } else {
+        await api.post('/postos-bid', formBid);
+      }
+      await carregarPostosBid();
+      setModalBid(false);
+      setEditingBid(null);
+      setFormBid({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '' });
+    } catch (err) { console.error(err); }
+    finally { setSavingBid(false); }
+  };
+
+  const deletarBid = async (id) => {
+    if (!window.confirm('Remover este posto do mapa?')) return;
+    await api.delete(`/postos-bid/${id}`);
+    await carregarPostosBid();
+  };
+
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { carregarRedes(); }, [carregarRedes]);
+  useEffect(() => { if (abaAtiva === 'bid') carregarPostosBid(); }, [abaAtiva, carregarPostosBid]);
 
   // Carrega UFs de todas as redes após carregar o ranking
   useEffect(() => {
@@ -779,6 +816,22 @@ export default function MediasPrecoCombustivel() {
                           )}
                         </g>
                       )}
+                    </g>
+                  );
+                })}
+                {/* Pins BID */}
+                {abaAtiva === 'bid' && projRef.current && postosBid.map(p => {
+                  const coords = projRef.current([p.longitude, p.latitude]);
+                  if (!coords) return null;
+                  const [px, py] = coords;
+                  return (
+                    <g key={p.id}>
+                      <circle cx={px} cy={py} r={7} fill={Dk.red} stroke="#fff" strokeWidth={1.5} opacity={0.92} />
+                      <circle cx={px} cy={py} r={3} fill="#fff" />
+                      <text x={px} y={py - 11} textAnchor="middle" fontSize={6} fontWeight="700" fill="#fff"
+                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px #000' }}>
+                        {p.nome.length > 18 ? p.nome.slice(0, 16) + '…' : p.nome}
+                      </text>
                     </g>
                   );
                 })}
@@ -931,7 +984,81 @@ export default function MediasPrecoCombustivel() {
             ))}
           </div>
         </div>}
+
+        {/* ─── Painel BID Postos ─── */}
+        {abaAtiva === 'bid' && (
+          <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 11, color: Dk.text }}>📍 Postos Cadastrados</span>
+                <button onClick={() => { setEditingBid(null); setFormBid({ nome:'', rede:'', cidade:'', uf:'', latitude:'', longitude:'' }); setModalBid(true); }}
+                  style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: Dk.red, color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>
+                  + Novo
+                </button>
+              </div>
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {postosBid.length === 0 ? (
+                  <div style={{ padding: 24, color: Dk.muted, textAlign: 'center', fontSize: 12 }}>Nenhum posto cadastrado ainda</div>
+                ) : postosBid.map(p => (
+                  <div key={p.id} style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 11, color: Dk.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</div>
+                      <div style={{ fontSize: 9, color: Dk.muted, marginTop: 2 }}>{[p.rede, p.cidade, p.uf].filter(Boolean).join(' · ')}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                      <button onClick={() => { setEditingBid(p); setFormBid({ nome: p.nome, rede: p.rede||'', cidade: p.cidade||'', uf: p.uf, latitude: p.latitude, longitude: p.longitude }); setModalBid(true); }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Editar">✏️</button>
+                      <button onClick={() => deletarBid(p.id)}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Remover">🗑️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Modal BID */}
+      {modalBid && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#1c2333', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', padding: 24, width: 400, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: '#e2e8f0', marginBottom: 20 }}>{editingBid ? '✏️ Editar Posto' : '📍 Cadastrar Posto'}</div>
+            {[
+              { key: 'nome',      label: 'Nome / Razão Social *', placeholder: 'Ex: Posto BR Centro' },
+              { key: 'rede',      label: 'Rede / Bandeira',       placeholder: 'Ex: Shell, Ipiranga, BR...' },
+              { key: 'cidade',    label: 'Cidade',                placeholder: 'Ex: São Paulo' },
+              { key: 'uf',        label: 'UF *',                  placeholder: 'Ex: SP' },
+              { key: 'latitude',  label: 'Latitude *',            placeholder: 'Ex: -23.5505' },
+              { key: 'longitude', label: 'Longitude *',           placeholder: 'Ex: -46.6333' },
+            ].map(({ key, label, placeholder }) => (
+              <div key={key} style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</label>
+                <input
+                  value={formBid[key]}
+                  onChange={e => setFormBid(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  maxLength={key === 'uf' ? 2 : undefined}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: '#0d1117', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
+                />
+              </div>
+            ))}
+            <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 18, lineHeight: 1.5 }}>
+              💡 Para pegar as coordenadas: abra o Google Maps, clique com botão direito no posto e copie os números (latitude, longitude).
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setModalBid(false); setEditingBid(null); }}
+                style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#e2e8f0', fontSize: 12, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={salvarBid} disabled={savingBid}
+                style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: Dk.red, color: '#fff', fontSize: 12, fontWeight: 700, cursor: savingBid ? 'default' : 'pointer', opacity: savingBid ? 0.7 : 1 }}>
+                {savingBid ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
