@@ -709,9 +709,8 @@ export default function MediasPrecoCombustivel() {
           ref={containerRef}
           style={{
             flex: '0 0 38%',
-            background: 'linear-gradient(160deg, #060d1a 0%, #0f172a 50%, #060d1a 100%)',
-            borderRadius: 16, padding: '14px 16px 12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+            background: 'transparent',
+            borderRadius: 16, padding: '4px 8px',
             position: 'relative', overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
           }}
@@ -737,7 +736,7 @@ export default function MediasPrecoCombustivel() {
               </div>
             ) : (
               <svg
-                viewBox={`0 0 ${W + PAD * 2} ${H + PAD * 2}`}
+                viewBox={`${PAD} ${PAD} ${W} ${H}`}
                 style={{ width: '100%', height: '100%', display: 'block', transform: 'rotateX(22deg)', transformOrigin: '50% 50%' }}
                 onMouseLeave={() => setHovUF(null)}
               >
