@@ -974,10 +974,10 @@ export default function MediasPrecoCombustivel() {
         </div>
 
         {/* ─── Ranking Redes ─── */}
-        {abaAtiva === 'mapa' && <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+        {abaAtiva === 'mapa' && <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, overflow: 'hidden' }}>
 
           {/* Ranking Redes */}
-          <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Ranking por Rede</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -998,7 +998,7 @@ export default function MediasPrecoCombustivel() {
                 Nenhuma rede vinculada. Use <strong style={{ color: Dk.text }}>Redes de Postos</strong> para cadastrar.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1 }}>
                 {redes.slice(0, limiteRedes).map((r, i) => {
                   const cor     = REDE_CORES[i % REDE_CORES.length];
                   const estados = ufsDaRede[r.id] || [];
@@ -1039,7 +1039,7 @@ export default function MediasPrecoCombustivel() {
 
         {/* ─── Ranking por Estado ─── */}
         {abaAtiva === 'mapa' &&
-        <div style={{ width: 230, flexShrink: 0, background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignSelf: 'flex-start', maxHeight: '100%' }}>
+        <div style={{ width: 230, flexShrink: 0, background: Dk.card, borderRadius: 12, border: `1px solid ${Dk.border}`, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '6px 12px', borderBottom: `1px solid ${Dk.border}`, fontWeight: 700, fontSize: 11, color: Dk.text, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Ranking por Estado</span>
             <div style={{ display: 'flex', gap: 4 }}>
