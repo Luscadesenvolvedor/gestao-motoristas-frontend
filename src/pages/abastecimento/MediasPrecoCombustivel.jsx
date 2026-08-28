@@ -679,7 +679,7 @@ export default function MediasPrecoCombustivel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', gap: 2, background: Dk.card, borderRadius: 8, padding: 3, border: `1px solid ${Dk.border}` }}>
-            {[{ id: 'mapa', label: '🗺 Mapa' }, { id: 'consulta', label: '🔍 Consulta Posto' }].map(t => (
+            {[{ id: 'mapa', label: '🗺 Mapa' }, { id: 'consulta', label: '🔍 Consulta Posto' }, { id: 'bid', label: '🏷 BID Postos' }].map(t => (
               <button key={t.id} onClick={() => setAbaAtiva(t.id)} style={{
                 padding: '4px 12px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                 background: abaAtiva === t.id ? Dk.red : 'transparent',
@@ -712,7 +712,7 @@ export default function MediasPrecoCombustivel() {
         </div>
       )}
 
-      <div style={{ display: abaAtiva === 'mapa' ? 'flex' : 'none', gap: 10, flex: 1, minHeight: 0 }}>
+      <div style={{ display: (abaAtiva === 'mapa' || abaAtiva === 'bid') ? 'flex' : 'none', gap: 10, flex: 1, minHeight: 0 }}>
         {/* ─── Mapa ─── */}
         <div
           ref={containerRef}
