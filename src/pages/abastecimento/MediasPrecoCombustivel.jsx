@@ -612,7 +612,7 @@ export default function MediasPrecoCombustivel() {
   const [postosBid, setPostosBid]   = useState([]);
   const [modalBid, setModalBid]     = useState(false);
   const [editingBid, setEditingBid] = useState(null);
-  const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '' });
+  const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '' });
   const [savingBid, setSavingBid]   = useState(false);
 
   useEffect(() => {
@@ -677,7 +677,7 @@ export default function MediasPrecoCombustivel() {
       await carregarPostosBid();
       setModalBid(false);
       setEditingBid(null);
-      setFormBid({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '' });
+      setFormBid({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '' });
     } catch (err) { console.error(err); }
     finally { setSavingBid(false); }
   };
@@ -852,12 +852,16 @@ export default function MediasPrecoCombustivel() {
                   if (!coords) return null;
                   const [px, py] = coords;
                   return (
-                    <g key={p.id}>
-                      <circle cx={px} cy={py} r={7} fill={Dk.red} stroke="#fff" strokeWidth={1.5} opacity={0.92} />
-                      <circle cx={px} cy={py} r={3} fill="#fff" />
-                      <text x={px} y={py - 11} textAnchor="middle" fontSize={6} fontWeight="700" fill="#fff"
-                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px #000' }}>
-                        {p.nome.length > 18 ? p.nome.slice(0, 16) + '…' : p.nome}
+                    <g key={p.id} style={{ pointerEvents: 'none' }}>
+                      <circle cx={px} cy={py} r={6} fill={Dk.red} stroke="#fff" strokeWidth={1.2} opacity={0.95} />
+                      <circle cx={px} cy={py} r={2.5} fill="#fff" />
+                      {p.precoDiesel && (
+                        <text x={px} y={py - 11} textAnchor="middle" fontSize={7} fontWeight="800" fill="#4ade80">
+                          R$ {Number(p.precoDiesel).toFixed(3)}
+                        </text>
+                      )}
+                      <text x={px} y={py - (p.precoDiesel ? 20 : 10)} textAnchor="middle" fontSize={4.5} fontWeight="600" fill="rgba(255,255,255,0.75)">
+                        {p.nome.length > 16 ? p.nome.slice(0, 14) + '…' : p.nome}
                       </text>
                     </g>
                   );
@@ -1049,11 +1053,14 @@ export default function MediasPrecoCombustivel() {
                 ) : postosBid.map(p => (
                   <div key={p.id} style={{ padding: '8px 12px', borderBottom: `1px solid ${Dk.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 11, color: Dk.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+                        <div style={{ fontWeight: 700, fontSize: 10, color: Dk.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</div>
+                        {p.precoDiesel && <span style={{ fontSize: 10, fontWeight: 800, color: '#4ade80', flexShrink: 0 }}>R$ {Number(p.precoDiesel).toFixed(3)}</span>}
+                      </div>
                       <div style={{ fontSize: 9, color: Dk.muted, marginTop: 2 }}>{[p.rede, p.cidade, p.uf].filter(Boolean).join(' · ')}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                      <button onClick={() => { setEditingBid(p); setFormBid({ nome: p.nome, rede: p.rede||'', cidade: p.cidade||'', uf: p.uf, latitude: p.latitude, longitude: p.longitude }); setModalBid(true); }}
+                      <button onClick={() => { setEditingBid(p); setFormBid({ nome: p.nome, rede: p.rede||'', cidade: p.cidade||'', uf: p.uf, latitude: p.latitude, longitude: p.longitude, precoDiesel: p.precoDiesel||'' }); setModalBid(true); }}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Editar">✏️</button>
                       <button onClick={() => deletarBid(p.id)}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }} title="Remover">🗑️</button>
@@ -1077,7 +1084,8 @@ export default function MediasPrecoCombustivel() {
               { key: 'cidade',    label: 'Cidade',                placeholder: 'Ex: São Paulo' },
               { key: 'uf',        label: 'UF *',                  placeholder: 'Ex: SP' },
               { key: 'latitude',  label: 'Latitude *',            placeholder: 'Ex: -23.5505' },
-              { key: 'longitude', label: 'Longitude *',           placeholder: 'Ex: -46.6333' },
+              { key: 'longitude',   label: 'Longitude *',              placeholder: 'Ex: -46.6333' },
+              { key: 'precoDiesel', label: 'Preço Diesel (R$/L)',       placeholder: 'Ex: 6.290' },
             ].map(({ key, label, placeholder }) => (
               <div key={key} style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</label>
