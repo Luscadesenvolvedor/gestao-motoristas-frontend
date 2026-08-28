@@ -853,15 +853,17 @@ export default function MediasPrecoCombustivel() {
                   const [px, py] = coords;
                   return (
                     <g key={p.id} style={{ pointerEvents: 'none' }}>
-                      <circle cx={px} cy={py} r={6} fill={Dk.red} stroke="#fff" strokeWidth={1.2} opacity={0.95} />
-                      <circle cx={px} cy={py} r={2.5} fill="#fff" />
+                      {/* ponto mínimo de localização */}
+                      <circle cx={px} cy={py} r={2} fill="#4ade80" opacity={0.9} />
+                      {/* preço em destaque */}
                       {p.precoDiesel && (
-                        <text x={px} y={py - 11} textAnchor="middle" fontSize={7} fontWeight="800" fill="#4ade80">
+                        <text x={px} y={py - 5} textAnchor="middle" fontSize={5.5} fontWeight="800" fill="#4ade80">
                           R$ {Number(p.precoDiesel).toFixed(3)}
                         </text>
                       )}
-                      <text x={px} y={py - (p.precoDiesel ? 20 : 10)} textAnchor="middle" fontSize={4.5} fontWeight="600" fill="rgba(255,255,255,0.75)">
-                        {p.nome.length > 16 ? p.nome.slice(0, 14) + '…' : p.nome}
+                      {/* nome menor acima */}
+                      <text x={px} y={py - (p.precoDiesel ? 12 : 5)} textAnchor="middle" fontSize={3.8} fontWeight="600" fill="rgba(255,255,255,0.6)">
+                        {p.nome.length > 14 ? p.nome.slice(0, 12) + '…' : p.nome}
                       </text>
                     </g>
                   );
