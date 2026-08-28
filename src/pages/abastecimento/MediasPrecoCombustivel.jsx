@@ -1076,7 +1076,6 @@ export default function MediasPrecoCombustivel() {
             )}
           </div>
 
-        </div>
           </div>
         </DraggablePanel>}
 
