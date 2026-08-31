@@ -1196,7 +1196,7 @@ export default function MediasPrecoCombustivel() {
               }
               return (
                 <div style={{
-                  position: 'absolute', bottom: 140, left: 14, zIndex: 15,
+                  position: 'absolute', top: 10, left: 14, zIndex: 15,
                   background: 'rgba(15,23,42,0.88)', backdropFilter: 'blur(10px)',
                   border: `1px solid ${Dk.border}`, borderRadius: 14,
                   padding: '12px 16px', minWidth: 170,
