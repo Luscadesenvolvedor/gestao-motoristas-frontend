@@ -1264,28 +1264,52 @@ export default function MediasPrecoCombustivel() {
 
             {/* Painel de preços — centro esquerdo (BID) */}
             {abaAtiva === 'bid' && !geoLoading && (() => {
-              const base = postoBidClicado
-                ? postosBid.filter(p => p.id === postoBidClicado.id)
-                : postosBid;
-              // preço BID cadastrado, ou preço médio real do consumo como fallback
-              const precos = base.map(p => {
-                if (p.precoDiesel) return Number(p.precoDiesel);
-                const rank = rankingPostosBid.find(r => r.posto?.toLowerCase().trim() === p.nome?.toLowerCase().trim());
-                return rank?.precoMedio ? Number(rank.precoMedio) : null;
-              }).filter(Boolean);
-              const fmt = v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
-              const melhor = precos.length ? fmt(Math.min(...precos)) : '—';
-              const pior   = precos.length ? fmt(Math.max(...precos)) : '—';
-              const medio  = precos.length ? fmt(precos.reduce((a, v) => a + v, 0) / precos.length) : '—';
-              // label de contexto
-              const ctxLabel = postoBidClicado
-                ? postoBidClicado.nome
-                : estadoFoco
-                  ? `${UF_LABELS[estadoFoco] || estadoFoco}`
-                  : 'Geral';
-              const ctxSub = postoBidClicado
-                ? 'Posto selecionado'
-                : estadoFoco ? 'Por Estado' : `${postosBid.length} postos BID`;
+              const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
+
+              let melhor, pior, medio, ctxLabel, ctxSub;
+
+              if (postoBidClicado) {
+                // posto clicado → preço BID cadastrado ou preço médio real
+                const rank = rankingPostosBid.find(r => r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim());
+                const p = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (rank?.precoMedio ? Number(rank.precoMedio) : null);
+                melhor = p ? fmt(p) : '—';
+                medio  = p ? fmt(p) : '—';
+                pior   = p ? fmt(p) : '—';
+                ctxLabel = postoBidClicado.nome;
+                ctxSub   = 'Posto selecionado';
+              } else if (estadoFoco) {
+                // estado selecionado → dados importados por UF
+                const est = byUF[estadoFoco];
+                if (est?.precoMedio) {
+                  // melhor e pior: postos desse estado via rankingPostosBid não tem UF,
+                  // então usamos os dados agregados do estado
+                  const precosMedio = dados.map(d => d.precoMedio).filter(Boolean).sort((a, b) => a - b);
+                  melhor = fmt(precosMedio[0] || est.precoMedio);
+                  medio  = fmt(est.precoMedio);
+                  pior   = fmt(precosMedio[precosMedio.length - 1] || est.precoMedio);
+                } else {
+                  melhor = medio = pior = '—';
+                }
+                ctxLabel = UF_LABELS[estadoFoco] || estadoFoco;
+                ctxSub   = 'Por Estado';
+              } else {
+                // geral → todos os postos dos dados importados
+                const precos = rankingPostosBid.map(r => r.precoMedio).filter(Boolean).sort((a, b) => a - b);
+                if (precos.length) {
+                  melhor = fmt(precos[0]);
+                  pior   = fmt(precos[precos.length - 1]);
+                  medio  = fmt(precos.reduce((a, v) => a + v, 0) / precos.length);
+                } else {
+                  // fallback: dados por UF
+                  const pUF = dados.map(d => d.precoMedio).filter(Boolean).sort((a, b) => a - b);
+                  melhor = pUF.length ? fmt(pUF[0]) : '—';
+                  pior   = pUF.length ? fmt(pUF[pUF.length - 1]) : '—';
+                  medio  = pUF.length ? fmt(pUF.reduce((a, v) => a + v, 0) / pUF.length) : '—';
+                }
+                ctxLabel = 'Geral';
+                ctxSub   = `${rankingPostosBid.length || dados.length} postos`;
+              }
+
               const items = [
                 { label: 'Melhor preço', valor: melhor, cor: '#60a5fa', bg: 'rgba(37,99,235,0.25)', icon: '↓' },
                 { label: 'Preço médio',  valor: medio,  cor: '#4ade80', bg: 'rgba(22,163,74,0.25)', icon: '≈' },
@@ -1296,10 +1320,9 @@ export default function MediasPrecoCombustivel() {
                   position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
                   zIndex: 15, display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
-                  {/* header de contexto */}
                   <div style={{ marginBottom: 2 }}>
                     <div style={{ fontSize: 8, color: '#6b7280', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>{ctxSub}</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#cbd5e1', whiteSpace: 'nowrap', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis' }}>{ctxLabel}</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#cbd5e1', whiteSpace: 'nowrap', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>{ctxLabel}</div>
                   </div>
                   {items.map(({ label, valor, cor, bg, icon }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
