@@ -750,6 +750,8 @@ export default function MediasPrecoCombustivel() {
   const [savingTrr, setSavingTrr]   = useState(false);
   const [toastBid, setToastBid]     = useState(null); // { msg, type }
   const toastTimerRef = useRef(null);
+  const [zoomT, setZoomT]           = useState({ x: 0, y: 0, k: 1 }); // transform atual do zoom
+  const rafRef                      = useRef(null); // requestAnimationFrame para update de pins
 
   useEffect(() => {
     fetch(GEOJSON_URL)
@@ -872,6 +874,11 @@ export default function MediasPrecoCombustivel() {
             `translate(${e.transform.x},${e.transform.y}) scale(${e.transform.k})`
           );
         }
+        // Atualiza posição dos pins (fora do grupo de zoom) via RAF para não travar
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() =>
+          setZoomT({ x: e.transform.x, y: e.transform.y, k: e.transform.k })
+        );
       });
     zoomBehaviorRef.current = zoom;
     const sel = d3.select(svgRef.current);
@@ -887,9 +894,12 @@ export default function MediasPrecoCombustivel() {
     };
     svgEl.addEventListener('wheel', wheelHandler, { passive: false });
 
-    sel.on('dblclick.zoom', () =>
-      sel.transition().duration(350).call(zoom.transform, d3.zoomIdentity));
+    sel.on('dblclick.zoom', () => {
+      sel.transition().duration(350).call(zoom.transform, d3.zoomIdentity);
+      setZoomT({ x: 0, y: 0, k: 1 });
+    });
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       svgEl.removeEventListener('wheel', wheelHandler);
       sel.on('.zoom', null);
       zoomBehaviorRef.current = null;
@@ -1234,64 +1244,68 @@ export default function MediasPrecoCombustivel() {
                     </g>
                   );
                 })}
-                {/* Pins BID — marcadores estilo mapa */}
+                </g>
+                {/* Pins BID — fora do zoom, tamanho constante na tela estilo Google Maps */}
                 {abaAtiva === 'bid' && projRef.current && postosBid.map(p => {
                   if (p.latitude == null || p.longitude == null) return null;
-                  const coords = projRef.current([p.longitude, p.latitude]);
-                  if (!coords) return null;
-                  const [px, py] = coords;
+                  const world = projRef.current([p.longitude, p.latitude]);
+                  if (!world) return null;
+                  const [wx, wy] = world;
+                  // Converte coord mundo → tela usando transform atual do zoom
+                  const sx = wx * zoomT.k + zoomT.x;
+                  const sy = wy * zoomT.k + zoomT.y;
                   const termo = buscarBid.trim().toLowerCase();
-                  const matched = termo
-                    ? (p.nome?.toLowerCase().includes(termo) || p.cidade?.toLowerCase().includes(termo) || p.uf?.toLowerCase().includes(termo))
-                    : true;
+                  const matched = !termo || p.nome?.toLowerCase().includes(termo) || p.cidade?.toLowerCase().includes(termo) || p.uf?.toLowerCase().includes(termo);
                   if (!matched) return null;
-                  const isHovPin  = hovPostoBid?.id === p.id;
-                  const isSelPin  = postoBidClicado?.id === p.id;
+                  const isHovPin = hovPostoBid?.id === p.id;
+                  const isSelPin = postoBidClicado?.id === p.id;
                   const preco = p.precoDiesel ? Number(p.precoDiesel) : null;
-                  const gradId = preco
-                    ? (preco < 5.5 ? 'pinGreen' : preco < 6.2 ? 'pinYellow' : 'pinRed')
-                    : 'pinBlue';
                   const pinColor = preco
                     ? (preco < 5.5 ? '#4ade80' : preco < 6.2 ? '#facc15' : '#f87171')
                     : '#60a5fa';
-                  const R = isSelPin ? 5.5 : isHovPin ? 4.5 : 3;
-                  const stemLen = R + 3;
+                  const pinBorder = isSelPin ? '#fff' : 'rgba(0,0,0,0.45)';
+                  // Tamanho em pixels de tela — constante independente do zoom
+                  const R = isSelPin ? 11 : isHovPin ? 10 : 8;
+                  // Teardrop path: ponta aponta para baixo (0,0), círculo no topo
+                  const td = `M 0,0 C -${R*0.45},-${R*0.35} -${R},-${R*1.3} -${R},-${R*1.9} A ${R},${R} 0 1 1 ${R},-${R*1.9} C ${R},-${R*1.3} ${R*0.45},-${R*0.35} 0,0 Z`;
+                  const showLabel = zoomT.k >= 3.5 || isHovPin || isSelPin;
+                  const showPrice = preco && (zoomT.k >= 6 || isSelPin);
                   return (
-                    <g key={p.id} style={{ cursor: 'pointer' }}
-                      onClick={() => setPostoBidClicado(prev => prev?.id === p.id ? null : p)}
-                      onMouseEnter={() => setHovPostoBid(p)}
-                      onMouseLeave={() => setHovPostoBid(null)}>
-                      {/* Haste */}
-                      <line x1={px} y1={py + R * 0.8} x2={px} y2={py + stemLen}
-                        stroke={pinColor} strokeWidth={1} strokeLinecap="round" />
-                      {/* Anel de borda (depth) */}
-                      <circle cx={px} cy={py} r={R + 0.7} fill="rgba(0,0,0,0.5)" />
-                      {/* Esfera com gradiente 3D */}
-                      <circle cx={px} cy={py} r={R}
-                        fill={`url(#${gradId})`}
-                        filter={(isHovPin || isSelPin) ? 'url(#pinGlow)' : undefined} />
-                      {/* Reflexo de luz */}
-                      <circle cx={px - R * 0.28} cy={py - R * 0.32} r={R * 0.22}
-                        fill="rgba(255,255,255,0.55)" style={{ pointerEvents: 'none' }} />
-                      {/* Nome e preço — só no hover */}
-                      {(isHovPin || isSelPin) && (
-                        <g style={{ pointerEvents: 'none' }}>
-                          <text x={px} y={py - R - 3} textAnchor="middle"
-                            fontSize={3.5} fontWeight="700" fill="#fff">
-                            {p.nome}
-                          </text>
-                          {preco && (
-                            <text x={px} y={py + stemLen + 5} textAnchor="middle"
-                              fontSize={3.5} fontWeight="800" fill={pinColor}>
-                              {`R$ ${preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            </text>
-                          )}
-                        </g>
+                    <g key={p.id}
+                      transform={`translate(${sx},${sy})`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={e => { e.stopPropagation(); setPostoBidClicado(prev => prev?.id === p.id ? null : p); }}
+                      onMouseEnter={e => { e.stopPropagation(); setHovPostoBid(p); }}
+                      onMouseLeave={e => { e.stopPropagation(); setHovPostoBid(null); }}>
+                      {/* Área de clique invisível generosa */}
+                      <circle cx={0} cy={-R * 1.9} r={R + 8} fill="transparent" />
+                      {/* Sombra */}
+                      <ellipse cx={2} cy={2} rx={R * 0.7} ry={R * 0.25} fill="rgba(0,0,0,0.35)" />
+                      {/* Teardrop */}
+                      <path d={td} fill={pinColor} stroke={pinBorder} strokeWidth={isSelPin ? 1.5 : 0.8} />
+                      {/* Reflexo */}
+                      <circle cx={-R * 0.32} cy={-R * 2.3} r={R * 0.3} fill="rgba(255,255,255,0.4)" style={{ pointerEvents: 'none' }} />
+                      {/* Label nome — aparece a partir de certo zoom ou no hover */}
+                      {showLabel && (
+                        <text x={0} y={-R * 3.2} textAnchor="middle"
+                          fontSize={11} fontWeight="700" fill="#fff"
+                          stroke="rgba(0,0,0,0.75)" strokeWidth={3} paintOrder="stroke"
+                          style={{ pointerEvents: 'none' }}>
+                          {p.nome}
+                        </text>
+                      )}
+                      {/* Preço — aparece em zoom alto ou selecionado */}
+                      {showPrice && (
+                        <text x={0} y={14} textAnchor="middle"
+                          fontSize={10} fontWeight="800" fill={pinColor}
+                          stroke="rgba(0,0,0,0.75)" strokeWidth={2.5} paintOrder="stroke"
+                          style={{ pointerEvents: 'none' }}>
+                          R$ {preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L
+                        </text>
                       )}
                     </g>
                   );
                 })}
-                </g>
               </svg>
             )}
 
