@@ -864,8 +864,8 @@ export default function MediasPrecoCombustivel() {
   useEffect(() => {
     if (!svgRef.current || geoLoading || abaAtiva !== 'bid') return;
     const zoom = d3.zoom()
-      .scaleExtent([0.5, 14])
-      // exclui wheel — vamos interceptar manualmente para fixar âncora no centro
+      .scaleExtent([0.5, 20])
+      // exclui wheel — interceptamos manualmente para ancorar no cursor (estilo Google Maps)
       .filter(ev => ev.type !== 'wheel' && !ev.button)
       .on('zoom', e => {
         if (mapGRef.current) {
@@ -883,13 +883,14 @@ export default function MediasPrecoCombustivel() {
     const sel = d3.select(svgRef.current);
     sel.call(zoom);
 
-    // Wheel sempre expandindo a partir do centro do SVG
+    // Wheel: zoom ancorado no cursor (igual ao Google Maps)
     const svgEl = svgRef.current;
     const wheelHandler = (event) => {
       event.preventDefault();
-      const { width, height } = svgEl.getBoundingClientRect();
-      const factor = event.deltaY < 0 ? 1.25 : 0.8;
-      zoom.scaleBy(sel, factor, [width / 2, height / 2]);
+      const factor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
+      // d3.pointer converte posição do mouse para coordenadas SVG (respeita viewBox)
+      const [mx, my] = d3.pointer(event, svgEl);
+      zoom.scaleBy(sel, factor, [mx, my]);
     };
     svgEl.addEventListener('wheel', wheelHandler, { passive: false });
 
