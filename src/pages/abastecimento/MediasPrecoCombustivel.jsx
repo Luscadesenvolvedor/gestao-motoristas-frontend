@@ -1267,7 +1267,12 @@ export default function MediasPrecoCombustivel() {
               const base = postoBidClicado
                 ? postosBid.filter(p => p.id === postoBidClicado.id)
                 : postosBid;
-              const precos = base.map(p => p.precoDiesel ? Number(p.precoDiesel) : null).filter(Boolean);
+              // preço BID cadastrado, ou preço médio real do consumo como fallback
+              const precos = base.map(p => {
+                if (p.precoDiesel) return Number(p.precoDiesel);
+                const rank = rankingPostosBid.find(r => r.posto?.toLowerCase().trim() === p.nome?.toLowerCase().trim());
+                return rank?.precoMedio ? Number(rank.precoMedio) : null;
+              }).filter(Boolean);
               const fmt = v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
               const melhor = precos.length ? fmt(Math.min(...precos)) : '—';
               const pior   = precos.length ? fmt(Math.max(...precos)) : '—';
@@ -1324,7 +1329,7 @@ export default function MediasPrecoCombustivel() {
                 subtitulo = [postoBidClicado.rede, postoBidClicado.cidade, postoBidClicado.uf].filter(Boolean).join(' · ');
                 gasto  = match ? Number(match.totalGasto)  : null;
                 litros = match ? Number(match.totalLitros) : null;
-                preco  = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (match ? Number(match.precoMedio) : null);
+                preco  = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (match?.precoMedio ? Number(match.precoMedio) : null);
               } else if (estadoFoco) {
                 const est = byUF[estadoFoco];
                 icon = '📍'; titulo = UF_LABELS[estadoFoco] || estadoFoco; subtitulo = estadoFoco;
