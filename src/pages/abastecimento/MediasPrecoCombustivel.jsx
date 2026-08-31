@@ -368,12 +368,21 @@ function ModalRedes({ onClose, onBidSalvo }) {
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <input
                             value={bidForm.link}
-                            onChange={e => {
+                            onChange={async e => {
                               const url = e.target.value;
                               setBidForm(f => ({ ...f, link: url }));
-                              setBidCoords(parseMapsCoords(url));
+                              // tenta parsear local
+                              let coords = parseMapsCoords(url);
+                              if (!coords && url.length > 10) {
+                                // URL curta → resolve no backend
+                                try {
+                                  const { data } = await api.post('/postos-bid/parse-coords', { url });
+                                  coords = data;
+                                } catch {}
+                              }
+                              setBidCoords(coords || null);
                             }}
-                            placeholder="Cole o link do Google Maps"
+                            placeholder="Cole o link do Google Maps (curto ou completo)"
                             style={{ flex: 1, minWidth: 240, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${bidCoords ? '#4ade80' : '#e2e8f0'}`, fontSize: 12, outline: 'none' }}
                           />
                         </div>
@@ -790,16 +799,35 @@ export default function MediasPrecoCombustivel() {
   const carregarPostosBid = useCallback(async () => {
     try {
       const { data } = await api.get('/postos-bid');
-      // Para postos com linkMaps mas sem lat/lng, tenta extrair coords do link
-      const corrigidos = data.map(p => {
-        if ((p.latitude != null && p.longitude != null) || !p.linkMaps) return p;
-        const coords = parseMapsCoords(p.linkMaps);
-        if (!coords) return p;
-        // Atualiza no backend em background (sem bloquear o render)
-        api.put(`/postos-bid/${p.id}`, { ...p, latitude: coords.lat, longitude: coords.lng }).catch(() => {});
-        return { ...p, latitude: coords.lat, longitude: coords.lng };
-      });
-      setPostosBid(corrigidos);
+      setPostosBid(data); // renderiza imediatamente o que tiver coords
+
+      // Para postos com linkMaps mas sem lat/lng, resolve via backend (suporta URLs curtas)
+      const semCoords = data.filter(p => (p.latitude == null || p.longitude == null) && p.linkMaps);
+      if (!semCoords.length) return;
+
+      const corrigidos = await Promise.all(semCoords.map(async p => {
+        try {
+          // tenta local primeiro
+          let coords = parseMapsCoords(p.linkMaps);
+          // se falhar (URL curta), resolve no backend
+          if (!coords) {
+            const { data: c } = await api.post('/postos-bid/parse-coords', { url: p.linkMaps });
+            coords = c;
+          }
+          if (!coords) return null;
+          // persiste coords no banco
+          await api.put(`/postos-bid/${p.id}`, { nome: p.nome, uf: p.uf, cidade: p.cidade, latitude: coords.lat, longitude: coords.lng, linkMaps: p.linkMaps });
+          return { ...p, latitude: coords.lat, longitude: coords.lng };
+        } catch { return null; }
+      }));
+
+      const atualizados = corrigidos.filter(Boolean);
+      if (atualizados.length) {
+        setPostosBid(prev => prev.map(p => {
+          const fix = atualizados.find(a => a.id === p.id);
+          return fix || p;
+        }));
+      }
     } catch (err) { console.error(err); }
   }, []);
 
