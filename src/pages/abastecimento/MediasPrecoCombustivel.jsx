@@ -1065,43 +1065,38 @@ export default function MediasPrecoCombustivel() {
                   const pinColor = preco
                     ? (preco < 5.5 ? '#4ade80' : preco < 6.2 ? '#facc15' : '#f87171')
                     : '#60a5fa';
-                  const R = isHovPin ? 7 : 5.5;
-                  const stemLen = R + 4;
+                  const R = isHovPin ? 4.5 : 3;
+                  const stemLen = R + 3;
                   return (
                     <g key={p.id} style={{ cursor: 'pointer' }}
                       onMouseEnter={() => setHovPostoBid(p)}
                       onMouseLeave={() => setHovPostoBid(null)}>
-                      {/* Sombra no chão */}
-                      <ellipse cx={px + 2} cy={py + stemLen + 3} rx={R * 0.65} ry={1.8}
-                        fill="rgba(0,0,0,0.45)" style={{ filter: 'blur(1px)' }} />
                       {/* Haste */}
-                      <line x1={px} y1={py + R * 0.8} x2={px + 1} y2={py + stemLen + 2}
-                        stroke="rgba(0,0,0,0.5)" strokeWidth={2} />
                       <line x1={px} y1={py + R * 0.8} x2={px} y2={py + stemLen}
-                        stroke={pinColor} strokeWidth={1.4} strokeLinecap="round" />
+                        stroke={pinColor} strokeWidth={1} strokeLinecap="round" />
                       {/* Anel de borda (depth) */}
-                      <circle cx={px} cy={py} r={R + 1.2} fill="rgba(0,0,0,0.55)" />
+                      <circle cx={px} cy={py} r={R + 0.7} fill="rgba(0,0,0,0.5)" />
                       {/* Esfera com gradiente 3D */}
                       <circle cx={px} cy={py} r={R}
                         fill={`url(#${gradId})`}
                         filter={isHovPin ? 'url(#pinGlow)' : undefined} />
-                      {/* Reflexo de luz (canto superior esq) */}
+                      {/* Reflexo de luz */}
                       <circle cx={px - R * 0.28} cy={py - R * 0.32} r={R * 0.22}
                         fill="rgba(255,255,255,0.55)" style={{ pointerEvents: 'none' }} />
-                      {/* Nome acima */}
-                      <text x={px} y={py - R - 4} textAnchor="middle"
-                        fontSize={isHovPin ? 4 : 3.2} fontWeight="700"
-                        fill={isHovPin ? '#fff' : 'rgba(255,255,255,0.8)'}
-                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px #000' }}>
-                        {p.nome}
-                      </text>
-                      {/* Preço abaixo da haste */}
-                      {preco && (
-                        <text x={px} y={py + stemLen + 8} textAnchor="middle"
-                          fontSize={isHovPin ? 4 : 3.2} fontWeight="800"
-                          fill={pinColor} style={{ pointerEvents: 'none' }}>
-                          {`R$ ${preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        </text>
+                      {/* Nome e preço — só no hover */}
+                      {isHovPin && (
+                        <g style={{ pointerEvents: 'none' }}>
+                          <text x={px} y={py - R - 3} textAnchor="middle"
+                            fontSize={3.5} fontWeight="700" fill="#fff">
+                            {p.nome}
+                          </text>
+                          {preco && (
+                            <text x={px} y={py + stemLen + 5} textAnchor="middle"
+                              fontSize={3.5} fontWeight="800" fill={pinColor}>
+                              {`R$ ${preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            </text>
+                          )}
+                        </g>
                       )}
                     </g>
                   );
