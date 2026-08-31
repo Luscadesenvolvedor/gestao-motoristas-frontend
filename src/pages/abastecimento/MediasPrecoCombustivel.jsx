@@ -865,8 +865,8 @@ export default function MediasPrecoCombustivel() {
     if (!svgRef.current || geoLoading || abaAtiva !== 'bid') return;
     const zoom = d3.zoom()
       .scaleExtent([0.5, 20])
-      // exclui wheel — interceptamos manualmente para ancorar no cursor (estilo Google Maps)
-      .filter(ev => ev.type !== 'wheel' && !ev.button)
+      // Deixa D3 tratar wheel nativamente — ele já ancora no cursor por padrão
+      .filter(ev => !ev.button)
       .on('zoom', e => {
         if (mapGRef.current) {
           mapGRef.current.setAttribute(
@@ -883,16 +883,10 @@ export default function MediasPrecoCombustivel() {
     const sel = d3.select(svgRef.current);
     sel.call(zoom);
 
-    // Wheel: zoom ancorado no cursor (igual ao Google Maps)
+    // Previne scroll da página ao rolar sobre o mapa
     const svgEl = svgRef.current;
-    const wheelHandler = (event) => {
-      event.preventDefault();
-      const factor = event.deltaY < 0 ? 1.2 : 1 / 1.2;
-      // d3.pointer converte posição do mouse para coordenadas SVG (respeita viewBox)
-      const [mx, my] = d3.pointer(event, svgEl);
-      zoom.scaleBy(sel, factor, [mx, my]);
-    };
-    svgEl.addEventListener('wheel', wheelHandler, { passive: false });
+    const preventScroll = (e) => e.preventDefault();
+    svgEl.addEventListener('wheel', preventScroll, { passive: false });
 
     sel.on('dblclick.zoom', () => {
       sel.transition().duration(350).call(zoom.transform, d3.zoomIdentity);
@@ -900,7 +894,7 @@ export default function MediasPrecoCombustivel() {
     });
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      svgEl.removeEventListener('wheel', wheelHandler);
+      svgEl.removeEventListener('wheel', preventScroll);
       sel.on('.zoom', null);
       zoomBehaviorRef.current = null;
       if (mapGRef.current) mapGRef.current.setAttribute('transform', '');
