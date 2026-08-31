@@ -749,7 +749,7 @@ export default function MediasPrecoCombustivel() {
     return () => {
       sel.on('.zoom', null);
       zoomBehaviorRef.current = null;
-      setZoomT({ x: 0, y: 0, k: 1 });
+      if (mapGRef.current) mapGRef.current.setAttribute('transform', '');
     };
   }, [geoLoading, abaAtiva]);
 
