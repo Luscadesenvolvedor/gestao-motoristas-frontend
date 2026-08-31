@@ -790,7 +790,16 @@ export default function MediasPrecoCombustivel() {
   const carregarPostosBid = useCallback(async () => {
     try {
       const { data } = await api.get('/postos-bid');
-      setPostosBid(data);
+      // Para postos com linkMaps mas sem lat/lng, tenta extrair coords do link
+      const corrigidos = data.map(p => {
+        if ((p.latitude != null && p.longitude != null) || !p.linkMaps) return p;
+        const coords = parseMapsCoords(p.linkMaps);
+        if (!coords) return p;
+        // Atualiza no backend em background (sem bloquear o render)
+        api.put(`/postos-bid/${p.id}`, { ...p, latitude: coords.lat, longitude: coords.lng }).catch(() => {});
+        return { ...p, latitude: coords.lat, longitude: coords.lng };
+      });
+      setPostosBid(corrigidos);
     } catch (err) { console.error(err); }
   }, []);
 
