@@ -617,7 +617,9 @@ export default function MediasPrecoCombustivel() {
   const [painelBidAberto, setPainelBidAberto] = useState(false);
   const [hovPostoBid, setHovPostoBid] = useState(null);
   const [buscarBid, setBuscarBid]     = useState('');
-  const [estadoFoco, setEstadoFoco]   = useState(null);
+  const [estadoFoco, setEstadoFoco]       = useState(null);
+  const [postoBidClicado, setPostoBidClicado] = useState(null);
+  const [rankingPostosBid, setRankingPostosBid] = useState([]);
   const [trrs, setTrrs]             = useState([]);
   const [modalTrr, setModalTrr]     = useState(false);
   const [editingTrr, setEditingTrr] = useState(null);
@@ -730,6 +732,10 @@ export default function MediasPrecoCombustivel() {
   useEffect(() => { carregarRedes(); }, [carregarRedes]);
   useEffect(() => { if (abaAtiva === 'bid') carregarPostosBid(); }, [abaAtiva, carregarPostosBid]);
   useEffect(() => { if (abaAtiva === 'mapa') carregarTrrs(); }, [abaAtiva, carregarTrrs]);
+  useEffect(() => {
+    if (abaAtiva !== 'bid') return;
+    api.get('/medias-consumo/ranking-postos').then(({ data }) => setRankingPostosBid(data)).catch(() => {});
+  }, [abaAtiva]);
 
   // Zoom interativo (só na aba BID)
   useEffect(() => {
@@ -977,6 +983,84 @@ export default function MediasPrecoCombustivel() {
         </div>
       )}
 
+      {/* Card de totais BID */}
+      {abaAtiva === 'bid' && (() => {
+        const totalLitrosGeral = dados.reduce((a, d) => a + (d.totalLitros || 0), 0);
+        const precoMedioGeral  = dados.length > 0 ? dados.reduce((a, d) => a + (d.precoMedio || 0), 0) / dados.length : 0;
+
+        let icon, titulo, subtitulo, gasto, litros, preco;
+
+        if (postoBidClicado) {
+          const match = rankingPostosBid.find(r =>
+            r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim()
+          );
+          icon     = '⛽';
+          titulo   = postoBidClicado.nome;
+          subtitulo = [postoBidClicado.rede, postoBidClicado.cidade, postoBidClicado.uf].filter(Boolean).join(' · ');
+          gasto    = match ? Number(match.totalGasto)  : null;
+          litros   = match ? Number(match.totalLitros) : null;
+          preco    = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (match ? Number(match.precoMedio) : null);
+        } else if (estadoFoco) {
+          const est = byUF[estadoFoco];
+          icon      = '📍';
+          titulo    = UF_LABELS[estadoFoco] || estadoFoco;
+          subtitulo = estadoFoco;
+          gasto     = est?.totalGasto   || 0;
+          litros    = est?.totalLitros  || 0;
+          preco     = est?.precoMedio   || 0;
+        } else {
+          icon      = '🗺';
+          titulo    = 'Geral';
+          subtitulo = `${dados.length} estados · ${postosBid.length} postos BID`;
+          gasto     = totalGasto;
+          litros    = totalLitrosGeral;
+          preco     = precoMedioGeral;
+        }
+
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+            background: Dk.card, border: `1px solid ${Dk.border}`, borderRadius: 10,
+            padding: '8px 16px', marginBottom: 8,
+            position: 'relative',
+          }}>
+            {postoBidClicado && (
+              <button onClick={() => setPostoBidClicado(null)}
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', color: Dk.muted, cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
+            )}
+            <span style={{ fontSize: 18 }}>{icon}</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 12, color: Dk.text }}>{titulo}</div>
+              <div style={{ fontSize: 10, color: Dk.muted }}>{subtitulo}</div>
+            </div>
+            <div style={{ width: 1, height: 32, background: Dk.border, flexShrink: 0 }} />
+            <div style={{ display: 'flex', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>TOTAL GASTO</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: Dk.red }}>
+                  {gasto != null ? fmtR(gasto) : '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>LITROS</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#93c5fd' }}>
+                  {litros != null ? `${fmtN(litros, 0)} L` : '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>
+                  {postoBidClicado ? 'PREÇO BID' : 'PREÇO MÉDIO'}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#4ade80' }}>
+                  {preco ? `${fmtR(preco)}/L` : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{ display: (abaAtiva === 'mapa' || abaAtiva === 'bid') ? 'flex' : 'none', gap: 10, flex: 1, minHeight: 0 }}>
         {/* ─── Mapa ─── */}
         <div
@@ -1118,7 +1202,8 @@ export default function MediasPrecoCombustivel() {
                     ? (p.nome?.toLowerCase().includes(termo) || p.cidade?.toLowerCase().includes(termo) || p.uf?.toLowerCase().includes(termo))
                     : true;
                   if (!matched) return null;
-                  const isHovPin = hovPostoBid?.id === p.id;
+                  const isHovPin  = hovPostoBid?.id === p.id;
+                  const isSelPin  = postoBidClicado?.id === p.id;
                   const preco = p.precoDiesel ? Number(p.precoDiesel) : null;
                   const gradId = preco
                     ? (preco < 5.5 ? 'pinGreen' : preco < 6.2 ? 'pinYellow' : 'pinRed')
@@ -1126,10 +1211,11 @@ export default function MediasPrecoCombustivel() {
                   const pinColor = preco
                     ? (preco < 5.5 ? '#4ade80' : preco < 6.2 ? '#facc15' : '#f87171')
                     : '#60a5fa';
-                  const R = isHovPin ? 4.5 : 3;
+                  const R = isSelPin ? 5.5 : isHovPin ? 4.5 : 3;
                   const stemLen = R + 3;
                   return (
                     <g key={p.id} style={{ cursor: 'pointer' }}
+                      onClick={() => setPostoBidClicado(prev => prev?.id === p.id ? null : p)}
                       onMouseEnter={() => setHovPostoBid(p)}
                       onMouseLeave={() => setHovPostoBid(null)}>
                       {/* Haste */}
@@ -1140,12 +1226,12 @@ export default function MediasPrecoCombustivel() {
                       {/* Esfera com gradiente 3D */}
                       <circle cx={px} cy={py} r={R}
                         fill={`url(#${gradId})`}
-                        filter={isHovPin ? 'url(#pinGlow)' : undefined} />
+                        filter={(isHovPin || isSelPin) ? 'url(#pinGlow)' : undefined} />
                       {/* Reflexo de luz */}
                       <circle cx={px - R * 0.28} cy={py - R * 0.32} r={R * 0.22}
                         fill="rgba(255,255,255,0.55)" style={{ pointerEvents: 'none' }} />
                       {/* Nome e preço — só no hover */}
-                      {isHovPin && (
+                      {(isHovPin || isSelPin) && (
                         <g style={{ pointerEvents: 'none' }}>
                           <text x={px} y={py - R - 3} textAnchor="middle"
                             fontSize={3.5} fontWeight="700" fill="#fff">
