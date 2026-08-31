@@ -51,7 +51,7 @@ function parseMapsCoords(url) {
   return null;
 }
 
-function ModalRedes({ onClose }) {
+function ModalRedes({ onClose, onBidSalvo }) {
   const [aba, setAba] = useState('redes');          // 'redes' | 'vincular'
   const [redes, setRedes] = useState([]);
   const [postos, setPostos] = useState([]);
@@ -107,6 +107,7 @@ function ModalRedes({ onClose }) {
       if (existing) await api.put(`/postos-bid/${existing.id}`, payload);
       else          await api.post('/postos-bid', payload);
       await carregarBidMap();
+      if (onBidSalvo) onBidSalvo(); // atualiza pins no mapa BID
       setBidEditor(null);
       setBidForm({ link: '', preco: '' });
       setBidCoords(null);
@@ -904,7 +905,7 @@ export default function MediasPrecoCombustivel() {
 
   return (
     <div style={{ padding: '8px 12px', fontFamily: 'Inter, sans-serif', background: Dk.bg, height: 'calc(100% + 48px)', margin: -24, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden' }}>
-      {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} />}
+      {modalRedes && <ModalRedes onClose={() => setModalRedes(false)} onBidSalvo={carregarPostosBid} />}
 
       {/* ── Modal TRR ── */}
       {modalTrr && (
