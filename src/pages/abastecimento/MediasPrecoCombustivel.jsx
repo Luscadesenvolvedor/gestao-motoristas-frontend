@@ -616,6 +616,7 @@ export default function MediasPrecoCombustivel() {
   const [coordsOk, setCoordsOk]     = useState(false);
   const [painelBidAberto, setPainelBidAberto] = useState(false);
   const [hovPostoBid, setHovPostoBid] = useState(null);
+  const [buscarBid, setBuscarBid]     = useState('');
   const [trrs, setTrrs]             = useState([]);
   const [modalTrr, setModalTrr]     = useState(false);
   const [editingTrr, setEditingTrr] = useState(null);
@@ -1067,6 +1068,11 @@ export default function MediasPrecoCombustivel() {
                   const coords = projRef.current([p.longitude, p.latitude]);
                   if (!coords) return null;
                   const [px, py] = coords;
+                  const termo = buscarBid.trim().toLowerCase();
+                  const matched = termo
+                    ? (p.nome?.toLowerCase().includes(termo) || p.cidade?.toLowerCase().includes(termo) || p.uf?.toLowerCase().includes(termo))
+                    : true;
+                  if (!matched) return null;
                   const isHovPin = hovPostoBid?.id === p.id;
                   const preco = p.precoDiesel ? Number(p.precoDiesel) : null;
                   const gradId = preco
@@ -1113,6 +1119,35 @@ export default function MediasPrecoCombustivel() {
                 })}
                 </g>
               </svg>
+            )}
+
+            {/* Busca de postos (BID) */}
+            {abaAtiva === 'bid' && !geoLoading && (
+              <div style={{
+                position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+                zIndex: 20, display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(15,23,42,0.82)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(96,165,250,0.25)', borderRadius: 20,
+                padding: '5px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+              }}>
+                <span style={{ fontSize: 13, color: '#64748b' }}>🔍</span>
+                <input
+                  value={buscarBid}
+                  onChange={e => setBuscarBid(e.target.value)}
+                  placeholder="Buscar posto..."
+                  style={{
+                    background: 'transparent', border: 'none', outline: 'none',
+                    color: '#e2e8f0', fontSize: 13, width: 180,
+                    caretColor: '#60a5fa',
+                  }}
+                />
+                {buscarBid && (
+                  <button onClick={() => setBuscarBid('')}
+                    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}>
+                    ✕
+                  </button>
+                )}
+              </div>
             )}
 
             {/* Controles de zoom (BID) */}
