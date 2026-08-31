@@ -617,6 +617,7 @@ export default function MediasPrecoCombustivel() {
   const [painelBidAberto, setPainelBidAberto] = useState(false);
   const [hovPostoBid, setHovPostoBid] = useState(null);
   const [buscarBid, setBuscarBid]     = useState('');
+  const [estadoFoco, setEstadoFoco]   = useState(null);
   const [trrs, setTrrs]             = useState([]);
   const [modalTrr, setModalTrr]     = useState(false);
   const [editingTrr, setEditingTrr] = useState(null);
@@ -638,6 +639,7 @@ export default function MediasPrecoCombustivel() {
             sigla: (f.properties.sigla || '').toUpperCase(),
             d: pathGen(f),
             centroid: pathGen.centroid(f),
+            bounds: pathGen.bounds(f),
           }))
           .filter(p => p.sigla && p.d);
         setStatePaths(paths);
@@ -771,6 +773,26 @@ export default function MediasPrecoCombustivel() {
   const zoomIn    = () => svgRef.current && zoomBehaviorRef.current && d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 1.6);
   const zoomOut   = () => svgRef.current && zoomBehaviorRef.current && d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 0.625);
   const zoomReset = () => svgRef.current && zoomBehaviorRef.current && d3.select(svgRef.current).transition().duration(350).call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
+
+  const zoomToEstado = useCallback((sigla) => {
+    const sp = statePaths.find(p => p.sigla === sigla);
+    if (!sp?.bounds || !svgRef.current || !zoomBehaviorRef.current) return;
+    const [[x0, y0], [x1, y1]] = sp.bounds;
+    const margin = 30;
+    const k = Math.min(10, 0.85 * Math.min((W - margin * 2) / (x1 - x0), (H - margin * 2) / (y1 - y0)));
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const tx = (PAD + W / 2) - k * cx;
+    const ty = (PAD + H / 2) - k * cy;
+    const t = d3.zoomIdentity.translate(tx, ty).scale(k);
+    d3.select(svgRef.current).transition().duration(650).call(zoomBehaviorRef.current.transform, t);
+    setEstadoFoco(sigla);
+  }, [statePaths]);
+
+  const voltarMapaInteiro = useCallback(() => {
+    zoomReset();
+    setEstadoFoco(null);
+  }, []);
 
   // Carrega UFs de todas as redes após carregar o ranking
   useEffect(() => {
@@ -1037,7 +1059,8 @@ export default function MediasPrecoCombustivel() {
                           ? (temPostos ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.07)')
                           : (isHov ? '#7dd3fc' : '#03070f')}
                         strokeWidth={abaAtiva === 'bid' ? (temPostos ? 0.9 : 0.35) : (isHov ? 1.6 : 0.5)}
-                        style={{ cursor: abaAtiva === 'bid' ? 'default' : 'pointer', transition: 'fill 0.18s' }}
+                        style={{ cursor: abaAtiva === 'bid' ? (temPostos ? 'pointer' : 'default') : 'pointer', transition: 'fill 0.18s' }}
+                        onClick={() => abaAtiva === 'bid' && temPostos && zoomToEstado(sigla)}
                         onMouseEnter={() => abaAtiva !== 'bid' && setHovUF(sigla)}
                         onMouseLeave={() => abaAtiva !== 'bid' && setHovUF(null)}
                       />
@@ -1119,6 +1142,22 @@ export default function MediasPrecoCombustivel() {
                 })}
                 </g>
               </svg>
+            )}
+
+            {/* Botão Voltar ao mapa inteiro (BID) */}
+            {abaAtiva === 'bid' && estadoFoco && (
+              <button
+                onClick={voltarMapaInteiro}
+                style={{
+                  position: 'absolute', top: 2, left: 10, zIndex: 21,
+                  background: 'rgba(15,23,42,0.82)', backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(96,165,250,0.3)', borderRadius: 20,
+                  color: '#93c5fd', fontSize: 12, fontWeight: 700,
+                  padding: '5px 12px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                ← {UF_LABELS[estadoFoco] || estadoFoco}
+              </button>
             )}
 
             {/* Busca de postos (BID) */}
