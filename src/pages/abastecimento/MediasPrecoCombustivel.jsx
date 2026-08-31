@@ -1272,6 +1272,15 @@ export default function MediasPrecoCombustivel() {
               const melhor = precos.length ? fmt(Math.min(...precos)) : '—';
               const pior   = precos.length ? fmt(Math.max(...precos)) : '—';
               const medio  = precos.length ? fmt(precos.reduce((a, v) => a + v, 0) / precos.length) : '—';
+              // label de contexto
+              const ctxLabel = postoBidClicado
+                ? postoBidClicado.nome
+                : estadoFoco
+                  ? `${UF_LABELS[estadoFoco] || estadoFoco}`
+                  : 'Geral';
+              const ctxSub = postoBidClicado
+                ? 'Posto selecionado'
+                : estadoFoco ? 'Por Estado' : `${postosBid.length} postos BID`;
               const items = [
                 { label: 'Melhor preço', valor: melhor, cor: '#60a5fa', bg: 'rgba(37,99,235,0.25)', icon: '↓' },
                 { label: 'Preço médio',  valor: medio,  cor: '#4ade80', bg: 'rgba(22,163,74,0.25)', icon: '≈' },
@@ -1280,8 +1289,13 @@ export default function MediasPrecoCombustivel() {
               return (
                 <div style={{
                   position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-                  zIndex: 15, display: 'flex', flexDirection: 'column', gap: 10,
+                  zIndex: 15, display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
+                  {/* header de contexto */}
+                  <div style={{ marginBottom: 2 }}>
+                    <div style={{ fontSize: 8, color: '#6b7280', fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>{ctxSub}</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#cbd5e1', whiteSpace: 'nowrap', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis' }}>{ctxLabel}</div>
+                  </div>
                   {items.map(({ label, valor, cor, bg, icon }) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
