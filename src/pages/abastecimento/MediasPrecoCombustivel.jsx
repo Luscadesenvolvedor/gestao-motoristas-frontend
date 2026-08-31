@@ -1174,6 +1174,47 @@ export default function MediasPrecoCombustivel() {
               </svg>
             )}
 
+            {/* Painel de preços — centro esquerdo (BID) */}
+            {abaAtiva === 'bid' && !geoLoading && (() => {
+              // filtra postos conforme seleção
+              const base = postoBidClicado
+                ? postosBid.filter(p => p.id === postoBidClicado.id)
+                : estadoFoco
+                  ? postosBid.filter(p => p.uf === estadoFoco)
+                  : postosBid;
+              const precos = base.map(p => p.precoDiesel ? Number(p.precoDiesel) : null).filter(Boolean);
+              if (!precos.length) return null;
+              const melhor = Math.min(...precos);
+              const pior   = Math.max(...precos);
+              const medio  = precos.reduce((a, v) => a + v, 0) / precos.length;
+              const fmt = v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
+              const items = [
+                { label: 'Melhor preço', valor: fmt(melhor), cor: '#60a5fa', bg: 'rgba(37,99,235,0.25)', icon: '↓' },
+                { label: 'Preço médio',  valor: fmt(medio),  cor: '#4ade80', bg: 'rgba(22,163,74,0.25)', icon: '≈' },
+                { label: 'Pior preço',   valor: fmt(pior),   cor: '#fb923c', bg: 'rgba(234,88,12,0.25)', icon: '↑' },
+              ];
+              return (
+                <div style={{
+                  position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                  zIndex: 15, display: 'flex', flexDirection: 'column', gap: 10,
+                }}>
+                  {items.map(({ label, valor, cor, bg, icon }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 10, background: bg,
+                        border: `1px solid ${cor}44`, display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: 16, fontWeight: 900, color: cor, flexShrink: 0,
+                      }}>{icon}</div>
+                      <div>
+                        <div style={{ fontSize: 9, color: '#6b7280', fontWeight: 700, letterSpacing: 0.6 }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: cor }}>{valor}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {/* Card de totais — canto inferior esquerdo (BID) */}
             {abaAtiva === 'bid' && !geoLoading && (() => {
               const totalLitrosGeral = dados.reduce((a, d) => a + (d.totalLitros || 0), 0);
