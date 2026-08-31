@@ -1088,24 +1088,11 @@ export default function MediasPrecoCombustivel() {
             setMouse({ x: e.clientX - rect.left, y: e.clientY - rect.top });
           }}
         >
-          {/* Fundo do container */}
-          {abaAtiva === 'bid' && (
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 16,
-              background: 'radial-gradient(ellipse 80% 70% at 50% 45%, #071828 0%, #020609 100%)',
-              border: '1px solid rgba(56,189,248,0.12)',
-              boxShadow: 'inset 0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)',
-              pointerEvents: 'none',
-            }} />
-          )}
-          {/* Grid points */}
-          {abaAtiva !== 'bid' && (
-            <div style={{
-              position: 'absolute', inset: 0, opacity: 0.035,
-              backgroundImage: 'radial-gradient(#60a5fa 1px, transparent 1px)',
-              backgroundSize: '28px 28px', pointerEvents: 'none',
-            }} />
-          )}
+          <div style={{
+            position: 'absolute', inset: 0, opacity: 0.035,
+            backgroundImage: 'radial-gradient(#60a5fa 1px, transparent 1px)',
+            backgroundSize: '28px 28px', pointerEvents: 'none',
+          }} />
           <div style={{ color: '#475569', fontSize: 9, marginBottom: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', flexShrink: 0 }}>
             Abastecimento por Estado — % do gasto total (Diesel)
           </div>
@@ -1124,36 +1111,23 @@ export default function MediasPrecoCombustivel() {
                 onMouseLeave={() => setHovUF(null)}
               >
                 <defs>
-                  {/* Fundo escuro profundo */}
-                  <radialGradient id="mapBg" cx="50%" cy="45%" r="70%">
-                    <stop offset="0%"   stopColor="#071120" />
-                    <stop offset="100%" stopColor="#020609" />
+                  {/* Fundo atmosférico */}
+                  <radialGradient id="mapAtmos" cx="45%" cy="40%" r="65%">
+                    <stop offset="0%" stopColor="#0d1b2e" />
+                    <stop offset="100%" stopColor="#04080f" />
                   </radialGradient>
-                  {/* Iluminação direcional sobre cada estado */}
-                  <linearGradient id="stateLightOverlay" x1="0%" y1="0%" x2="85%" y2="100%">
-                    <stop offset="0%"   stopColor="rgba(255,255,255,0.22)" />
-                    <stop offset="55%"  stopColor="rgba(255,255,255,0.04)" />
-                    <stop offset="100%" stopColor="rgba(0,0,0,0.35)" />
+                  {/* Iluminação sobre estado (topo-esquerda = claro, baixo-direita = escuro) */}
+                  <linearGradient id="stateLightOverlay" x1="0%" y1="0%" x2="80%" y2="100%">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.13)" />
+                    <stop offset="100%" stopColor="rgba(0,0,0,0.28)" />
                   </linearGradient>
-                  {/* Glow neon nas bordas dos estados */}
-                  <filter id="stateGlow" x="-8%" y="-8%" width="116%" height="116%">
-                    <feGaussianBlur stdDeviation="2.5" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
+                  {/* Sombra projetada nos estados */}
+                  <filter id="stateDrop" x="-15%" y="-15%" width="140%" height="145%">
+                    <feDropShadow dx="1.5" dy="2.5" stdDeviation="2" floodColor="#000" floodOpacity="0.75" />
                   </filter>
-                  {/* Hover glow mais intenso */}
-                  <filter id="stateHovGlow" x="-12%" y="-12%" width="124%" height="124%">
-                    <feGaussianBlur stdDeviation="4" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                  {/* Brilho dos pins */}
-                  <filter id="pinGlow" x="-80%" y="-80%" width="260%" height="260%">
-                    <feGaussianBlur stdDeviation="3.5" result="blur" />
+                  {/* Brilho dos pins no hover */}
+                  <filter id="pinGlow" x="-60%" y="-60%" width="220%" height="220%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
                     <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                   </filter>
                   {/* Gradientes esféricos para pins */}
@@ -1170,61 +1144,53 @@ export default function MediasPrecoCombustivel() {
                     </radialGradient>
                   ))}
                 </defs>
-                {/* Fundo escuro do SVG */}
-                {abaAtiva === 'bid' && (
-                  <rect x={PAD} y={PAD} width={W} height={H} fill="url(#mapBg)" rx="6" />
-                )}
                 <g ref={mapGRef}>
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info  = byUF[sigla];
                   const isHov = hovUF === sigla;
                   const [cx, cy] = centroid || [0, 0];
                   const validC = !isNaN(cx) && !isNaN(cy);
-                  const isBid = abaAtiva === 'bid';
+                  const temPostos = abaAtiva === 'bid';
                   return (
                     <g key={sigla}>
-                      {/* Extrusão 3D — camadas de sombra profunda (BID) */}
-                      {isBid && (
+                      {/* Camada de extrusão 3D (BID) */}
+                      {abaAtiva === 'bid' && (
                         <>
-                          <path d={d} transform="translate(5,7)"
-                            fill="#010408" stroke="none" style={{ pointerEvents: 'none' }} />
-                          <path d={d} transform="translate(3.5,5)"
-                            fill="#03090f" stroke="none" style={{ pointerEvents: 'none' }} />
-                          <path d={d} transform="translate(2,3)"
-                            fill="#061325" stroke="none" style={{ pointerEvents: 'none' }} />
+                          <path d={d} transform="translate(3,4)"
+                            fill={temPostos ? '#07203d' : '#06090f'}
+                            stroke="none" style={{ pointerEvents: 'none' }} />
+                          <path d={d} transform="translate(2,2.5)"
+                            fill={temPostos ? '#0e2e55' : '#0a0e1a'}
+                            stroke="none" style={{ pointerEvents: 'none' }} />
                         </>
                       )}
                       {/* Face principal */}
                       <path
                         d={d}
-                        fill={isBid
-                          ? (isHov ? '#1e4d8c' : '#122850')
+                        fill={abaAtiva === 'bid'
+                          ? (isHov ? '#1e4580' : '#1a3a6b')
                           : (isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct))}
-                        stroke={isBid
-                          ? (isHov ? 'rgba(125,211,252,0.95)' : 'rgba(56,189,248,0.45)')
+                        stroke={abaAtiva === 'bid'
+                          ? (isHov ? 'rgba(125,211,252,0.9)' : 'rgba(96,165,250,0.5)')
                           : (isHov ? '#7dd3fc' : '#03070f')}
-                        strokeWidth={isBid ? (isHov ? 1.4 : 0.7) : (isHov ? 1.6 : 0.5)}
-                        filter={isBid ? (isHov ? 'url(#stateHovGlow)' : 'url(#stateGlow)') : undefined}
-                        style={{ cursor: isBid ? 'pointer' : 'pointer', transition: 'fill 0.15s, stroke 0.15s' }}
-                        onClick={() => isBid && zoomToEstado(sigla)}
-                        onMouseEnter={() => { isBid ? setHovUF(sigla) : setHovUF(sigla); }}
+                        strokeWidth={abaAtiva === 'bid' ? (isHov ? 1.4 : 0.9) : (isHov ? 1.6 : 0.5)}
+                        style={{ cursor: abaAtiva === 'bid' ? 'pointer' : 'pointer', transition: 'fill 0.15s, stroke 0.15s' }}
+                        onClick={() => abaAtiva === 'bid' && zoomToEstado(sigla)}
+                        onMouseEnter={() => setHovUF(sigla)}
                         onMouseLeave={() => setHovUF(null)}
                       />
-                      {/* Overlay de iluminação direcional */}
-                      {isBid && (
+                      {/* Overlay de iluminação direcional (BID) */}
+                      {abaAtiva === 'bid' && (
                         <path d={d} fill="url(#stateLightOverlay)"
-                          opacity={isHov ? 0.32 : 0.2} style={{ pointerEvents: 'none' }} />
+                          opacity={isHov ? 0.28 : 0.18} style={{ pointerEvents: 'none' }} />
                       )}
                       {validC && (
                         <g style={{ pointerEvents: 'none' }}>
-                          <text x={cx} y={cy - 1} textAnchor="middle"
-                            fontSize={isBid ? 6 : 7.5} fontWeight="800"
-                            fill={isBid
-                              ? (isHov ? 'rgba(186,230,253,1)' : 'rgba(147,197,253,0.75)')
-                              : (isHov ? '#0284c7' : 'rgba(255,255,255,0.95)')}>
+                          <text x={cx} y={cy - 1} textAnchor="middle" fontSize={abaAtiva === 'bid' ? 6 : 7.5} fontWeight="800"
+                            fill={abaAtiva === 'bid' ? (isHov ? 'rgba(186,230,253,1)' : 'rgba(147,197,253,0.95)') : (isHov ? '#0284c7' : 'rgba(255,255,255,0.95)')}>
                             {sigla}
                           </text>
-                          {info && !isBid && (
+                          {info && abaAtiva !== 'bid' && (
                             <text x={cx} y={cy + 9} textAnchor="middle" fontSize={5.5} fontWeight="600"
                               fill={isHov ? '#0284c7' : 'rgba(255,255,255,0.65)'}>
                               {fmtN(info.percentual, 1)}%
@@ -1298,21 +1264,18 @@ export default function MediasPrecoCombustivel() {
 
             {/* Painel de preços — centro esquerdo (BID) */}
             {abaAtiva === 'bid' && !geoLoading && (() => {
-              // filtra postos conforme seleção
-              // (UF não é armazenado nos postos BID vindos do vincular, então estadoFoco não filtra por UF)
               const base = postoBidClicado
                 ? postosBid.filter(p => p.id === postoBidClicado.id)
                 : postosBid;
               const precos = base.map(p => p.precoDiesel ? Number(p.precoDiesel) : null).filter(Boolean);
-              if (!precos.length) return null;
-              const melhor = Math.min(...precos);
-              const pior   = Math.max(...precos);
-              const medio  = precos.reduce((a, v) => a + v, 0) / precos.length;
               const fmt = v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
+              const melhor = precos.length ? fmt(Math.min(...precos)) : '—';
+              const pior   = precos.length ? fmt(Math.max(...precos)) : '—';
+              const medio  = precos.length ? fmt(precos.reduce((a, v) => a + v, 0) / precos.length) : '—';
               const items = [
-                { label: 'Melhor preço', valor: fmt(melhor), cor: '#60a5fa', bg: 'rgba(37,99,235,0.25)', icon: '↓' },
-                { label: 'Preço médio',  valor: fmt(medio),  cor: '#4ade80', bg: 'rgba(22,163,74,0.25)', icon: '≈' },
-                { label: 'Pior preço',   valor: fmt(pior),   cor: '#fb923c', bg: 'rgba(234,88,12,0.25)', icon: '↑' },
+                { label: 'Melhor preço', valor: melhor, cor: '#60a5fa', bg: 'rgba(37,99,235,0.25)', icon: '↓' },
+                { label: 'Preço médio',  valor: medio,  cor: '#4ade80', bg: 'rgba(22,163,74,0.25)', icon: '≈' },
+                { label: 'Pior preço',   valor: pior,   cor: '#fb923c', bg: 'rgba(234,88,12,0.25)', icon: '↑' },
               ];
               return (
                 <div style={{
@@ -1328,7 +1291,7 @@ export default function MediasPrecoCombustivel() {
                       }}>{icon}</div>
                       <div>
                         <div style={{ fontSize: 9, color: '#6b7280', fontWeight: 700, letterSpacing: 0.6 }}>{label}</div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: cor }}>{valor}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: valor === '—' ? '#374151' : cor }}>{valor}</div>
                       </div>
                     </div>
                   ))}
