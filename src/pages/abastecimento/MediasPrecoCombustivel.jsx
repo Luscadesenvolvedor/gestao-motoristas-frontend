@@ -991,10 +991,6 @@ export default function MediasPrecoCombustivel() {
                     </radialGradient>
                   ))}
                 </defs>
-                {/* Fundo do mapa BID */}
-                {abaAtiva === 'bid' && (
-                  <rect x={PAD} y={PAD} width={W} height={H} fill="url(#mapAtmos)" rx={6} />
-                )}
                 <g ref={mapGRef}>
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info  = byUF[sigla];
