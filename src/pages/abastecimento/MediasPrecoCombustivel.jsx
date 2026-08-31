@@ -92,15 +92,18 @@ function ModalRedes({ onClose }) {
   useEffect(() => { if (aba === 'vincular') { carregarPostos(); carregarBidMap(); } }, [aba, carregarPostos, carregarBidMap]);
 
   async function salvarBidPosto(postoNome, postoUf) {
-    if (!bidCoords) { setMsg('Link inválido — cole o link do Google Maps'); return; }
     setSalvandoBid(true);
     try {
       const existing = postoBidMap[postoNome.toLowerCase().trim()];
+      const coords = bidCoords || (existing ? { lat: existing.latitude, lng: existing.longitude } : null);
       const payload = {
-        nome: postoNome, uf: postoUf || '', cidade: '',
-        latitude: bidCoords.lat, longitude: bidCoords.lng,
-        precoDiesel: bidForm.preco ? String(bidForm.preco).replace(',', '.') : null,
-        linkMaps: bidForm.link,
+        nome: postoNome,
+        uf: postoUf || existing?.uf || '',
+        cidade: existing?.cidade || '',
+        latitude: coords?.lat ?? null,
+        longitude: coords?.lng ?? null,
+        precoDiesel: bidForm.preco ? String(bidForm.preco).replace(',', '.') : (existing?.precoDiesel ?? null),
+        linkMaps: bidForm.link || existing?.linkMaps || null,
       };
       if (existing) await api.put(`/postos-bid/${existing.id}`, payload);
       else          await api.post('/postos-bid', payload);
@@ -108,7 +111,7 @@ function ModalRedes({ onClose }) {
       setBidEditor(null);
       setBidForm({ link: '', preco: '' });
       setBidCoords(null);
-      setMsg('📍 Localização BID salva!');
+      setMsg(coords ? '📍 BID salvo!' : '✅ Posto BID salvo (sem localização)');
       setTimeout(() => setMsg(''), 2500);
     } catch (e) {
       setMsg(e.response?.data?.error || 'Erro ao salvar');
@@ -1201,6 +1204,7 @@ export default function MediasPrecoCombustivel() {
                 })}
                 {/* Pins BID — marcadores estilo mapa */}
                 {abaAtiva === 'bid' && projRef.current && postosBid.map(p => {
+                  if (p.latitude == null || p.longitude == null) return null;
                   const coords = projRef.current([p.longitude, p.latitude]);
                   if (!coords) return null;
                   const [px, py] = coords;
