@@ -1278,18 +1278,15 @@ export default function MediasPrecoCombustivel() {
                 ctxLabel = postoBidClicado.nome;
                 ctxSub   = 'Posto selecionado';
               } else if (estadoFoco) {
-                // estado selecionado → dados importados por UF
+                // estado selecionado → dados importados daquele estado
                 const est = byUF[estadoFoco];
-                if (est?.precoMedio) {
-                  // melhor e pior: postos desse estado via rankingPostosBid não tem UF,
-                  // então usamos os dados agregados do estado
-                  const precosMedio = dados.map(d => d.precoMedio).filter(Boolean).sort((a, b) => a - b);
-                  melhor = fmt(precosMedio[0] || est.precoMedio);
-                  medio  = fmt(est.precoMedio);
-                  pior   = fmt(precosMedio[precosMedio.length - 1] || est.precoMedio);
-                } else {
-                  melhor = medio = pior = '—';
-                }
+                // melhorPreco e piorPreco vêm direto do objeto do estado (se disponíveis)
+                const mp = est?.melhorPreco ?? est?.precoMedio;
+                const pp = est?.piorPreco   ?? est?.precoMedio;
+                const md = est?.precoMedio;
+                melhor = mp ? fmt(mp) : '—';
+                medio  = md ? fmt(md) : '—';
+                pior   = pp ? fmt(pp) : '—';
                 ctxLabel = UF_LABELS[estadoFoco] || estadoFoco;
                 ctxSub   = 'Por Estado';
               } else {
