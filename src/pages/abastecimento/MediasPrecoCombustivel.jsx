@@ -1124,7 +1124,7 @@ export default function MediasPrecoCombustivel() {
             {/* Busca de postos (BID) */}
             {abaAtiva === 'bid' && !geoLoading && (
               <div style={{
-                position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+                position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)',
                 zIndex: 20, display: 'flex', alignItems: 'center', gap: 6,
                 background: 'rgba(15,23,42,0.82)', backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(96,165,250,0.25)', borderRadius: 20,
