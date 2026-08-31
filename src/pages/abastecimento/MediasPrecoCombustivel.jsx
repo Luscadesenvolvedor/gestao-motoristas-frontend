@@ -949,6 +949,44 @@ export default function MediasPrecoCombustivel() {
                 style={{ width: '100%', height: '100%', display: 'block', transform: abaAtiva === 'bid' ? 'none' : 'rotateX(22deg)', transformOrigin: '50% 50%', cursor: abaAtiva === 'bid' ? 'grab' : 'default' }}
                 onMouseLeave={() => setHovUF(null)}
               >
+                <defs>
+                  {/* Fundo atmosférico */}
+                  <radialGradient id="mapAtmos" cx="45%" cy="40%" r="65%">
+                    <stop offset="0%" stopColor="#0d1b2e" />
+                    <stop offset="100%" stopColor="#04080f" />
+                  </radialGradient>
+                  {/* Iluminação sobre estado (topo-esquerda = claro, baixo-direita = escuro) */}
+                  <linearGradient id="stateLightOverlay" x1="0%" y1="0%" x2="80%" y2="100%">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.13)" />
+                    <stop offset="100%" stopColor="rgba(0,0,0,0.28)" />
+                  </linearGradient>
+                  {/* Sombra projetada nos estados */}
+                  <filter id="stateDrop" x="-15%" y="-15%" width="140%" height="145%">
+                    <feDropShadow dx="1.5" dy="2.5" stdDeviation="2" floodColor="#000" floodOpacity="0.75" />
+                  </filter>
+                  {/* Brilho dos pins no hover */}
+                  <filter id="pinGlow" x="-60%" y="-60%" width="220%" height="220%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  {/* Gradientes esféricos para pins */}
+                  {[
+                    { id: 'pinGreen',  hi: '#bbf7d0', mid: '#4ade80', lo: '#14532d' },
+                    { id: 'pinYellow', hi: '#fef9c3', mid: '#facc15', lo: '#78350f' },
+                    { id: 'pinRed',    hi: '#fee2e2', mid: '#f87171', lo: '#7f1d1d' },
+                    { id: 'pinBlue',   hi: '#dbeafe', mid: '#60a5fa', lo: '#1e3a8a' },
+                  ].map(({ id, hi, mid, lo }) => (
+                    <radialGradient key={id} id={id} cx="33%" cy="28%" r="68%">
+                      <stop offset="0%"   stopColor={hi}  />
+                      <stop offset="42%"  stopColor={mid} />
+                      <stop offset="100%" stopColor={lo}  />
+                    </radialGradient>
+                  ))}
+                </defs>
+                {/* Fundo do mapa BID */}
+                {abaAtiva === 'bid' && (
+                  <rect x={PAD} y={PAD} width={W} height={H} fill="url(#mapAtmos)" rx={6} />
+                )}
                 <g transform={abaAtiva === 'bid' ? `translate(${zoomT.x},${zoomT.y}) scale(${zoomT.k})` : undefined}>
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info  = byUF[sigla];
@@ -958,23 +996,41 @@ export default function MediasPrecoCombustivel() {
                   const temPostos = abaAtiva === 'bid' && postosBid.some(p => p.uf === sigla);
                   return (
                     <g key={sigla}>
+                      {/* Camada de extrusão 3D (BID) */}
+                      {abaAtiva === 'bid' && (
+                        <>
+                          <path d={d} transform="translate(3,4)"
+                            fill={temPostos ? '#07203d' : '#06090f'}
+                            stroke="none" style={{ pointerEvents: 'none' }} />
+                          <path d={d} transform="translate(2,2.5)"
+                            fill={temPostos ? '#0e2e55' : '#0a0e1a'}
+                            stroke="none" style={{ pointerEvents: 'none' }} />
+                        </>
+                      )}
+                      {/* Face principal */}
                       <path
                         d={d}
                         fill={abaAtiva === 'bid'
-                          ? (temPostos ? '#1e3a5f' : '#161b27')
+                          ? (temPostos ? '#1a3a6b' : '#111827')
                           : (isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct))}
+                        filter={abaAtiva === 'bid' ? 'url(#stateDrop)' : undefined}
                         stroke={abaAtiva === 'bid'
-                          ? (temPostos ? 'rgba(96,165,250,0.4)' : 'rgba(255,255,255,0.08)')
+                          ? (temPostos ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.07)')
                           : (isHov ? '#7dd3fc' : '#03070f')}
-                        strokeWidth={abaAtiva === 'bid' ? (temPostos ? 0.8 : 0.4) : (isHov ? 1.6 : 0.5)}
+                        strokeWidth={abaAtiva === 'bid' ? (temPostos ? 0.9 : 0.35) : (isHov ? 1.6 : 0.5)}
                         style={{ cursor: abaAtiva === 'bid' ? 'default' : 'pointer', transition: 'fill 0.18s' }}
                         onMouseEnter={() => abaAtiva !== 'bid' && setHovUF(sigla)}
                         onMouseLeave={() => abaAtiva !== 'bid' && setHovUF(null)}
                       />
+                      {/* Overlay de iluminação direcional (BID) */}
+                      {abaAtiva === 'bid' && (
+                        <path d={d} fill="url(#stateLightOverlay)"
+                          style={{ pointerEvents: 'none', mixBlendMode: 'overlay' }} />
+                      )}
                       {validC && (
                         <g style={{ pointerEvents: 'none' }}>
                           <text x={cx} y={cy - 1} textAnchor="middle" fontSize={abaAtiva === 'bid' ? 6 : 7.5} fontWeight="800"
-                            fill={abaAtiva === 'bid' ? (temPostos ? 'rgba(147,197,253,0.9)' : 'rgba(255,255,255,0.2)') : (isHov ? '#0284c7' : 'rgba(255,255,255,0.95)')}>
+                            fill={abaAtiva === 'bid' ? (temPostos ? 'rgba(147,197,253,0.95)' : 'rgba(255,255,255,0.18)') : (isHov ? '#0284c7' : 'rgba(255,255,255,0.95)')}>
                             {sigla}
                           </text>
                           {info && abaAtiva !== 'bid' && (
@@ -995,31 +1051,46 @@ export default function MediasPrecoCombustivel() {
                   const [px, py] = coords;
                   const isHovPin = hovPostoBid?.id === p.id;
                   const preco = p.precoDiesel ? Number(p.precoDiesel) : null;
+                  const gradId = preco
+                    ? (preco < 5.5 ? 'pinGreen' : preco < 6.2 ? 'pinYellow' : 'pinRed')
+                    : 'pinBlue';
                   const pinColor = preco
                     ? (preco < 5.5 ? '#4ade80' : preco < 6.2 ? '#facc15' : '#f87171')
                     : '#60a5fa';
-                  const R = isHovPin ? 6 : 5;
+                  const R = isHovPin ? 7 : 5.5;
+                  const stemLen = R + 4;
                   return (
                     <g key={p.id} style={{ cursor: 'pointer' }}
                       onMouseEnter={() => setHovPostoBid(p)}
                       onMouseLeave={() => setHovPostoBid(null)}>
-                      {/* Sombra */}
-                      <ellipse cx={px} cy={py + R + 4} rx={R * 0.7} ry={1.5} fill="rgba(0,0,0,0.35)" />
+                      {/* Sombra no chão */}
+                      <ellipse cx={px + 2} cy={py + stemLen + 3} rx={R * 0.65} ry={1.8}
+                        fill="rgba(0,0,0,0.45)" style={{ filter: 'blur(1px)' }} />
                       {/* Haste */}
-                      <line x1={px} y1={py + R} x2={px} y2={py + R + 3} stroke={pinColor} strokeWidth={1.2} />
-                      {/* Círculo principal */}
-                      <circle cx={px} cy={py} r={R + 0.8} fill="rgba(0,0,0,0.4)" />
-                      <circle cx={px} cy={py} r={R} fill={pinColor} />
-                      {/* Brilho interno */}
-                      <circle cx={px - R * 0.3} cy={py - R * 0.3} r={R * 0.3} fill="rgba(255,255,255,0.3)" />
+                      <line x1={px} y1={py + R * 0.8} x2={px + 1} y2={py + stemLen + 2}
+                        stroke="rgba(0,0,0,0.5)" strokeWidth={2} />
+                      <line x1={px} y1={py + R * 0.8} x2={px} y2={py + stemLen}
+                        stroke={pinColor} strokeWidth={1.4} strokeLinecap="round" />
+                      {/* Anel de borda (depth) */}
+                      <circle cx={px} cy={py} r={R + 1.2} fill="rgba(0,0,0,0.55)" />
+                      {/* Esfera com gradiente 3D */}
+                      <circle cx={px} cy={py} r={R}
+                        fill={`url(#${gradId})`}
+                        filter={isHovPin ? 'url(#pinGlow)' : undefined} />
+                      {/* Reflexo de luz (canto superior esq) */}
+                      <circle cx={px - R * 0.28} cy={py - R * 0.32} r={R * 0.22}
+                        fill="rgba(255,255,255,0.55)" style={{ pointerEvents: 'none' }} />
                       {/* Nome acima */}
-                      <text x={px} y={py - R - 3} textAnchor="middle" fontSize={isHovPin ? 3.5 : 3} fontWeight="700"
-                        fill={isHovPin ? '#fff' : 'rgba(255,255,255,0.75)'} style={{ pointerEvents: 'none' }}>
+                      <text x={px} y={py - R - 4} textAnchor="middle"
+                        fontSize={isHovPin ? 4 : 3.2} fontWeight="700"
+                        fill={isHovPin ? '#fff' : 'rgba(255,255,255,0.8)'}
+                        style={{ pointerEvents: 'none', textShadow: '0 1px 3px #000' }}>
                         {p.nome}
                       </text>
                       {/* Preço abaixo da haste */}
                       {preco && (
-                        <text x={px} y={py + R + 9} textAnchor="middle" fontSize={isHovPin ? 3.5 : 3} fontWeight="800"
+                        <text x={px} y={py + stemLen + 8} textAnchor="middle"
+                          fontSize={isHovPin ? 4 : 3.2} fontWeight="800"
                           fill={pinColor} style={{ pointerEvents: 'none' }}>
                           {`R$ ${preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </text>
