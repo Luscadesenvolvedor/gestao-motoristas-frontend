@@ -608,7 +608,7 @@ export default function MediasPrecoCombustivel() {
   const projRef          = useRef(null);
   const svgRef           = useRef(null);
   const zoomBehaviorRef  = useRef(null);
-  const [zoomT, setZoomT]           = useState({ x: 0, y: 0, k: 1 });
+  const mapGRef                      = useRef(null); // DOM ref para o <g> do mapa — zoom sem re-render
   const [postosBid, setPostosBid]   = useState([]);
   const [modalBid, setModalBid]     = useState(false);
   const [editingBid, setEditingBid] = useState(null);
@@ -733,7 +733,14 @@ export default function MediasPrecoCombustivel() {
     if (!svgRef.current || geoLoading || abaAtiva !== 'bid') return;
     const zoom = d3.zoom()
       .scaleExtent([0.5, 14])
-      .on('zoom', e => setZoomT({ x: e.transform.x, y: e.transform.y, k: e.transform.k }));
+      .on('zoom', e => {
+        if (mapGRef.current) {
+          mapGRef.current.setAttribute(
+            'transform',
+            `translate(${e.transform.x},${e.transform.y}) scale(${e.transform.k})`
+          );
+        }
+      });
     zoomBehaviorRef.current = zoom;
     const sel = d3.select(svgRef.current);
     sel.call(zoom);
@@ -946,7 +953,8 @@ export default function MediasPrecoCombustivel() {
               <svg
                 ref={svgRef}
                 viewBox={`${PAD} ${PAD} ${W} ${H}`}
-                style={{ width: '100%', height: '100%', display: 'block', transform: abaAtiva === 'bid' ? 'none' : 'rotateX(22deg)', transformOrigin: '50% 50%', cursor: abaAtiva === 'bid' ? 'grab' : 'default' }}
+                style={{ width: '100%', height: '100%', display: 'block', transform: abaAtiva === 'bid' ? 'none' : 'rotateX(22deg)', transformOrigin: '50% 50%', cursor: abaAtiva === 'bid' ? 'grab' : 'default', willChange: 'transform' }}
+                shapeRendering={abaAtiva === 'bid' ? 'optimizeSpeed' : 'auto'}
                 onMouseLeave={() => setHovUF(null)}
               >
                 <defs>
@@ -987,7 +995,7 @@ export default function MediasPrecoCombustivel() {
                 {abaAtiva === 'bid' && (
                   <rect x={PAD} y={PAD} width={W} height={H} fill="url(#mapAtmos)" rx={6} />
                 )}
-                <g transform={abaAtiva === 'bid' ? `translate(${zoomT.x},${zoomT.y}) scale(${zoomT.k})` : undefined}>
+                <g ref={mapGRef}>
                 {statePaths.map(({ sigla, d, centroid }) => {
                   const info  = byUF[sigla];
                   const isHov = hovUF === sigla;
@@ -1013,7 +1021,7 @@ export default function MediasPrecoCombustivel() {
                         fill={abaAtiva === 'bid'
                           ? (temPostos ? '#1a3a6b' : '#111827')
                           : (isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct))}
-                        filter={abaAtiva === 'bid' ? 'url(#stateDrop)' : undefined}
+
                         stroke={abaAtiva === 'bid'
                           ? (temPostos ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.07)')
                           : (isHov ? '#7dd3fc' : '#03070f')}
@@ -1025,7 +1033,7 @@ export default function MediasPrecoCombustivel() {
                       {/* Overlay de iluminação direcional (BID) */}
                       {abaAtiva === 'bid' && (
                         <path d={d} fill="url(#stateLightOverlay)"
-                          style={{ pointerEvents: 'none', mixBlendMode: 'overlay' }} />
+                          opacity={0.18} style={{ pointerEvents: 'none' }} />
                       )}
                       {validC && (
                         <g style={{ pointerEvents: 'none' }}>
