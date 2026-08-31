@@ -733,6 +733,8 @@ export default function MediasPrecoCombustivel() {
     if (!svgRef.current || geoLoading || abaAtiva !== 'bid') return;
     const zoom = d3.zoom()
       .scaleExtent([0.5, 14])
+      // exclui wheel — vamos interceptar manualmente para fixar âncora no centro
+      .filter(ev => ev.type !== 'wheel' && !ev.button)
       .on('zoom', e => {
         if (mapGRef.current) {
           mapGRef.current.setAttribute(
@@ -744,9 +746,21 @@ export default function MediasPrecoCombustivel() {
     zoomBehaviorRef.current = zoom;
     const sel = d3.select(svgRef.current);
     sel.call(zoom);
+
+    // Wheel sempre expandindo a partir do centro do SVG
+    const svgEl = svgRef.current;
+    const wheelHandler = (event) => {
+      event.preventDefault();
+      const { width, height } = svgEl.getBoundingClientRect();
+      const factor = event.deltaY < 0 ? 1.25 : 0.8;
+      zoom.scaleBy(sel, factor, [width / 2, height / 2]);
+    };
+    svgEl.addEventListener('wheel', wheelHandler, { passive: false });
+
     sel.on('dblclick.zoom', () =>
       sel.transition().duration(350).call(zoom.transform, d3.zoomIdentity));
     return () => {
+      svgEl.removeEventListener('wheel', wheelHandler);
       sel.on('.zoom', null);
       zoomBehaviorRef.current = null;
       if (mapGRef.current) mapGRef.current.setAttribute('transform', '');
