@@ -891,7 +891,7 @@ export default function MediasPrecoCombustivel() {
       )}
 
       {/* Header compacto */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0, position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', gap: 2, background: Dk.card, borderRadius: 8, padding: 3, border: `1px solid ${Dk.border}` }}>
             {[{ id: 'mapa', label: '🗺 Mapa' }, { id: 'consulta', label: '🔍 Consulta Posto' }, { id: 'bid', label: '🏷 BID Postos' }].map(t => (
@@ -912,9 +912,12 @@ export default function MediasPrecoCombustivel() {
           )}
         </div>
         {abaAtiva === 'bid' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+          <div style={{
+            position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 6,
             background: Dk.card, border: `1px solid ${Dk.border}`, borderRadius: 20,
-            padding: '3px 12px' }}>
+            padding: '3px 12px', zIndex: 5,
+          }}>
             <span style={{ fontSize: 12, color: Dk.muted }}>🔍</span>
             <input
               value={buscarBid}
