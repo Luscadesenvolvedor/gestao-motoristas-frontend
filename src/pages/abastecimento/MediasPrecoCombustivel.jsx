@@ -739,6 +739,7 @@ export default function MediasPrecoCombustivel() {
   const [estadoFoco, setEstadoFoco]       = useState(null);
   const [postoBidClicado, setPostoBidClicado] = useState(null);
   const [rankingPostosBid, setRankingPostosBid] = useState([]);
+  const [painelPrecos, setPainelPrecos]         = useState(null); // { geral, porUF, dataInicio, dataFim }
   const [trrs, setTrrs]             = useState([]);
   const [modalTrr, setModalTrr]     = useState(false);
   const [editingTrr, setEditingTrr] = useState(null);
@@ -823,6 +824,7 @@ export default function MediasPrecoCombustivel() {
   useEffect(() => {
     if (abaAtiva !== 'bid') return;
     api.get('/medias-consumo/ranking-postos').then(({ data }) => setRankingPostosBid(data)).catch(() => {});
+    api.get('/medias-consumo/painel-precos').then(({ data }) => setPainelPrecos(data)).catch(() => {});
   }, [abaAtiva]);
 
   // Zoom interativo (só na aba BID)
@@ -1262,14 +1264,14 @@ export default function MediasPrecoCombustivel() {
               </svg>
             )}
 
-            {/* Painel de preços — centro esquerdo (BID) */}
+            {/* Painel de preços — centro esquerdo (BID) — últimos 15 dias importados */}
             {abaAtiva === 'bid' && !geoLoading && (() => {
               const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`;
 
               let melhor, pior, medio, ctxLabel, ctxSub;
 
               if (postoBidClicado) {
-                // posto clicado → preço BID cadastrado ou preço médio real
+                // posto clicado → preço BID ou preço médio real
                 const rank = rankingPostosBid.find(r => r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim());
                 const p = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (rank?.precoMedio ? Number(rank.precoMedio) : null);
                 melhor = p ? fmt(p) : '—';
@@ -1278,33 +1280,21 @@ export default function MediasPrecoCombustivel() {
                 ctxLabel = postoBidClicado.nome;
                 ctxSub   = 'Posto selecionado';
               } else if (estadoFoco) {
-                // estado selecionado → dados importados daquele estado
-                const est = byUF[estadoFoco];
-                // melhorPreco e piorPreco vêm direto do objeto do estado (se disponíveis)
-                const mp = est?.melhorPreco ?? est?.precoMedio;
-                const pp = est?.piorPreco   ?? est?.precoMedio;
-                const md = est?.precoMedio;
-                melhor = mp ? fmt(mp) : '—';
-                medio  = md ? fmt(md) : '—';
-                pior   = pp ? fmt(pp) : '—';
+                // estado → últimos 15 dias daquele UF
+                const est = painelPrecos?.porUF?.find(u => u.uf === estadoFoco);
+                melhor = est?.melhorPreco ? fmt(est.melhorPreco) : '—';
+                medio  = est?.precoMedio  ? fmt(est.precoMedio)  : '—';
+                pior   = est?.piorPreco   ? fmt(est.piorPreco)   : '—';
                 ctxLabel = UF_LABELS[estadoFoco] || estadoFoco;
-                ctxSub   = 'Por Estado';
+                ctxSub   = 'Por Estado · 15 dias';
               } else {
-                // geral → todos os postos dos dados importados
-                const precos = rankingPostosBid.map(r => r.precoMedio).filter(Boolean).sort((a, b) => a - b);
-                if (precos.length) {
-                  melhor = fmt(precos[0]);
-                  pior   = fmt(precos[precos.length - 1]);
-                  medio  = fmt(precos.reduce((a, v) => a + v, 0) / precos.length);
-                } else {
-                  // fallback: dados por UF
-                  const pUF = dados.map(d => d.precoMedio).filter(Boolean).sort((a, b) => a - b);
-                  melhor = pUF.length ? fmt(pUF[0]) : '—';
-                  pior   = pUF.length ? fmt(pUF[pUF.length - 1]) : '—';
-                  medio  = pUF.length ? fmt(pUF.reduce((a, v) => a + v, 0) / pUF.length) : '—';
-                }
+                // geral → últimos 15 dias todos os postos
+                const g = painelPrecos?.geral;
+                melhor = g?.melhorPreco ? fmt(g.melhorPreco) : '—';
+                medio  = g?.precoMedio  ? fmt(g.precoMedio)  : '—';
+                pior   = g?.piorPreco   ? fmt(g.piorPreco)   : '—';
                 ctxLabel = 'Geral';
-                ctxSub   = `${rankingPostosBid.length || dados.length} postos`;
+                ctxSub   = painelPrecos ? `15 dias · até ${painelPrecos.dataFim}` : '15 dias';
               }
 
               const items = [
