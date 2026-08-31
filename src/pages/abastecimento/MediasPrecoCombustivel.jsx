@@ -615,6 +615,7 @@ export default function MediasPrecoCombustivel() {
   const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
   const [coordsOk, setCoordsOk]     = useState(false);
   const [painelBidAberto, setPainelBidAberto] = useState(false);
+  const [hovPostoBid, setHovPostoBid] = useState(null);
   const [trrs, setTrrs]             = useState([]);
   const [modalTrr, setModalTrr]     = useState(false);
   const [editingTrr, setEditingTrr] = useState(null);
@@ -954,24 +955,29 @@ export default function MediasPrecoCombustivel() {
                   const isHov = hovUF === sigla;
                   const [cx, cy] = centroid || [0, 0];
                   const validC = !isNaN(cx) && !isNaN(cy);
+                  const temPostos = abaAtiva === 'bid' && postosBid.some(p => p.uf === sigla);
                   return (
                     <g key={sigla}>
                       <path
                         d={d}
-                        fill={abaAtiva === 'bid' ? '#1c2333' : (isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct))}
-                        stroke={abaAtiva === 'bid' ? 'rgba(255,255,255,0.12)' : (isHov ? '#7dd3fc' : '#03070f')}
-                        strokeWidth={isHov && abaAtiva !== 'bid' ? 1.6 : 0.5}
+                        fill={abaAtiva === 'bid'
+                          ? (temPostos ? '#1e3a5f' : '#161b27')
+                          : (isHov ? '#e0f2fe' : getTopColor(info?.percentual, maxPct))}
+                        stroke={abaAtiva === 'bid'
+                          ? (temPostos ? 'rgba(96,165,250,0.4)' : 'rgba(255,255,255,0.08)')
+                          : (isHov ? '#7dd3fc' : '#03070f')}
+                        strokeWidth={abaAtiva === 'bid' ? (temPostos ? 0.8 : 0.4) : (isHov ? 1.6 : 0.5)}
                         style={{ cursor: abaAtiva === 'bid' ? 'default' : 'pointer', transition: 'fill 0.18s' }}
                         onMouseEnter={() => abaAtiva !== 'bid' && setHovUF(sigla)}
                         onMouseLeave={() => abaAtiva !== 'bid' && setHovUF(null)}
                       />
-                      {validC && abaAtiva !== 'bid' && (
+                      {validC && (
                         <g style={{ pointerEvents: 'none' }}>
-                          <text x={cx} y={cy - 1} textAnchor="middle" fontSize={7.5} fontWeight="800"
-                            fill={isHov ? '#0284c7' : 'rgba(255,255,255,0.95)'}>
+                          <text x={cx} y={cy - 1} textAnchor="middle" fontSize={abaAtiva === 'bid' ? 6 : 7.5} fontWeight="800"
+                            fill={abaAtiva === 'bid' ? (temPostos ? 'rgba(147,197,253,0.9)' : 'rgba(255,255,255,0.2)') : (isHov ? '#0284c7' : 'rgba(255,255,255,0.95)')}>
                             {sigla}
                           </text>
-                          {info && (
+                          {info && abaAtiva !== 'bid' && (
                             <text x={cx} y={cy + 9} textAnchor="middle" fontSize={5.5} fontWeight="600"
                               fill={isHov ? '#0284c7' : 'rgba(255,255,255,0.65)'}>
                               {fmtN(info.percentual, 1)}%
@@ -982,23 +988,42 @@ export default function MediasPrecoCombustivel() {
                     </g>
                   );
                 })}
-                {/* Pins BID */}
+                {/* Pins BID — marcadores estilo mapa */}
                 {abaAtiva === 'bid' && projRef.current && postosBid.map(p => {
                   const coords = projRef.current([p.longitude, p.latitude]);
                   if (!coords) return null;
                   const [px, py] = coords;
+                  const isHovPin = hovPostoBid?.id === p.id;
+                  const preco = p.precoDiesel ? Number(p.precoDiesel) : null;
+                  const pinColor = preco
+                    ? (preco < 5.5 ? '#4ade80' : preco < 6.2 ? '#facc15' : '#f87171')
+                    : '#60a5fa';
+                  const R = isHovPin ? 6 : 5;
                   return (
-                    <g key={p.id} style={{ pointerEvents: 'none' }}>
-                      {/* nome menor acima */}
-                      <text x={px} y={py - 5} textAnchor="middle" fontSize={3} fontWeight="600" fill="rgba(255,255,255,0.55)">
+                    <g key={p.id} style={{ cursor: 'pointer' }}
+                      onMouseEnter={() => setHovPostoBid(p)}
+                      onMouseLeave={() => setHovPostoBid(null)}>
+                      {/* Sombra */}
+                      <ellipse cx={px} cy={py + R + 4} rx={R * 0.7} ry={1.5} fill="rgba(0,0,0,0.35)" />
+                      {/* Haste */}
+                      <line x1={px} y1={py + R} x2={px} y2={py + R + 3} stroke={pinColor} strokeWidth={1.2} />
+                      {/* Círculo principal */}
+                      <circle cx={px} cy={py} r={R + 0.8} fill="rgba(0,0,0,0.4)" />
+                      <circle cx={px} cy={py} r={R} fill={pinColor} />
+                      {/* Brilho interno */}
+                      <circle cx={px - R * 0.3} cy={py - R * 0.3} r={R * 0.3} fill="rgba(255,255,255,0.3)" />
+                      {/* Nome acima */}
+                      <text x={px} y={py - R - 3} textAnchor="middle" fontSize={isHovPin ? 3.5 : 3} fontWeight="700"
+                        fill={isHovPin ? '#fff' : 'rgba(255,255,255,0.75)'} style={{ pointerEvents: 'none' }}>
                         {p.nome}
                       </text>
-                      {/* preço no lugar do círculo */}
-                      <text x={px} y={py + 1} textAnchor="middle" fontSize={4} fontWeight="800" fill="#4ade80">
-                        {p.precoDiesel
-                          ? `R$ ${Number(p.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : '·'}
-                      </text>
+                      {/* Preço abaixo da haste */}
+                      {preco && (
+                        <text x={px} y={py + R + 9} textAnchor="middle" fontSize={isHovPin ? 3.5 : 3} fontWeight="800"
+                          fill={pinColor} style={{ pointerEvents: 'none' }}>
+                          {`R$ ${preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
@@ -1051,6 +1076,45 @@ export default function MediasPrecoCombustivel() {
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 5 }}>
                   <span style={{ color: '#64748b' }}>{label}</span>
                   <strong style={{ color }}>{val}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tooltip posto BID */}
+          {hovPostoBid && abaAtiva === 'bid' && (
+            <div style={{
+              position: 'absolute',
+              left: Math.min(mouse.x + 16, 300), top: Math.max(mouse.y - 80, 10),
+              background: 'rgba(2,8,23,0.97)', border: '1px solid rgba(96,165,250,0.3)',
+              borderRadius: 12, padding: '12px 16px', fontSize: 12,
+              boxShadow: '0 8px 30px rgba(0,0,0,0.6)', minWidth: 180, pointerEvents: 'none', zIndex: 50,
+            }}>
+              <div style={{ fontWeight: 800, color: '#e2e8f0', fontSize: 13, marginBottom: 8 }}>
+                📍 {hovPostoBid.nome}
+              </div>
+              {[
+                { label: 'Rede',   val: hovPostoBid.rede || '—',   color: '#93c5fd' },
+                { label: 'Cidade', val: hovPostoBid.cidade ? `${hovPostoBid.cidade} / ${hovPostoBid.uf}` : hovPostoBid.uf, color: '#cbd5e1' },
+                { label: 'Diesel', val: hovPostoBid.precoDiesel
+                    ? `R$ ${Number(hovPostoBid.precoDiesel).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/L`
+                    : 'Sem preço', color: hovPostoBid.precoDiesel ? '#4ade80' : '#6b7280' },
+              ].map(({ label, val, color }) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+                  <span style={{ color: '#64748b', fontSize: 11 }}>{label}</span>
+                  <strong style={{ color, fontSize: 11 }}>{val}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Legenda cores preço BID */}
+          {abaAtiva === 'bid' && postosBid.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexShrink: 0 }}>
+              {[{ color: '#4ade80', label: '< R$5,50' }, { color: '#facc15', label: 'R$5,50–6,20' }, { color: '#f87171', label: '> R$6,20' }, { color: '#60a5fa', label: 'sem preço' }].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                  <span style={{ fontSize: 9, color: Dk.muted }}>{label}</span>
                 </div>
               ))}
             </div>
