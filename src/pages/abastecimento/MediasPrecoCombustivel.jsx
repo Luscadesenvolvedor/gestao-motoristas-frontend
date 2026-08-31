@@ -983,84 +983,6 @@ export default function MediasPrecoCombustivel() {
         </div>
       )}
 
-      {/* Card de totais BID */}
-      {abaAtiva === 'bid' && (() => {
-        const totalLitrosGeral = dados.reduce((a, d) => a + (d.totalLitros || 0), 0);
-        const precoMedioGeral  = dados.length > 0 ? dados.reduce((a, d) => a + (d.precoMedio || 0), 0) / dados.length : 0;
-
-        let icon, titulo, subtitulo, gasto, litros, preco;
-
-        if (postoBidClicado) {
-          const match = rankingPostosBid.find(r =>
-            r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim()
-          );
-          icon     = '⛽';
-          titulo   = postoBidClicado.nome;
-          subtitulo = [postoBidClicado.rede, postoBidClicado.cidade, postoBidClicado.uf].filter(Boolean).join(' · ');
-          gasto    = match ? Number(match.totalGasto)  : null;
-          litros   = match ? Number(match.totalLitros) : null;
-          preco    = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (match ? Number(match.precoMedio) : null);
-        } else if (estadoFoco) {
-          const est = byUF[estadoFoco];
-          icon      = '📍';
-          titulo    = UF_LABELS[estadoFoco] || estadoFoco;
-          subtitulo = estadoFoco;
-          gasto     = est?.totalGasto   || 0;
-          litros    = est?.totalLitros  || 0;
-          preco     = est?.precoMedio   || 0;
-        } else {
-          icon      = '🗺';
-          titulo    = 'Geral';
-          subtitulo = `${dados.length} estados · ${postosBid.length} postos BID`;
-          gasto     = totalGasto;
-          litros    = totalLitrosGeral;
-          preco     = precoMedioGeral;
-        }
-
-        return (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
-            background: Dk.card, border: `1px solid ${Dk.border}`, borderRadius: 10,
-            padding: '8px 16px', marginBottom: 8,
-            position: 'relative',
-          }}>
-            {postoBidClicado && (
-              <button onClick={() => setPostoBidClicado(null)}
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', color: Dk.muted, cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
-            )}
-            <span style={{ fontSize: 18 }}>{icon}</span>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 12, color: Dk.text }}>{titulo}</div>
-              <div style={{ fontSize: 10, color: Dk.muted }}>{subtitulo}</div>
-            </div>
-            <div style={{ width: 1, height: 32, background: Dk.border, flexShrink: 0 }} />
-            <div style={{ display: 'flex', gap: 20 }}>
-              <div>
-                <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>TOTAL GASTO</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: Dk.red }}>
-                  {gasto != null ? fmtR(gasto) : '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>LITROS</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#93c5fd' }}>
-                  {litros != null ? `${fmtN(litros, 0)} L` : '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>
-                  {postoBidClicado ? 'PREÇO BID' : 'PREÇO MÉDIO'}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#4ade80' }}>
-                  {preco ? `${fmtR(preco)}/L` : '—'}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       <div style={{ display: (abaAtiva === 'mapa' || abaAtiva === 'bid') ? 'flex' : 'none', gap: 10, flex: 1, minHeight: 0 }}>
         {/* ─── Mapa ─── */}
         <div
@@ -1251,6 +1173,65 @@ export default function MediasPrecoCombustivel() {
                 </g>
               </svg>
             )}
+
+            {/* Card de totais — canto inferior esquerdo (BID) */}
+            {abaAtiva === 'bid' && !geoLoading && (() => {
+              const totalLitrosGeral = dados.reduce((a, d) => a + (d.totalLitros || 0), 0);
+              const precoMedioGeral  = dados.length > 0 ? dados.reduce((a, d) => a + (d.precoMedio || 0), 0) / dados.length : 0;
+              let icon, titulo, subtitulo, gasto, litros, preco;
+              if (postoBidClicado) {
+                const match = rankingPostosBid.find(r => r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim());
+                icon = '⛽'; titulo = postoBidClicado.nome;
+                subtitulo = [postoBidClicado.rede, postoBidClicado.cidade, postoBidClicado.uf].filter(Boolean).join(' · ');
+                gasto  = match ? Number(match.totalGasto)  : null;
+                litros = match ? Number(match.totalLitros) : null;
+                preco  = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (match ? Number(match.precoMedio) : null);
+              } else if (estadoFoco) {
+                const est = byUF[estadoFoco];
+                icon = '📍'; titulo = UF_LABELS[estadoFoco] || estadoFoco; subtitulo = estadoFoco;
+                gasto = est?.totalGasto || 0; litros = est?.totalLitros || 0; preco = est?.precoMedio || 0;
+              } else {
+                icon = '🗺'; titulo = 'Geral'; subtitulo = `${dados.length} estados · ${postosBid.length} postos BID`;
+                gasto = totalGasto; litros = totalLitrosGeral; preco = precoMedioGeral;
+              }
+              return (
+                <div style={{
+                  position: 'absolute', bottom: 52, left: 14, zIndex: 15,
+                  background: 'rgba(15,23,42,0.88)', backdropFilter: 'blur(10px)',
+                  border: `1px solid ${Dk.border}`, borderRadius: 14,
+                  padding: '12px 16px', minWidth: 170,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                }}>
+                  {postoBidClicado && (
+                    <button onClick={() => setPostoBidClicado(null)}
+                      style={{ position: 'absolute', right: 8, top: 8, background: 'none', border: 'none',
+                        color: Dk.muted, cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
+                  )}
+                  <div style={{ fontSize: 9, color: Dk.muted, fontWeight: 700, letterSpacing: 0.8, marginBottom: 4 }}>
+                    {icon} {subtitulo || titulo}
+                  </div>
+                  <div style={{ fontWeight: 900, fontSize: 22, color: '#e2e8f0', lineHeight: 1.1, marginBottom: 10 }}>
+                    {gasto != null ? fmtR(gasto) : '—'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 14 }}>
+                    <div>
+                      <div style={{ fontSize: 8, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>LITROS</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#93c5fd' }}>
+                        {litros != null ? `${fmtN(litros, 0)} L` : '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 8, color: Dk.muted, fontWeight: 700, letterSpacing: 0.6 }}>
+                        {postoBidClicado ? 'PREÇO BID' : 'PREÇO MÉDIO'}
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#4ade80' }}>
+                        {preco ? `${fmtR(preco)}/L` : '—'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Botão Voltar ao mapa inteiro (BID) */}
             {abaAtiva === 'bid' && estadoFoco && (
