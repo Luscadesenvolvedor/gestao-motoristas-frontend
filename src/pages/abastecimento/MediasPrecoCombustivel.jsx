@@ -39,6 +39,18 @@ function fmtN(v, dec = 1) {
 }
 
 /* ─── Modal Redes de Postos ─── */
+// Extrai lat/lng de qualquer formato de URL do Google Maps
+function parseMapsCoords(url) {
+  if (!url) return null;
+  let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  m = url.match(/[?&](?:q|ll)=(-?\d+\.\d+)[,%2C]+(-?\d+\.\d+)/i);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  m = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  return null;
+}
+
 function ModalRedes({ onClose }) {
   const [aba, setAba] = useState('redes');          // 'redes' | 'vincular'
   const [redes, setRedes] = useState([]);
@@ -50,6 +62,12 @@ function ModalRedes({ onClose }) {
   const [redeSel, setRedeSel] = useState('');
   const [vinculando, setVinculando] = useState(false);
   const [msg, setMsg] = useState('');
+  // BID localização por posto
+  const [postoBidMap, setPostoBidMap] = useState({});   // { [nomeMin]: postoBidObj }
+  const [bidEditor, setBidEditor]     = useState(null); // nome do posto sendo editado
+  const [bidForm, setBidForm]         = useState({ link: '', preco: '' });
+  const [bidCoords, setBidCoords]     = useState(null);
+  const [salvandoBid, setSalvandoBid] = useState(false);
 
   const carregarRedes = useCallback(async () => {
     const { data } = await api.get('/medias-consumo/redes');
@@ -61,8 +79,41 @@ function ModalRedes({ onClose }) {
     setPostos(data);
   }, []);
 
+  const carregarBidMap = useCallback(async () => {
+    try {
+      const { data } = await api.get('/postos-bid');
+      const m = {};
+      data.forEach(p => { m[p.nome.toLowerCase().trim()] = p; });
+      setPostoBidMap(m);
+    } catch {}
+  }, []);
+
   useEffect(() => { carregarRedes(); }, [carregarRedes]);
-  useEffect(() => { if (aba === 'vincular') carregarPostos(); }, [aba, carregarPostos]);
+  useEffect(() => { if (aba === 'vincular') { carregarPostos(); carregarBidMap(); } }, [aba, carregarPostos, carregarBidMap]);
+
+  async function salvarBidPosto(postoNome, postoUf) {
+    if (!bidCoords) { setMsg('Link inválido — cole o link do Google Maps'); return; }
+    setSalvandoBid(true);
+    try {
+      const existing = postoBidMap[postoNome.toLowerCase().trim()];
+      const payload = {
+        nome: postoNome, uf: postoUf || '', cidade: '',
+        latitude: bidCoords.lat, longitude: bidCoords.lng,
+        precoDiesel: bidForm.preco ? String(bidForm.preco).replace(',', '.') : null,
+        linkMaps: bidForm.link,
+      };
+      if (existing) await api.put(`/postos-bid/${existing.id}`, payload);
+      else          await api.post('/postos-bid', payload);
+      await carregarBidMap();
+      setBidEditor(null);
+      setBidForm({ link: '', preco: '' });
+      setBidCoords(null);
+      setMsg('📍 Localização BID salva!');
+      setTimeout(() => setMsg(''), 2500);
+    } catch (e) {
+      setMsg(e.response?.data?.error || 'Erro ao salvar');
+    } finally { setSalvandoBid(false); }
+  }
 
   async function criarRede() {
     if (!novaRede.trim()) return;
@@ -236,7 +287,7 @@ function ModalRedes({ onClose }) {
             </div>
 
             {/* Cabeçalho tabela */}
-            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 130px', gap: 8, padding: '6px 12px', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 56px', gap: 8, padding: '6px 12px', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.8 }}>
               <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <input type="checkbox"
                   checked={postosFiltrados.length > 0 && postosFiltrados.every(p => selecionados.has(p.posto))}
@@ -247,6 +298,7 @@ function ModalRedes({ onClose }) {
               <span>POSTO</span>
               <span style={{ textAlign: 'right' }}>TOTAL DIESEL</span>
               <span>REDE</span>
+              <span style={{ textAlign: 'center' }}>BID</span>
             </div>
 
             {/* Lista de postos */}
@@ -255,34 +307,102 @@ function ModalRedes({ onClose }) {
                 <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
                   {postos.length === 0 ? 'Nenhum posto encontrado nos dados importados' : 'Nenhum posto encontrado para essa busca'}
                 </div>
-              ) : postosFiltrados.map((p, i) => (
-                <div key={p.posto} onClick={() => toggleSel(p.posto)} style={{
-                  display: 'grid', gridTemplateColumns: '36px 1fr 140px 130px', gap: 8,
-                  padding: '10px 12px', cursor: 'pointer',
-                  background: selecionados.has(p.posto) ? '#f0fdf4' : i % 2 === 0 ? '#fff' : '#fafafa',
-                  borderBottom: '1px solid #f1f5f9',
-                  transition: 'background 0.12s',
-                }}>
-                  <input type="checkbox" checked={selecionados.has(p.posto)} onChange={() => toggleSel(p.posto)}
-                    onClick={e => e.stopPropagation()} style={{ cursor: 'pointer' }} />
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>{p.posto}</div>
-                    <div style={{ fontSize: 10, color: '#94a3b8' }}>{p.totalRegistros} abastecimentos</div>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', alignSelf: 'center' }}>
-                    {fmtR(p.totalGasto)}
-                  </div>
-                  <div style={{ alignSelf: 'center' }}>
-                    {p.redeNome ? (
-                      <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
-                        {p.redeNome}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#cbd5e1', fontSize: 11 }}>—</span>
+              ) : postosFiltrados.map((p, i) => {
+                const bidExiste = postoBidMap[p.posto.toLowerCase().trim()];
+                const isEditing = bidEditor === p.posto;
+                return (
+                  <div key={p.posto}>
+                    <div onClick={() => toggleSel(p.posto)} style={{
+                      display: 'grid', gridTemplateColumns: '36px 1fr 140px 110px 56px', gap: 8,
+                      padding: '10px 12px', cursor: 'pointer',
+                      background: selecionados.has(p.posto) ? '#f0fdf4' : i % 2 === 0 ? '#fff' : '#fafafa',
+                      borderBottom: isEditing ? 'none' : '1px solid #f1f5f9',
+                      transition: 'background 0.12s',
+                    }}>
+                      <input type="checkbox" checked={selecionados.has(p.posto)} onChange={() => toggleSel(p.posto)}
+                        onClick={e => e.stopPropagation()} style={{ cursor: 'pointer' }} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>{p.posto}</div>
+                        <div style={{ fontSize: 10, color: '#94a3b8' }}>{p.totalRegistros} abastecimentos</div>
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#475569', alignSelf: 'center' }}>
+                        {fmtR(p.totalGasto)}
+                      </div>
+                      <div style={{ alignSelf: 'center' }}>
+                        {p.redeNome ? (
+                          <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+                            {p.redeNome}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#cbd5e1', fontSize: 11 }}>—</span>
+                        )}
+                      </div>
+                      {/* Botão BID */}
+                      <div style={{ alignSelf: 'center', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => {
+                            if (isEditing) { setBidEditor(null); return; }
+                            const ex = bidExiste;
+                            setBidEditor(p.posto);
+                            setBidForm({ link: ex?.linkMaps || '', preco: ex?.precoDiesel || '' });
+                            setBidCoords(ex ? { lat: ex.latitude, lng: ex.longitude } : null);
+                          }}
+                          title={bidExiste ? 'Editar localização BID' : 'Adicionar no mapa BID'}
+                          style={{
+                            border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+                            padding: '3px 6px',
+                            background: isEditing ? '#dbeafe' : bidExiste ? '#f0fdf4' : '#f8fafc',
+                            color: isEditing ? '#1d4ed8' : bidExiste ? '#16a34a' : '#94a3b8',
+                          }}>
+                          {bidExiste ? '📍' : '＋'}
+                        </button>
+                      </div>
+                    </div>
+                    {/* Editor inline BID */}
+                    {isEditing && (
+                      <div style={{ background: '#f0f9ff', borderBottom: '1px solid #f1f5f9', padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8' }}>📍 Localização no mapa BID — {p.posto}</div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <input
+                            value={bidForm.link}
+                            onChange={e => {
+                              const url = e.target.value;
+                              setBidForm(f => ({ ...f, link: url }));
+                              setBidCoords(parseMapsCoords(url));
+                            }}
+                            placeholder="Cole o link do Google Maps"
+                            style={{ flex: 2, minWidth: 200, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${bidCoords ? '#4ade80' : '#e2e8f0'}`, fontSize: 12, outline: 'none' }}
+                          />
+                          <input
+                            value={bidForm.preco}
+                            onChange={e => setBidForm(f => ({ ...f, preco: e.target.value }))}
+                            placeholder="Preço Diesel (R$/L)"
+                            style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 12, outline: 'none' }}
+                          />
+                        </div>
+                        {bidCoords && (
+                          <div style={{ fontSize: 10, color: '#16a34a' }}>✓ Coordenadas: {bidCoords.lat.toFixed(4)}, {bidCoords.lng.toFixed(4)}</div>
+                        )}
+                        {bidForm.link && !bidCoords && (
+                          <div style={{ fontSize: 10, color: '#dc2626' }}>✗ Não foi possível extrair coordenadas — verifique o link</div>
+                        )}
+                        <div style={{ fontSize: 10, color: '#64748b' }}>💡 No Google Maps: clique no posto → compartilhar → copie o link</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => setBidEditor(null)}
+                            style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 12, cursor: 'pointer' }}>
+                            Cancelar
+                          </button>
+                          <button onClick={() => salvarBidPosto(p.posto, p.uf || '')}
+                            disabled={salvandoBid || !bidCoords}
+                            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: bidCoords ? '#1d4ed8' : '#e2e8f0', color: bidCoords ? '#fff' : '#94a3b8', fontSize: 12, fontWeight: 700, cursor: bidCoords ? 'pointer' : 'default' }}>
+                            {salvandoBid ? 'Salvando...' : bidExiste ? 'Atualizar' : 'Adicionar ao mapa'}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
               {postosFiltrados.length} posto(s) exibido(s) · {selecionados.size} selecionado(s)
@@ -610,10 +730,6 @@ export default function MediasPrecoCombustivel() {
   const zoomBehaviorRef  = useRef(null);
   const mapGRef                      = useRef(null); // DOM ref para o <g> do mapa — zoom sem re-render
   const [postosBid, setPostosBid]   = useState([]);
-  const [modalBid, setModalBid]     = useState(false);
-  const [editingBid, setEditingBid] = useState(null);
-  const [formBid, setFormBid]       = useState({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
-  const [coordsOk, setCoordsOk]     = useState(false);
   const [painelBidAberto, setPainelBidAberto] = useState(false);
   const [hovPostoBid, setHovPostoBid] = useState(null);
   const [buscarBid, setBuscarBid]     = useState('');
@@ -625,7 +741,6 @@ export default function MediasPrecoCombustivel() {
   const [editingTrr, setEditingTrr] = useState(null);
   const [formTrr, setFormTrr]       = useState({ nome: '', uf: '', precoDiesel: '' });
   const [savingTrr, setSavingTrr]   = useState(false);
-  const [savingBid, setSavingBid]   = useState(false);
   const [toastBid, setToastBid]     = useState(null); // { msg, type }
   const toastTimerRef = useRef(null);
 
@@ -687,36 +802,6 @@ export default function MediasPrecoCombustivel() {
     toastTimerRef.current = setTimeout(() => setToastBid(null), 5000);
   };
 
-  const salvarBid = async () => {
-    setSavingBid(true);
-    try {
-      const precoAnterior = editingBid?.precoDiesel;
-      const precoNovo = formBid.precoDiesel
-        ? parseFloat(String(formBid.precoDiesel).replace(',', '.'))
-        : null;
-
-      if (editingBid) {
-        await api.put(`/postos-bid/${editingBid.id}`, formBid);
-        // detecta mudança de preço
-        if (precoNovo != null && precoAnterior != null && Math.abs(precoNovo - precoAnterior) > 0.001) {
-          const fmt = v => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          showToast(`⚠️ Preço atualizado — ${formBid.nome}: R$ ${fmt(precoAnterior)} → R$ ${fmt(precoNovo)}`, 'alert');
-        } else if (precoNovo != null && precoAnterior == null) {
-          showToast(`📌 Preço cadastrado — ${formBid.nome}: R$ ${Number(precoNovo).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'info');
-        }
-      } else {
-        await api.post('/postos-bid', formBid);
-        showToast(`✅ Posto cadastrado: ${formBid.nome}`, 'info');
-      }
-
-      await carregarPostosBid();
-      setModalBid(false);
-      setEditingBid(null);
-      setFormBid({ nome: '', rede: '', cidade: '', uf: '', latitude: '', longitude: '', precoDiesel: '', linkMaps: '' });
-      setCoordsOk(false);
-    } catch (err) { console.error(err); }
-    finally { setSavingBid(false); }
-  };
 
   const deletarBid = async (id) => {
     if (!window.confirm('Remover este posto do mapa?')) return;
@@ -1517,10 +1602,6 @@ export default function MediasPrecoCombustivel() {
               <span style={{ fontWeight: 700, fontSize: 10, color: Dk.text, whiteSpace: 'nowrap' }}>
                 📍 {painelBidAberto ? 'Postos' : ''} {postosBid.length > 0 ? `(${postosBid.length})` : ''}
               </span>
-              <button onClick={() => { setEditingBid(null); setFormBid({ nome:'', rede:'', cidade:'', uf:'', latitude:'', longitude:'', precoDiesel:'', linkMaps:'' }); setCoordsOk(false); setModalBid(true); }}
-                style={{ padding: '2px 8px', borderRadius: 5, border: 'none', background: Dk.red, color: '#fff', fontSize: 9, fontWeight: 700, cursor: 'pointer', marginLeft: 'auto' }}>
-                +
-              </button>
             </div>
 
             {/* Lista — só quando aberto */}
@@ -1538,8 +1619,6 @@ export default function MediasPrecoCombustivel() {
                       <div style={{ fontSize: 9, color: Dk.muted }}>{[p.rede, p.cidade, p.uf].filter(Boolean).join(' · ')}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                      <button onClick={() => { setEditingBid(p); setFormBid({ nome: p.nome, rede: p.rede||'', cidade: p.cidade||'', uf: p.uf, latitude: p.latitude, longitude: p.longitude, precoDiesel: p.precoDiesel||'', linkMaps:'' }); setCoordsOk(false); setModalBid(true); }}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, padding: '1px 3px' }}>✏️</button>
                       <button onClick={() => deletarBid(p.id)}
                         style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, padding: '1px 3px' }}>🗑️</button>
                     </div>
@@ -1551,87 +1630,6 @@ export default function MediasPrecoCombustivel() {
         )}
       </div>
 
-      {/* Modal BID */}
-      {modalBid && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#1c2333', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', padding: 24, width: 400, maxWidth: '92vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#e2e8f0', marginBottom: 20 }}>{editingBid ? '✏️ Editar Posto' : '📍 Cadastrar Posto'}</div>
-            {[
-              { key: 'nome',        label: 'Nome / Razão Social *', placeholder: 'Ex: Posto BR Centro' },
-              { key: 'rede',        label: 'Rede / Bandeira',       placeholder: 'Ex: Shell, Ipiranga, BR...' },
-              { key: 'cidade',      label: 'Cidade',                placeholder: 'Ex: São Paulo' },
-              { key: 'uf',          label: 'UF *',                  placeholder: 'Ex: SP' },
-              { key: 'precoDiesel', label: 'Preço Diesel (R$/L)',   placeholder: 'Ex: 5,90' },
-            ].map(({ key, label, placeholder }) => (
-              <div key={key} style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</label>
-                <input
-                  value={formBid[key]}
-                  onChange={e => setFormBid(f => ({ ...f, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  maxLength={key === 'uf' ? 2 : undefined}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: '#0d1117', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
-                />
-              </div>
-            ))}
-
-            {/* Link do Google Maps */}
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#6b7280', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-                Link do Google Maps *
-              </label>
-              <input
-                value={formBid.linkMaps}
-                onChange={e => {
-                  const url = e.target.value;
-                  setFormBid(f => ({ ...f, linkMaps: url }));
-                  // tenta extrair @lat,lng
-                  const m1 = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-                  // tenta extrair ?q=lat,lng ou ?ll=lat,lng
-                  const m2 = url.match(/[?&](?:q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/);
-                  const match = m1 || m2;
-                  if (match) {
-                    setFormBid(f => ({ ...f, linkMaps: url, latitude: match[1], longitude: match[2] }));
-                    setCoordsOk(true);
-                  } else {
-                    setCoordsOk(false);
-                  }
-                }}
-                placeholder="Cole o link do Google Maps aqui"
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: `1px solid ${coordsOk ? '#4ade80' : 'rgba(255,255,255,0.1)'}`, background: '#0d1117', color: '#e2e8f0', fontSize: 12, outline: 'none' }}
-              />
-              {coordsOk && (
-                <div style={{ fontSize: 10, color: '#4ade80', marginTop: 4 }}>
-                  ✓ Coordenadas identificadas: {Number(formBid.latitude).toFixed(4)}, {Number(formBid.longitude).toFixed(4)}
-                </div>
-              )}
-              {formBid.linkMaps && !coordsOk && (
-                <div style={{ fontSize: 10, color: '#f87171', marginTop: 4 }}>
-                  ✗ Não foi possível extrair coordenadas — verifique o link
-                </div>
-              )}
-            </div>
-            {editingBid && formBid.latitude && !coordsOk && (
-              <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 12 }}>
-                📍 Localização atual: {Number(formBid.latitude).toFixed(4)}, {Number(formBid.longitude).toFixed(4)}
-              </div>
-            )}
-            <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 18, lineHeight: 1.5 }}>
-              💡 No Google Maps: clique no posto → toque nos três pontos → <strong style={{ color: '#e2e8f0' }}>Compartilhar</strong> → copie o link.
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { setModalBid(false); setEditingBid(null); }}
-                style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: '#e2e8f0', fontSize: 12, cursor: 'pointer' }}>
-                Cancelar
-              </button>
-              <button onClick={salvarBid} disabled={savingBid}
-                style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: Dk.red, color: '#fff', fontSize: 12, fontWeight: 700, cursor: savingBid ? 'default' : 'pointer', opacity: savingBid ? 0.7 : 1 }}>
-                {savingBid ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
