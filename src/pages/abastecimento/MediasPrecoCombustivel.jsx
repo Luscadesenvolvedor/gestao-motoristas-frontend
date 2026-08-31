@@ -396,9 +396,9 @@ function ModalRedes({ onClose }) {
                             Cancelar
                           </button>
                           <button onClick={() => salvarBidPosto(p.posto, p.uf || '')}
-                            disabled={salvandoBid || !bidCoords}
-                            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: bidCoords ? '#1d4ed8' : '#e2e8f0', color: bidCoords ? '#fff' : '#94a3b8', fontSize: 12, fontWeight: 700, cursor: bidCoords ? 'pointer' : 'default' }}>
-                            {salvandoBid ? 'Salvando...' : bidExiste ? 'Atualizar' : 'Adicionar ao mapa'}
+                            disabled={salvandoBid}
+                            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#1d4ed8', color: '#fff', fontSize: 12, fontWeight: 700, cursor: salvandoBid ? 'default' : 'pointer', opacity: salvandoBid ? 0.7 : 1 }}>
+                            {salvandoBid ? 'Salvando...' : bidExiste ? 'Atualizar' : 'Salvar BID'}
                           </button>
                         </div>
                       </div>
@@ -1150,7 +1150,7 @@ export default function MediasPrecoCombustivel() {
                   const isHov = hovUF === sigla;
                   const [cx, cy] = centroid || [0, 0];
                   const validC = !isNaN(cx) && !isNaN(cy);
-                  const temPostos = abaAtiva === 'bid' && postosBid.some(p => p.uf === sigla);
+                  const temPostos = abaAtiva === 'bid'; // todos os estados são clicáveis no BID
                   return (
                     <g key={sigla}>
                       {/* Camada de extrusão 3D (BID) */}
@@ -1175,8 +1175,8 @@ export default function MediasPrecoCombustivel() {
                           ? (temPostos ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.07)')
                           : (isHov ? '#7dd3fc' : '#03070f')}
                         strokeWidth={abaAtiva === 'bid' ? (temPostos ? 0.9 : 0.35) : (isHov ? 1.6 : 0.5)}
-                        style={{ cursor: abaAtiva === 'bid' ? (temPostos ? 'pointer' : 'default') : 'pointer', transition: 'fill 0.18s' }}
-                        onClick={() => abaAtiva === 'bid' && temPostos && zoomToEstado(sigla)}
+                        style={{ cursor: abaAtiva === 'bid' ? 'pointer' : 'pointer', transition: 'fill 0.18s' }}
+                        onClick={() => abaAtiva === 'bid' && zoomToEstado(sigla)}
                         onMouseEnter={() => abaAtiva !== 'bid' && setHovUF(sigla)}
                         onMouseLeave={() => abaAtiva !== 'bid' && setHovUF(null)}
                       />
@@ -1266,11 +1266,10 @@ export default function MediasPrecoCombustivel() {
             {/* Painel de preços — centro esquerdo (BID) */}
             {abaAtiva === 'bid' && !geoLoading && (() => {
               // filtra postos conforme seleção
+              // (UF não é armazenado nos postos BID vindos do vincular, então estadoFoco não filtra por UF)
               const base = postoBidClicado
                 ? postosBid.filter(p => p.id === postoBidClicado.id)
-                : estadoFoco
-                  ? postosBid.filter(p => p.uf === estadoFoco)
-                  : postosBid;
+                : postosBid;
               const precos = base.map(p => p.precoDiesel ? Number(p.precoDiesel) : null).filter(Boolean);
               if (!precos.length) return null;
               const melhor = Math.min(...precos);
