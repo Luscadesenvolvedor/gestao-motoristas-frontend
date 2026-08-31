@@ -102,7 +102,6 @@ function ModalRedes({ onClose }) {
         cidade: existing?.cidade || '',
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
-        precoDiesel: bidForm.preco ? String(bidForm.preco).replace(',', '.') : (existing?.precoDiesel ?? null),
         linkMaps: bidForm.link || existing?.linkMaps || null,
       };
       if (existing) await api.put(`/postos-bid/${existing.id}`, payload);
@@ -374,13 +373,7 @@ function ModalRedes({ onClose }) {
                               setBidCoords(parseMapsCoords(url));
                             }}
                             placeholder="Cole o link do Google Maps"
-                            style={{ flex: 2, minWidth: 200, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${bidCoords ? '#4ade80' : '#e2e8f0'}`, fontSize: 12, outline: 'none' }}
-                          />
-                          <input
-                            value={bidForm.preco}
-                            onChange={e => setBidForm(f => ({ ...f, preco: e.target.value }))}
-                            placeholder="Preço Diesel (R$/L)"
-                            style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 12, outline: 'none' }}
+                            style={{ flex: 1, minWidth: 240, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${bidCoords ? '#4ade80' : '#e2e8f0'}`, fontSize: 12, outline: 'none' }}
                           />
                         </div>
                         {bidCoords && (
@@ -1271,14 +1264,13 @@ export default function MediasPrecoCombustivel() {
               let melhor, pior, medio, ctxLabel, ctxSub;
 
               if (postoBidClicado) {
-                // posto clicado → preço BID ou preço médio real
-                const rank = rankingPostosBid.find(r => r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim());
-                const p = postoBidClicado.precoDiesel ? Number(postoBidClicado.precoDiesel) : (rank?.precoMedio ? Number(rank.precoMedio) : null);
-                melhor = p ? fmt(p) : '—';
-                medio  = p ? fmt(p) : '—';
-                pior   = p ? fmt(p) : '—';
+                // posto clicado → últimos 15 dias importados daquele posto
+                const pp = painelPrecos?.porPosto?.find(r => r.posto?.toLowerCase().trim() === postoBidClicado.nome?.toLowerCase().trim());
+                melhor = pp?.melhorPreco ? fmt(pp.melhorPreco) : '—';
+                medio  = pp?.precoMedio  ? fmt(pp.precoMedio)  : '—';
+                pior   = pp?.piorPreco   ? fmt(pp.piorPreco)   : '—';
                 ctxLabel = postoBidClicado.nome;
-                ctxSub   = 'Posto selecionado';
+                ctxSub   = 'Posto · 15 dias';
               } else if (estadoFoco) {
                 // estado → últimos 15 dias daquele UF
                 const est = painelPrecos?.porUF?.find(u => u.uf === estadoFoco);
