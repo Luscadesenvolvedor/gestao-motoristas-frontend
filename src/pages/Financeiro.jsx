@@ -8,12 +8,95 @@ import toast from 'react-hot-toast';
 
 const vazio = { motoristaId:'', tipoDescontoId:'', valor:'', valorDescontado:'', numeroAcerto:'', numeroVale:'', mesDesconto:'', observacao:'' };
 
+const FIELD_LABELS = {
+  motoristaId: 'Motorista', tipoDescontoId: 'Tipo',
+  valor: 'Valor', valorDescontado: 'Valor Descontado',
+  numeroAcerto: 'Nº Acerto', numeroVale: 'Nº Vale',
+  mesDesconto: 'Mês', observacao: 'Observação',
+  abonado: 'Abonado', abonadoPor: 'Abonado por',
+};
+const SKIP_FIELDS = new Set(['id','criadoEm','atualizadoEm','usuarioId','controleId','registroId','perfilAlvo']);
+
+function getDiff(antigos, novos) {
+  if (!antigos || !novos) return [];
+  const campos = [...new Set([...Object.keys(antigos || {}), ...Object.keys(novos || {})])];
+  return campos
+    .filter(c => !SKIP_FIELDS.has(c))
+    .filter(c => String(antigos[c] ?? '') !== String(novos[c] ?? ''))
+    .map(c => ({ campo: FIELD_LABELS[c] || c, de: antigos[c], para: novos[c] }));
+}
+
+function fmtVal(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  return String(v);
+}
+
+function HistoricoPanel({ itemId }) {
+  const [historico, setHistorico] = useState([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    api.get(`/financeiro/${itemId}/historico`)
+      .then(r => setHistorico(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [itemId]);
+
+  const acaoIcon = { criou: '✨', editou: '✏️', abonou: '✅', excluiu: '🗑️' };
+
+  if (loading) return <div style={{ padding:'10px 20px', fontSize:12, color:'#9ca3af' }}>Carregando histórico...</div>;
+  if (!historico.length) return <div style={{ padding:'10px 20px', fontSize:12, color:'#9ca3af' }}>Nenhum histórico registrado.</div>;
+
+  return (
+    <div style={{ padding:'10px 20px', display:'flex', flexDirection:'column', gap:8 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'#6366f1', textTransform:'uppercase', letterSpacing:1, marginBottom:2 }}>
+        📋 Histórico de alterações
+      </div>
+      {historico.map(h => {
+        const diff = getDiff(h.dadosAntigos, h.dadosNovos);
+        const dt = new Date(h.criadoEm).toLocaleString('pt-BR');
+        return (
+          <div key={h.id} style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 12px', fontSize:12 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: diff.length ? 6 : 0 }}>
+              <span style={{ fontSize:14 }}>{acaoIcon[h.acao] || '•'}</span>
+              <span style={{ fontWeight:700, color:'#1e293b' }}>{h.usuario?.nome || 'Sistema'}</span>
+              <span style={{ color:'#94a3b8', fontSize:11 }}>{h.usuario?.email}</span>
+              <span style={{ marginLeft:'auto', color:'#94a3b8', fontSize:11, whiteSpace:'nowrap' }}>{dt}</span>
+              <span style={{ background: h.acao==='criou'?'#dbeafe':h.acao==='abonou'?'#dcfce7':'#fef3c7',
+                color: h.acao==='criou'?'#1d4ed8':h.acao==='abonou'?'#16a34a':'#92400e',
+                fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20 }}>
+                {h.acao}
+              </span>
+            </div>
+            {diff.length > 0 && (
+              <div style={{ display:'flex', flexDirection:'column', gap:3, paddingLeft:22 }}>
+                {diff.map((d, i) => (
+                  <div key={i} style={{ display:'flex', gap:6, alignItems:'baseline', color:'#475569' }}>
+                    <span style={{ fontWeight:600, minWidth:110, color:'#64748b' }}>{d.campo}:</span>
+                    <span style={{ color:'#dc2626', textDecoration:'line-through' }}>{fmtVal(d.de)}</span>
+                    <span style={{ color:'#6b7280' }}>→</span>
+                    <span style={{ color:'#16a34a', fontWeight:600 }}>{fmtVal(d.para)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {diff.length === 0 && h.acao !== 'criou' && (
+              <div style={{ paddingLeft:22, color:'#94a3b8', fontSize:11 }}>Sem detalhes disponíveis.</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescontado, excluirItem }) {
-  const [showParcelas, setShowParcelas] = useState(false);
-  const [novaParcela, setNovaParcela]   = useState({ mes: '', valor: '' });
-  const [salvando, setSalvando]         = useState(false);
-  const [showAbonar, setShowAbonar]     = useState(false);
-  const [nomeAbono, setNomeAbono]       = useState('');
+  const [showParcelas, setShowParcelas]   = useState(false);
+  const [novaParcela, setNovaParcela]     = useState({ mes: '', valor: '' });
+  const [salvando, setSalvando]           = useState(false);
+  const [showAbonar, setShowAbonar]       = useState(false);
+  const [nomeAbono, setNomeAbono]         = useState('');
+  const [showHistorico, setShowHistorico] = useState(false);
   const temParcelas = item.parcelasDesconto?.length > 0;
 
   async function confirmarAbono() {
@@ -106,6 +189,11 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
                 Abonar
               </button>
             )}
+            <button onClick={() => setShowHistorico(v => !v)}
+              title="Ver histórico de alterações"
+              style={{ padding:'3px 8px', border:'1px solid #6366f1', borderRadius:6, fontSize:11, cursor:'pointer', background: showHistorico ? '#6366f1' : '#fff', color: showHistorico ? '#fff' : '#6366f1' }}>
+              📋 Histórico
+            </button>
             {isAdmin && (
               <button onClick={() => excluirItem(item.id)}
                 style={{ padding:'3px 8px', border:'1px solid #EB3238', borderRadius:6, fontSize:11, cursor:'pointer', background:'#fff', color:'#EB3238' }}>
@@ -115,6 +203,14 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
           </div>
         </td>
       </tr>
+
+      {showHistorico && (
+        <tr style={{ borderBottom: (showParcelas || showAbonar) ? 'none' : '1px solid #f3f4f6', background:'#f8f7ff' }}>
+          <td colSpan={isAdmin ? 9 : 8} style={{ padding:0 }}>
+            <HistoricoPanel itemId={item.id} />
+          </td>
+        </tr>
+      )}
 
       {showAbonar && !item.abonado && (
         <tr style={{ borderBottom: showParcelas ? 'none' : '1px solid #f3f4f6', background:'#f0fdf4' }}>
