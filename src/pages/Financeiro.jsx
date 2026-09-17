@@ -138,7 +138,11 @@ function ParcelaRow({ item, isAdmin, fmt, carregar, salvarCampo, atualizarDescon
     <>
       <tr style={{ borderBottom: (showParcelas || showAbonar) ? 'none' : '1px solid #f3f4f6', background: item.abonado ? '#f0fdf4' : undefined }}>
         <td style={{ padding:'8px 14px', color:'#6b7280' }}>{item.tipoDesconto?.nome}</td>
-        <td style={{ padding:'8px 14px' }}>{fmt(item.valor)}</td>
+        <td style={{ padding:'4px 8px' }}>
+          <input type="number" defaultValue={Number(item.valor)}
+            onBlur={e => { if (parseFloat(e.target.value) !== Number(item.valor)) salvarCampo(item, 'valor', e.target.value); }}
+            style={{ width:110, padding:'4px 8px', border:'1px solid #d1d5db', borderRadius:6, fontSize:13 }}/>
+        </td>
         <td style={{ padding:'8px 14px' }}>
           {item.abonado ? (
             <div>
