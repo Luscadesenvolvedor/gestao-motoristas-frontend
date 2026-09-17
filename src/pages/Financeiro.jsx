@@ -207,7 +207,7 @@ export default function Financeiro() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    api.get('/motoristas').then(r => setMotoristas(r.data));
+    api.get('/motoristas?status=ativo').then(r => setMotoristas(r.data));
     api.get('/tipos/desconto').then(r => setTipos(r.data));
     if (isAdmin) {
       api.get('/usuarios').then(r => {
