@@ -252,10 +252,14 @@ export default function Solicitacoes() {
 
   async function salvarNovoVale() {
     if (!novoVale.trim()) return;
-    const { data } = await api.post('/tipos/vale', { nome: novoVale.toUpperCase() });
-    toast.success('Vale adicionado'); setNovoVale(''); setShowNovoVale(false);
-    carregarSelects();
-    setForm(f => ({ ...f, tipoValeId: data.id }));
+    try {
+      const { data } = await api.post('/tipos/vale', { nome: novoVale.trim().toUpperCase() });
+      toast.success('Vale adicionado'); setNovoVale(''); setShowNovoVale(false);
+      carregarSelects();
+      setForm(f => ({ ...f, tipoValeId: data.id }));
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao criar vale');
+    }
   }
 
   async function salvarNovoRef() {
