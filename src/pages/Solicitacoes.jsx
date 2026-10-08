@@ -260,10 +260,14 @@ export default function Solicitacoes() {
 
   async function salvarNovoRef() {
     if (!novoRef.trim()) return;
-    const { data } = await api.post('/tipos/ref', { nome: novoRef.toUpperCase() });
-    toast.success('Ref adicionado'); setNovoRef(''); setShowNovoRef(false);
-    carregarSelects();
-    setForm(f => ({ ...f, tipoRefId: data.id }));
+    try {
+      const { data } = await api.post('/tipos/ref', { nome: novoRef.trim().toUpperCase() });
+      toast.success('Ref adicionado'); setNovoRef(''); setShowNovoRef(false);
+      carregarSelects();
+      setForm(f => ({ ...f, tipoRefId: data.id }));
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao criar ref');
+    }
   }
 
   async function atualizarLiberado(id, liberado) {
